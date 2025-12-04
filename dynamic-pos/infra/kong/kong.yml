@@ -1,0 +1,153 @@
+_format_version: "3.0"
+_transform: true
+
+consumers:
+  - id: 53a46fb7-0d86-4691-a3ab-6f963182211a
+    username: product-client
+
+services:
+  - id: 2915b562-3d36-4b29-82ed-c49aaeb45c4b
+    name: auth-service
+    url: http://auth:8000
+    routes:
+      # public endpoints (no JWT)
+      - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
+        name: auth-login-route
+        paths:
+          - /api/auth/login
+          - /api/auth/login/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - id: a2d8e9c4-6b11-4f3b-9b8d-2a3c4e5f6b7c
+        name: auth-password-reset-route
+        paths:
+          - /api/auth/password/reset
+          - /api/auth/password/reset/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - id: c1e7f6b8-5a22-4d88-9c7f-3b4a5c6d7e8f
+        name: auth-verify-email-route
+        paths:
+          - /api/auth/verify-email
+          - /api/auth/verify-email/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - id: d4f2a1b9-8c33-4e99-8a6b-4c5d6e7f8a90
+        name: auth-resend-verification-route
+        paths:
+          - /api/auth/resend-verification
+          - /api/auth/resend-verification/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - id: e5a3b2c0-9d44-4faa-9b5c-5d6e7f8a9b01
+        name: auth-docs-route
+        paths:
+          - /api/auth/docs
+          - /api/auth/docs/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      # fallback protected route for all other auth endpoints (requires JWT)
+      - id: f6b4c3d2-0e55-4bbb-9c4d-6e7f8a9b0c12
+        name: auth-protected-route
+        paths:
+          - /api/auth
+          - /api/auth/
+        strip_path: false
+        protocols:
+          - http
+          - https
+  - name: company
+    url: http://company:8000
+    routes:
+      - name: company-route
+        paths:
+          - /api/company
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      # docs routes (optional public)
+      - name: company-docs-swagger
+        paths:
+          - /api/company/docs/swagger
+          - /api/company/docs/swagger/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - name: company-docs-redoc
+        paths:
+          - /api/company/docs/redoc
+          - /api/company/docs/redoc/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - name: company-schema
+        paths:
+          - /api/company/schema
+          - /api/company/schema/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+
+jwt_secrets:
+  - id: 4ba55d53-8acb-403e-a089-edf75b355cc3
+    consumer:
+      id: 53a46fb7-0d86-4691-a3ab-6f963182211a
+    key: prod-client-kid
+    algorithm: RS256
+    rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvI0PgQikrEgektcb0Ebv
+      Xtv9X2O3hyP5EwzEqNx6y7UkfaofRZL5k8EZ72AsmR+vrkBh6CGwx5emF10d5pGm
+      wmZ2dJWrMbUFEYl4Dg32fCy1gXOIXJ/qn+WKrIHueGPHi/CKSzKPStppsgE1du3q
+      8BCD5LO9ts+oa8xVo8EKJ2j70E5Z9WHlDeE7PyUttnXdW5JFKMbavxAqLo9v4qp5
+      5tvhY9mVQGn/0A8JY2oON0PPz0dQBwGaJ0bpKFnry4sIUsOxBYhF5lbW5Y6LTbl+
+      swROaPwd7BezGjHtHW7vK6e/tG3Zsoe+7WXw0U+qJrazSny49/j2Ucu5RREt81hR
+      +wIDAQAB
+      -----END PUBLIC KEY-----
+
+plugins:
+  # CORS applied to the auth service (keeps browser swagger working)
+  - name: cors
+    service:
+      id: 2915b562-3d36-4b29-82ed-c49aaeb45c4b
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
+      headers: ["Authorization", "Content-Type", "Accept"]
+      credentials: true
+
+  # JWT plugin applied ONLY to the protected route
+  - name: jwt
+    route:
+      id: f6b4c3d2-0e55-4bbb-9c4d-6e7f8a9b0c12
+      protocols:
+        - http
+        - https
+    config:
+      claims_to_verify: ["exp"]
+      key_claim_name: iss
+      uri_param_names: []
+      cookie_names: []

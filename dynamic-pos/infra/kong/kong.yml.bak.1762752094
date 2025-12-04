@@ -1,0 +1,47 @@
+_format_version: "3.0"
+_transform: true
+
+consumers:
+  - username: product-client
+    id: product-client
+services:
+  - name: auth-service
+    url: http://auth:8000
+    routes:
+      - name: auth-route
+        paths:
+          - /api/auth
+        strip_path: false
+
+jwt_secrets:
+  - consumer:
+      username: product-client
+    key: prod-client-kid
+    algorithm: RS256
+    rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA/eE0BG6aMKf/kpIW+pcd
+      vfImhnCtYVdi7zRuR26hNMp1961+Yp39wHIk+05LwQqI+l70JI6ZUHs+miFpMyh1
+      wvZxqC3HcHM2XCcyT05rRSXqfaQ6nafCucXs8NDyeSvjRbzsVNidt0MHO7tTkdOC
+      nQWu7t6kyRNOXQpAXEkLOHskOw1qaRCMTv42KXTm4HRLX8AX4CoLJiQu7/vt8ln9
+      Da6sERzaqlW9UyGqlUNhzndDVZVbSadS/bsKj82BB4/xwwfCXGWVLol1GPzuyqLd
+      40arRoSPZpIJL2NGfWMF+5rYH5fgpZMCVoDOtClHayNJm3Op3EwLon+12bjvG1uM
+      3wIDAQAB
+      -----END PUBLIC KEY-----
+
+plugins:
+  - name: cors
+    service: { name: auth-service }
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "Accept"]
+      credentials: true
+
+  - name: jwt
+    service: { name: auth-service }
+    config:
+      claims_to_verify: ["exp"]
+      key_claim_name: iss
+      uri_param_names: []
+      cookie_names: []

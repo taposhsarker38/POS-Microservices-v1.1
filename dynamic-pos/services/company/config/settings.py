@@ -1,0 +1,89 @@
+import os
+from pathlib import Path
+import dj_database_url
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+DEBUG = os.getenv("DEBUG", "True").lower() in ("1","true","yes")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+    "rest_framework",
+    "drf_spectacular",
+    "apps.tenants",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "apps.tenants.middleware.JWTCompanyMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [],
+    "APP_DIRS": True,
+    "OPTIONS": {"context_processors": ["django.template.context_processors.debug","django.template.context_processors.request","django.contrib.auth.context_processors.auth","django.contrib.messages.context_processors.messages"]},
+}]
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgres://postgres:password@postgres_company:5432/companydb")
+DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # If you use authentication later, add auth classes here. For now we rely on middleware token decode:
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+    # Optional: page size & renderers
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 50,
+}
+PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", "/keys/public.pem")
+JWT_ISSUER = os.getenv("JWT_ISSUER", "auth-service")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "pos-system")
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
+AMQP_EXCHANGE = os.getenv("AMQP_EXCHANGE", "events")
+
+# drf-spectacular (OpenAPI) settings
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Dynamic POS — Company Service API",
+    "DESCRIPTION": "Company / Tenant microservice (branches, terminals, settings, employees).",
+    "VERSION": "1.0.0",
+    "SERVERS": [
+        {"url": "http://localhost:8000", "description": "Local"},
+    ],
+    # Optional: Customize auth scheme in the docs (we use Bearer JWT)
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/company",
+    "POSTPROCESSING_HOOKS": [],
+    "CONTACT": {"name": "Your Team", "email": "dev@yourorg.example"},
+    "SECURITY_DEFINITIONS": {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    },
+    # Put BearerAuth as default for all endpoints in the doc UI (optional):
+    "DEFAULT_SECURITY": [{"BearerAuth": []}],
+}

@@ -1,0 +1,11 @@
+Django==4.2
+djangorestframework
+psycopg2-binary
+PyJWT
+kombu
+python-dotenv
+gunicorn
+dj-database-url
+Pillow
+drf-spectacular
+pika

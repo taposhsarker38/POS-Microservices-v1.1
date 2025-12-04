@@ -1,0 +1,25 @@
+http:
+  middlewares:
+    forward-auth:
+      forwardAuth:
+        address: "http://auth:8000/api/auth/verify"
+        trustForwardHeader: true
+    ratelimit:
+      rateLimit:
+        average: 200
+        burst: 50
+
+  routers:
+    product-router:
+      rule: "PathPrefix(`/api/products`)"
+      service: product-service
+      entryPoints: ["web"]
+      middlewares:
+        - forward-auth
+        - ratelimit
+
+  services:
+    product-service:
+      loadBalancer:
+        servers:
+          - url: "http://product:8000"

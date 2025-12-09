@@ -31,6 +31,14 @@ services:
           - /api/company
         strip_path: false
 
+  - name: product-service
+    url: http://product:8000
+    routes:
+      - name: product-all
+        paths:
+          - /api/product
+        strip_path: false
+
 plugins:
   - name: cors
     service: auth-service
@@ -48,6 +56,14 @@ plugins:
 
   - name: cors
     service: company-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: product-service
     config:
       origins: ["*"]
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]

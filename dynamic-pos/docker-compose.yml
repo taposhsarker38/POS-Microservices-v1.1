@@ -90,6 +90,26 @@ services:
     networks:
       - backend
 
+  postgres_product:
+    image: postgres:15
+    container_name: dynamicpos-postgres-product
+    environment:
+      POSTGRES_DB: productdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "01713447728"
+    ports:
+      - "5439:5432"
+    volumes:
+      - pgdata_product:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d productdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
   auth:
     build:
       context: ./services/auth
@@ -144,6 +164,27 @@ services:
     networks:
       - backend
 
+  product:
+    build:
+      context: ./services/product
+      dockerfile: Dockerfile
+    container_name: dynamicpos-product
+    depends_on:
+      postgres_product:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:01713447728@postgres_product:5432/productdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+    ports:
+      - "8300:8000"
+    volumes:
+      - ./services/product:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
   company_consumer:
     build:
       context: ./services/company
@@ -164,6 +205,7 @@ services:
 volumes:
   pgdata_auth:
   pgdata_company:
+  pgdata_product:
 
 networks:
   backend:

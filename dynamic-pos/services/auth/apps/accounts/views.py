@@ -363,10 +363,20 @@ def login_view(request):
                 status_code=http_status.HTTP_401_UNAUTHORIZED,
             )
 
+        # Fetch roles and permissions
+        roles_qs = user.roles.prefetch_related("permissions").all()
+        roles_list = [r.name for r in roles_qs]
+        permissions_list = list(set([p.codename for r in roles_qs for p in r.permissions.all()]))
+
         # Generate tokens
         refresh = RefreshToken.for_user(user)
         access = refresh.access_token
         access["iss"] = "prod-client-kid"
+        # Add company_uuid to the token payload
+        access["company_uuid"] = str(user.company.uuid) if user.company else None
+        # Add RBAC to token
+        access["roles"] = roles_list
+        access["permissions"] = permissions_list
 
         payload = {
             "access": str(access),
@@ -376,6 +386,8 @@ def login_view(request):
                 "username": user.username,
                 "email": user.email,
                 "company_uuid": str(user.company.uuid) if user.company else None,
+                "roles": roles_list,
+                "permissions": permissions_list,
             },
             "algorithm": "RS256"
         }

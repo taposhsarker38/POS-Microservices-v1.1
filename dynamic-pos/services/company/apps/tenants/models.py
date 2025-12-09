@@ -133,18 +133,111 @@ class InvoiceSettings(models.Model):
             return self.allocate_invoice_number_via_sequence()
         return self.allocate_invoice_number_via_lock()
 
+
+# -----------------------------------------------------------------------------
+# HRMS Models
+# -----------------------------------------------------------------------------
+class Department(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="departments")
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'name')
+    
+    def __str__(self):
+        return self.name
+
+class Designation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="designations")
+    name = models.CharField(max_length=120)
+    rank = models.PositiveIntegerField(default=1, help_text="1 is highest")
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'name')
+        ordering = ['rank']
+
+    def __str__(self):
+        return self.name
+
+# -----------------------------------------------------------------------------
+# Accounting Models (Simple Chart of Accounts)
+# -----------------------------------------------------------------------------
+class AccountGroup(models.Model):
+    """Assets, Liabilities, Income, Expenses, Equity"""
+    GROUP_TYPES = (
+        ("asset", "Asset"),
+        ("liability", "Liability"),
+        ("equity", "Equity"),
+        ("income", "Income"),
+        ("expense", "Expense"),
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="account_groups")
+    name = models.CharField(max_length=120)
+    code = models.CharField(max_length=20, blank=True, null=True) # e.g. 1000
+    group_type = models.CharField(max_length=20, choices=GROUP_TYPES)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subgroups')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.code} {self.name}"
+
+class ChartOfAccount(models.Model):
+    """Specific Ledgers e.g. Cash, Sales"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="accounts")
+    group = models.ForeignKey(AccountGroup, on_delete=models.PROTECT, related_name="accounts")
+    name = models.CharField(max_length=120)
+    code = models.CharField(max_length=20, blank=True, null=True) # e.g. 1001
+    opening_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    current_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company', 'code')
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+# -----------------------------------------------------------------------------
+# Employee Model (Updated)
+# -----------------------------------------------------------------------------
 class Employee(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="employees")
-    external_user_id = models.UUIDField(null=True, blank=True)
+    user_uuid = models.UUIDField(null=True, blank=True, help_text="Link to Auth Service User UUID")
+    
+    # HR Linkages
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL, related_name="employees")
+    designation = models.ForeignKey(Designation, null=True, blank=True, on_delete=models.SET_NULL, related_name="employees")
+    manager = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name="subordinates")
+
     employee_code = models.CharField(max_length=30, blank=True, null=True)
     first_name = models.CharField(max_length=120)
     last_name = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True, null=True, db_index=True)
     phone = models.CharField(max_length=50, blank=True, null=True)
+    
+    # HR Details
+    date_of_birth = models.DateField(null=True, blank=True)
+    joining_date = models.DateField(null=True, blank=True)
+    salary = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
     photo = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         ordering = ["-date_joined", "employee_code"]
+    
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+

@@ -375,6 +375,7 @@ def login_view(request):
                 "id": str(user.id),
                 "username": user.username,
                 "email": user.email,
+                "company_uuid": str(user.company.uuid) if user.company else None,
             },
             "algorithm": "RS256"
         }

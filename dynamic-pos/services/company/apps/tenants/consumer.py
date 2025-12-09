@@ -8,9 +8,6 @@ from .models import Company
 RABBIT_URL = settings.CELERY_BROKER_URL.replace("redis://", "amqp://")
 
 def handle_company_created(data: dict):
-    """
-    Process `company.created` event from Auth-Service.
-    """
     company_id = data.get("id")
     name = data.get("name")
     code = data.get("code")
@@ -24,6 +21,7 @@ def handle_company_created(data: dict):
     Company.objects.update_or_create(
         id=company_id,
         defaults={
+            "auth_company_uuid": company_id,
             "name": name,
             "code": code,
             "address": address,

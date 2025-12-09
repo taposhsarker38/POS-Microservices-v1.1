@@ -138,7 +138,14 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Dhaka")
 USE_I18N = True
 USE_TZ = True
-
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Dynamic POS - Auth Service",
+    "DESCRIPTION": "Authentication & Authorization Microservice",
+    "VERSION": "1.0.0",
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_URL": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/favicon-32x32.png",
+    "REDOC_DIST": "SIDECAR",
+}
 # ---------------------------
 # Static files (Whitenoise)
 # ---------------------------

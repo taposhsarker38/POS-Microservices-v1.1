@@ -48,3 +48,6 @@ class JWTCompanyMiddleware:
                     request.user_claims = None
                     request.company_uuid = None
         return self.get_response(request)
+
+
+

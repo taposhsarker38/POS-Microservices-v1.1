@@ -1,8 +1,8 @@
-# services/auth/apps/auth/signals.py
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
-from apps.auth.models import Company, User  # adjust import path if different
+from apps.accounts.models import Company, User  # adjust import path if different
 from apps.core.events import publish_event
 
 @receiver(post_save, sender=Company)

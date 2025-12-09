@@ -1,0 +1,55 @@
+_format_version: "3.0"
+_transform: true
+
+consumers:
+  - username: product-client
+
+services:
+  - name: auth-service
+    url: http://auth:8000
+    routes:
+      - name: auth-public
+        paths:
+          - /api/auth/login
+          - /api/auth/login/
+          - /api/auth/password/reset
+          - /api/auth/verify-email
+          - /api/auth/resend-verification
+          - /api/auth/docs
+        strip_path: false
+
+      - name: auth-protected
+        paths:
+          - /api/auth
+        strip_path: false
+
+  - name: company-service
+    url: http://company:8000
+    routes:
+      - name: company-all
+        paths:
+          - /api/company
+        strip_path: false
+
+plugins:
+  - name: cors
+    service: auth-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type"]
+      credentials: true
+
+  - name: jwt
+    route: auth-protected
+    config:
+      claims_to_verify: ["exp"]
+      key_claim_name: iss
+
+  - name: cors
+    service: company-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true

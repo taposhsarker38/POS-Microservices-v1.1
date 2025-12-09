@@ -1,3 +1,4 @@
 /keys/private.pem
 /keys/*.pem
 /keys/jwks.json
+.env

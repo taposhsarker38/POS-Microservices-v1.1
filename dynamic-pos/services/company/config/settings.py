@@ -57,7 +57,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 50,
 }
-PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", "/keys/public.pem")
+# Check for local key if default path doesn't exist
+DEFAULT_PUB_KEY = "/keys/public.pem"
+if not os.path.exists(DEFAULT_PUB_KEY):
+    # Try finding it relative to this file (in services/auth/keys)
+    # BASE_DIR is .../services/company
+    # We want .../services/auth/keys/public.pem
+    LOCAL_KEY = BASE_DIR.parent / "auth" / "keys" / "public.pem"
+    if LOCAL_KEY.exists():
+        DEFAULT_PUB_KEY = str(LOCAL_KEY)
+
+PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", DEFAULT_PUB_KEY)
 JWT_ISSUER = os.getenv("JWT_ISSUER", "auth-service")
 JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "pos-system")
 

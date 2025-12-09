@@ -71,10 +71,10 @@ services:
         protocols:
           - http
           - https
-  - name: company
+  - name: company-service
     url: http://company:8000
     routes:
-      - name: company-route
+      - name: company-all
         paths:
           - /api/company
         strip_path: false
@@ -150,4 +150,5 @@ plugins:
       claims_to_verify: ["exp"]
       key_claim_name: iss
       uri_param_names: []
+      algorithms: ["HS256", "RS256"]
       cookie_names: []

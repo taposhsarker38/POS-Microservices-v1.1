@@ -85,6 +85,30 @@ services:
           - /api/purchase
         strip_path: false
 
+  - name: customer-service
+    url: http://customer:8000
+    routes:
+      - name: customer-routes
+        paths:
+          - /api/customers
+        strip_path: false
+
+  - name: notification-service
+    url: http://notification:8000
+    routes:
+      - name: notification-routes
+        paths:
+          - /api/notifications
+        strip_path: false
+
+  - name: reporting-service
+    url: http://reporting:8000
+    routes:
+      - name: reporting-routes
+        paths:
+          - /api/reports
+        strip_path: false
+
 plugins:
   - name: cors
     service: auth-service

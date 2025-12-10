@@ -1,4 +1,5 @@
 // services/ws-gateway/app.js
+import "./tracing.js"; // Must be first
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
@@ -22,7 +23,11 @@ async function loadPublicKey() {
   try {
     return fs.readFileSync(PUBLIC_KEY_PATH, "utf8");
   } catch (e) {
-    console.warn("Public key not found at", PUBLIC_KEY_PATH, "— JWT verification will fail if used.");
+    console.warn(
+      "Public key not found at",
+      PUBLIC_KEY_PATH,
+      "— JWT verification will fail if used."
+    );
     return null;
   }
 }
@@ -35,7 +40,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: ALLOW_ORIGIN, methods: ["GET", "POST"], credentials: true },
   pingInterval: 25000,
-  pingTimeout: 60000
+  pingTimeout: 60000,
 });
 
 // setup redis adapter if redis url present (for horizontal scaling)
@@ -60,17 +65,21 @@ async function startAMQPConsumer(onMessage) {
 
   console.log("AMQP consumer bound to exchange:", EXCHANGE);
 
-  ch.consume(q.queue, (msg) => {
-    if (!msg) return;
-    let payload;
-    try {
-      payload = JSON.parse(msg.content.toString());
-    } catch (e) {
-      console.error("Failed to parse AMQP message", e);
-      return;
-    }
-    onMessage(payload);
-  }, { noAck: true });
+  ch.consume(
+    q.queue,
+    (msg) => {
+      if (!msg) return;
+      let payload;
+      try {
+        payload = JSON.parse(msg.content.toString());
+      } catch (e) {
+        console.error("Failed to parse AMQP message", e);
+        return;
+      }
+      onMessage(payload);
+    },
+    { noAck: true }
+  );
 }
 
 (async () => {
@@ -83,7 +92,10 @@ async function startAMQPConsumer(onMessage) {
     try {
       // token expected as Bearer <token> or raw token
       if (token.startsWith("Bearer ")) token = token.slice(7);
-      const decoded = jwt.verify(token, publicKey, { algorithms: ["RS256"], issuer: AUTH_ISSUER });
+      const decoded = jwt.verify(token, publicKey, {
+        algorithms: ["RS256"],
+        issuer: AUTH_ISSUER,
+      });
       return decoded; // should contain sub, user_id, etc
     } catch (err) {
       console.warn("JWT verify failed:", err.message);
@@ -106,7 +118,14 @@ async function startAMQPConsumer(onMessage) {
   });
 
   io.on("connection", (socket) => {
-    console.log("Client connected", socket.id, "user=", socket.user ? socket.user.sub || socket.user.user_id || socket.user.username : "anon");
+    console.log(
+      "Client connected",
+      socket.id,
+      "user=",
+      socket.user
+        ? socket.user.sub || socket.user.user_id || socket.user.username
+        : "anon"
+    );
 
     // allow client to join rooms (only allowed if authorized)
     socket.on("join", (room) => {
@@ -137,12 +156,17 @@ async function startAMQPConsumer(onMessage) {
       const rooms = payload.rooms || [];
 
       if (Array.isArray(rooms) && rooms.length > 0) {
-        rooms.forEach(room => io.to(room).emit(eventName, data));
+        rooms.forEach((room) => io.to(room).emit(eventName, data));
       } else {
         // global broadcast
         io.emit(eventName, data);
       }
-      console.log("Emitted event", eventName, "to", rooms.length ? `${rooms.length} rooms` : "all clients");
+      console.log(
+        "Emitted event",
+        eventName,
+        "to",
+        rooms.length ? `${rooms.length} rooms` : "all clients"
+      );
     } catch (err) {
       console.error("Failed to broadcast payload", err);
     }

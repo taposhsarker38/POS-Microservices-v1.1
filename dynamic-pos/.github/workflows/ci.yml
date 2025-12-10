@@ -127,6 +127,83 @@ jobs:
           cd services/auth
           pytest
 
+  test-ws-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Install Dependencies
+        run: |
+          cd services/ws-gateway
+          npm install
+      - name: Run Tests
+        run: |
+          cd services/ws-gateway
+          npm test
+
+  test-customer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/customer/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/customer
+          pytest
+
+  test-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/notification/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/notification
+          pytest
+
+  test-reporting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/reporting/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/reporting
+          pytest
+
   build-images:
     needs:
       [
@@ -136,6 +213,10 @@ jobs:
         test-product,
         test-company,
         test-auth,
+        test-ws-gateway,
+        test-customer,
+        test-notification,
+        test-reporting,
       ]
     runs-on: ubuntu-latest
     steps:

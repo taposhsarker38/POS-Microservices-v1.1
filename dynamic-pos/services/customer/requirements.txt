@@ -1,0 +1,20 @@
+Django>=4.2,<5
+djangorestframework>=3.14
+psycopg2-binary
+django-cors-headers
+python-dotenv
+dj-database-url>=2.0.0
+gunicorn
+drf-spectacular
+
+# Observability
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp
+
+# Testing
+pytest
+pytest-django

@@ -61,6 +61,22 @@ services:
           - /api/product
         strip_path: false
 
+  - name: pos-service
+    url: http://pos:8000
+    routes:
+      - name: pos-all
+        paths:
+          - /api/pos
+        strip_path: false
+
+  - name: inventory-service
+    url: http://inventory:8000
+    routes:
+      - name: inventory-all
+        paths:
+          - /api/inventory
+        strip_path: false
+
 plugins:
   - name: cors
     service: auth-service
@@ -82,6 +98,22 @@ plugins:
 
   - name: cors
     service: product-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: inventory-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: pos-service
     config:
       origins: ["*"]
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]

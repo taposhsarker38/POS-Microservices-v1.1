@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "rest_framework",
+    "corsheaders",
     "drf_spectacular",
     "apps.tenants",
 ]
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "apps.tenants.middleware.JWTCompanyMiddleware",
     "config.audit_middleware.AuditMiddleware",
@@ -108,3 +110,5 @@ SPECTACULAR_SETTINGS = {
     # Put BearerAuth as default for all endpoints in the doc UI (optional):
     "DEFAULT_SECURITY": [{"BearerAuth": []}],
 }
+
+CORS_ALLOW_ALL_ORIGINS = True

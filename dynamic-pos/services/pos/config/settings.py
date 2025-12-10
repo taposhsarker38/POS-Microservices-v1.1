@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     
     # Local
-    'apps.products',
+    'apps.sales',
 ]
 
 MIDDLEWARE = [
@@ -101,8 +101,14 @@ PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
 
 # OpenAPI
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Product Service API',
-    'DESCRIPTION': 'Manages products, categories, brands, and inventory catalog.',
+    'TITLE': 'POS Service API',
+    'DESCRIPTION': 'Manages orders, payments, and sales.',
     'VERSION': '1.0.0',
 }
+
+# Celery
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
+
+
 CORS_ALLOW_ALL_ORIGINS = True
+

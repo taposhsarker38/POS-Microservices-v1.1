@@ -280,12 +280,115 @@ services:
     networks:
       - backend
 
+  inventory-worker:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    container_name: dynamicpos-inventory-worker
+    depends_on:
+      postgres_inventory:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:01713447728@postgres_inventory:5432/inventorydb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/inventory:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_inventory_consumer
+    networks:
+      - backend
+
+  postgres_purchase:
+    image: postgres:15
+    container_name: dynamicpos-postgres-purchase
+    environment:
+      POSTGRES_DB: purchasedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "01713447728"
+    ports:
+      - "5442:5432"
+    volumes:
+      - pgdata_purchase:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d purchasedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  purchase:
+    build:
+      context: ./services/purchase
+      dockerfile: Dockerfile
+    container_name: dynamicpos-purchase
+    depends_on:
+      postgres_purchase:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:01713447728@postgres_purchase:5432/purchasedb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+    ports:
+      - "8600:8000"
+    volumes:
+      - ./services/purchase:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  purchase-worker:
+    build:
+      context: ./services/purchase
+      dockerfile: Dockerfile
+    container_name: dynamicpos-purchase-worker
+    depends_on:
+      postgres_purchase:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:01713447728@postgres_purchase:5432/purchasedb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/purchase:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_purchase_consumer
+    networks:
+      - backend
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.46
+    container_name: dynamicpos-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - backend
+
 volumes:
   pgdata_auth:
   pgdata_company:
   pgdata_product:
   pgdata_pos:
   pgdata_inventory:
+  pgdata_purchase:
 
 networks:
   backend:

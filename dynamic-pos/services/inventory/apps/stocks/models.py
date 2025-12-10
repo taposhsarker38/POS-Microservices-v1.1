@@ -19,6 +19,7 @@ class Stock(SoftDeleteModel):
     
     # Quantity is aggregated from Batches if batches exist, or direct if not
     quantity = models.DecimalField(max_digits=20, decimal_places=3, default=0)
+    reorder_level = models.DecimalField(max_digits=20, decimal_places=3, default=10) # Default low stock threshold
     
     avg_cost = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     
@@ -130,3 +131,22 @@ class StockTransaction(SoftDeleteModel):
     notes = models.TextField(blank=True, null=True)
     
     created_by = models.CharField(max_length=100, blank=True, null=True)
+
+# Signals
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from apps.utils.notifications import NotificationService
+
+@receiver(post_save, sender=Stock)
+def check_low_stock(sender, instance, created, **kwargs):
+    if instance.quantity <= instance.reorder_level:
+        notify = NotificationService()
+        notify.send_notification(
+            event_type="stock.low",
+            data={
+                "product_uuid": str(instance.product_uuid),
+                "quantity": float(instance.quantity),
+                "warehouse": instance.warehouse.name
+            },
+            rooms=[str(instance.company_uuid)]
+        )

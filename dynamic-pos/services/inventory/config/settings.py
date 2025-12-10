@@ -34,6 +34,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'config.middleware.JWTCompanyMiddleware', 
+    'config.audit_middleware.AuditMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -84,3 +85,10 @@ PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True
+
+try:
+    from config.tracing import setup_tracing
+    if os.environ.get("ENABLE_TRACING", "True") == "True":
+        setup_tracing("inventory-service")
+except Exception as e:
+    print(f"Skipping tracing setup: {e}")

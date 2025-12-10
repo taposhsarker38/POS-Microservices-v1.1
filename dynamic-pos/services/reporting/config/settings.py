@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Reporting Service API',
-    'DESCRIPTION': 'Provides analytics and reports.',
+    'TITLE': 'Adaptix - Reporting API',
+    'DESCRIPTION': 'Analytics and BI Dashboard for all business types.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

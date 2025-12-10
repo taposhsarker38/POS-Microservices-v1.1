@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Payment Service API',
-    'DESCRIPTION': 'Handles financial transactions.',
+    'TITLE': 'Adaptix - Payment API',
+    'DESCRIPTION': 'Payment Processing, Refunds, and Gateway Integrations.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

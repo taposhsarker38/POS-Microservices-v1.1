@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Promotion Service API',
-    'DESCRIPTION': 'Manages coupons and discounts.',
+    'TITLE': 'Adaptix - Promotion API',
+    'DESCRIPTION': 'Manages Coupons, Discounts, and Loyalty Programs dynamically.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

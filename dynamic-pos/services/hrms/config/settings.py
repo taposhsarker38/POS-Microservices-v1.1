@@ -88,8 +88,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'HRMS Service API',
-    'DESCRIPTION': 'Manages Employees, Attendance, and Payroll.',
+    'TITLE': 'Adaptix - HRMS API',
+    'DESCRIPTION': 'Human Resource Management System (Employees, Attendance, Payroll).',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

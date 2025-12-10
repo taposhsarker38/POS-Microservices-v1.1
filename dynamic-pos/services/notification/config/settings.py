@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Notification Service API',
-    'DESCRIPTION': 'Manages email templates and notifications.',
+    'TITLE': 'Adaptix - Notification API',
+    'DESCRIPTION': 'Centralized Notification Engine (Email, SMS, WebSocket).',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

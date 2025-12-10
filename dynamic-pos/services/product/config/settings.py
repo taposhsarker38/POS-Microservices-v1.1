@@ -101,9 +101,10 @@ PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
 
 # OpenAPI
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Product Service API',
-    'DESCRIPTION': 'Manages products, categories, brands, and inventory catalog.',
+    'TITLE': 'Adaptix - Product API',
+    'DESCRIPTION': 'Manages Products, Categories, Brands across all business verticals.',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 CORS_ALLOW_ALL_ORIGINS = True
 

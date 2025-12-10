@@ -441,7 +441,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "01713447728"
     ports:
-      - "5442:5432"
+      - "5449:5432"
     volumes:
       - pgdata_customer:/var/lib/postgresql/data
     healthcheck:
@@ -467,7 +467,7 @@ services:
       DEBUG: "True"
       ENABLE_TRACING: "True"
     ports:
-      - "8600:8000"
+      - "9300:8000"
     volumes:
       - ./services/customer:/app
       - ./services/auth/keys:/keys:ro

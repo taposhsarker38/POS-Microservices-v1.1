@@ -102,9 +102,10 @@ PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
 
 # OpenAPI
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Purchase Service API',
-    'DESCRIPTION': 'Manages vendors and procurement.',
+    'TITLE': 'Adaptix - Purchase API',
+    'DESCRIPTION': 'Procurement, Vendor Management, and Approval Workflows.',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 CORS_ALLOW_ALL_ORIGINS = True

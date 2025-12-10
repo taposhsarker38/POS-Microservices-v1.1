@@ -89,9 +89,10 @@ AMQP_EXCHANGE = os.getenv("AMQP_EXCHANGE", "events")
 
 # drf-spectacular (OpenAPI) settings
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Dynamic POS — Company Service API",
-    "DESCRIPTION": "Company / Tenant microservice (branches, terminals, settings, employees).",
-    "VERSION": "1.0.0",
+    'TITLE': 'Adaptix - Company API',
+    'DESCRIPTION': 'Dynamic Business Configuration, Tenant Management, and RBAC.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
     "SERVERS": [
         {"url": "http://localhost:8000", "description": "Local"},
     ],

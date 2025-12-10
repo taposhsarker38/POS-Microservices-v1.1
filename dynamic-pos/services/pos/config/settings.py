@@ -101,11 +101,11 @@ PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
 
 # OpenAPI
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'POS Service API',
-    'DESCRIPTION': 'Manages orders, payments, and sales.',
+    'TITLE': 'Adaptix - POS API',
+    'DESCRIPTION': 'Point of Sale, Orders, and Sales Management.',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
-
 # Celery
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
 

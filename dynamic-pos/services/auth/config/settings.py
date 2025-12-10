@@ -138,11 +138,9 @@ TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Dhaka")
 USE_I18N = True
 USE_TZ = True
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Dynamic POS - Auth Service",
-    "DESCRIPTION": "Authentication & Authorization Microservice",
+    "TITLE": "Adaptix - Auth API",
+    "DESCRIPTION": "Authentication, Authorization, and User Management.",
     "VERSION": "1.0.0",
-    # "SWAGGER_UI_DIST": "SIDECAR",  # Use CDN because Kong doesn't route /static/
-    # "REDOC_DIST": "SIDECAR",
     "SERVE_INCLUDE_SCHEMA": False,
 }
 # ---------------------------

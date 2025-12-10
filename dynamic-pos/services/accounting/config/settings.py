@@ -87,8 +87,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Accounting Service API',
-    'DESCRIPTION': 'Manages Double-Entry Ledger and Taxes.',
+    'TITLE': 'Adaptix - Accounting API',
+    'DESCRIPTION': 'Double-Entry Ledger, Financial Reporting, and Tax Management.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

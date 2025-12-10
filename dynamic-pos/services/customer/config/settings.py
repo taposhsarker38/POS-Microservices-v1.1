@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Customer Service API',
-    'DESCRIPTION': 'Manages customer profiles and loyalty.',
+    'TITLE': 'Adaptix - Customer API',
+    'DESCRIPTION': 'Customer Profiles, History, and Loyalty.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

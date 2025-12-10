@@ -112,3 +112,10 @@ CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabb
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+try:
+    from config.tracing import setup_tracing
+    if os.environ.get("ENABLE_TRACING", "True") == "True":
+        setup_tracing("pos-service")
+except Exception as e:
+    print(f"Skipping tracing setup: {e}")
+

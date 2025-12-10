@@ -278,3 +278,10 @@ if not SECRET_KEY or SECRET_KEY == "dev-secret":
         raise ImproperlyConfigured("SECRET_KEY must be set in production")
 
 # End of settings
+
+try:
+    from config.tracing import setup_tracing
+    if os.environ.get("ENABLE_TRACING", "True") == "True":
+        setup_tracing("auth-service")
+except Exception as e:
+    print(f"Skipping tracing setup: {e}")

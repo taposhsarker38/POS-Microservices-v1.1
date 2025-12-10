@@ -18,3 +18,11 @@ jwcrypto
 django-extensions
 whitenoise
 drf-spectacular
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp
+pytest
+pytest-django

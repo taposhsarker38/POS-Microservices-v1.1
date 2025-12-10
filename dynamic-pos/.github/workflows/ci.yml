@@ -47,8 +47,96 @@ jobs:
           cd services/inventory
           pytest
 
+  test-pos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/pos/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/pos
+          pytest
+
+  test-product:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/product/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/product
+          pytest
+
+  test-company:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/company/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/company
+          pytest
+
+  test-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Dependencies
+        run: |
+          pip install -r services/auth/requirements.txt
+          pip install pytest pytest-django
+      - name: Run Tests
+        env:
+          SECRET_KEY: test-key
+          DEBUG: True
+        run: |
+          cd services/auth
+          pytest
+
   build-images:
-    needs: [test-purchase, test-inventory]
+    needs:
+      [
+        test-purchase,
+        test-inventory,
+        test-pos,
+        test-product,
+        test-company,
+        test-auth,
+      ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

@@ -12,3 +12,11 @@ dj-database-url>=2.1.0
 celery>=5.2
 redis>=4.0
 kombu>=5.2
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp
+pytest
+pytest-django

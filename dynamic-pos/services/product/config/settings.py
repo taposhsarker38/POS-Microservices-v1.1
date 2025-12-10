@@ -106,3 +106,11 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 CORS_ALLOW_ALL_ORIGINS = True
+
+try:
+    from config.tracing import setup_tracing
+    import os
+    if os.environ.get("ENABLE_TRACING", "True") == "True":
+        setup_tracing("product-service")
+except Exception as e:
+    print(f"Skipping tracing setup: {e}")

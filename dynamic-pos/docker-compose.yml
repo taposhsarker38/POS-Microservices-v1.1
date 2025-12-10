@@ -129,6 +129,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/0
       DEBUG: "True"
+      ENABLE_TRACING: "True"
       ALLOWED_HOSTS: "*"
       JWT_ALGORITHM: "RS256"
       JWT_ISSUER: "auth-service"
@@ -160,6 +161,7 @@ services:
       REDIS_URL: redis://redis:6379/1
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
+      ENABLE_TRACING: "True"
     ports:
       - "8200:8000"
       - "8201:8001"
@@ -186,6 +188,7 @@ services:
       REDIS_URL: redis://redis:6379/2
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
+      ENABLE_TRACING: "True"
     ports:
       - "8300:8000"
     volumes:
@@ -340,6 +343,28 @@ services:
       - ./services/purchase:/app
       - ./services/auth/keys:/keys:ro
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  pos-worker:
+    build:
+      context: ./services/pos
+      dockerfile: Dockerfile
+    container_name: dynamicpos-pos-worker
+    depends_on:
+      postgres_pos:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:01713447728@postgres_pos:5432/posdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/pos:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_pos_consumer
     networks:
       - backend
 

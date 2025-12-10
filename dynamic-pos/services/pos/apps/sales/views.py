@@ -47,7 +47,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Hack: Re-serialize to get clean dict with items
             data = OrderSerializer(order).data
-            InventoryService.deduct_stock(data, uuid)
+            # Pass order ID for tracking reason
+            InventoryService.deduct_stock(data, order.id)
         except Exception as e:
             # Log error but don't block sale in this MVP. 
             # In Strict mode, we would rollback transaction.

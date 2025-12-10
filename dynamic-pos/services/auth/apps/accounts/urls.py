@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserViewSet, RoleViewSet, PermissionViewSet, MenuView,
+    UserViewSet, RoleViewSet, PermissionViewSet, MenuView, CompanyViewSet,
     login_view, verify_view, jwks_view, logout_view, health_view,
     verify_email_view, password_reset_request_view, password_reset_confirm_view,
     change_password_view, CookieTokenObtainPairView, CookieTokenRefreshView, cookie_logout_view,resend_verification_view
@@ -12,6 +12,7 @@ router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
 router.register("roles", RoleViewSet, basename="role")
 router.register("permissions", PermissionViewSet, basename="permission")
+router.register("companies", CompanyViewSet, basename="company")
 
 urlpatterns = router.urls + [
     path("login/", login_view, name="login"),

@@ -1,0 +1,16 @@
+django>=4.2,<5.0
+djangorestframework
+psycopg2-binary
+gunicorn
+python-jose[cryptography]
+requests
+django-cors-headers
+dj-database-url
+PyJWT>=2.8.0
+celery
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp

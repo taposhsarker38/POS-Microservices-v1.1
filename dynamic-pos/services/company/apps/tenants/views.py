@@ -6,12 +6,15 @@ from rest_framework.exceptions import ValidationError
 
 from .models import (
     Company, NavigationItem, CompanySetting, Wing,
-    Currency, InvoiceSettings, Employee
+    Currency, InvoiceSettings, Employee,
+    Department, Designation, AccountGroup, ChartOfAccount
 )
 from .serializers import (
     CompanySettingSerializer, NavigationItemSerializer, WingSerializer,
-    CurrencySerializer, InvoiceSettingsSerializer, EmployeeSerializer
+    CurrencySerializer, InvoiceSettingsSerializer, EmployeeSerializer,
+    DepartmentSerializer, DesignationSerializer, AccountGroupSerializer, ChartOfAccountSerializer
 )
+from .permissions import HasPermission
 
 
 # --------------------------------------------------------
@@ -148,3 +151,66 @@ class CompanyInfoViewSet(viewsets.ViewSet):
             "settings": CompanySettingSerializer(settings).data if settings else None,
             "navigation": NavigationItemSerializer(nav_items, many=True).data,
         })
+
+
+# --------------------------------------------------------
+# HRMS ViewSets
+# --------------------------------------------------------
+class DepartmentViewSet(viewsets.ModelViewSet):
+    serializer_class = DepartmentSerializer
+    permission_classes = [HasPermission]
+    required_permission = "view_department"  # Example permission
+
+    def get_queryset(self):
+        company = get_company_from_request(self.request)
+        return Department.objects.filter(company=company)
+    def perform_create(self, serializer):
+        company = get_company_from_request(self.request)
+        if not company:
+            raise ValidationError({"detail": "Company not found or not associated with user."})
+        serializer.save(company=company)
+
+class DesignationViewSet(viewsets.ModelViewSet):
+    serializer_class = DesignationSerializer
+    permission_classes = [HasPermission]
+    required_permission = "view_designation"
+
+    def get_queryset(self):
+        company = get_company_from_request(self.request)
+        return Designation.objects.filter(company=company)
+    def perform_create(self, serializer):
+        company = get_company_from_request(self.request)
+        if not company:
+            raise ValidationError({"detail": "Company not found or not associated with user."})
+        serializer.save(company=company)
+
+# --------------------------------------------------------
+# Accounting ViewSets
+# --------------------------------------------------------
+class AccountGroupViewSet(viewsets.ModelViewSet):
+    serializer_class = AccountGroupSerializer
+    permission_classes = [HasPermission]
+    required_permission = "view_accounting"
+
+    def get_queryset(self):
+        company = get_company_from_request(self.request)
+        return AccountGroup.objects.filter(company=company)
+    def perform_create(self, serializer):
+        company = get_company_from_request(self.request)
+        if not company:
+            raise ValidationError({"detail": "Company not found or not associated with user."})
+        serializer.save(company=company)
+
+class ChartOfAccountViewSet(viewsets.ModelViewSet):
+    serializer_class = ChartOfAccountSerializer
+    permission_classes = [HasPermission]
+    required_permission = "view_accounting"
+
+    def get_queryset(self):
+        company = get_company_from_request(self.request)
+        return ChartOfAccount.objects.filter(company=company)
+    def perform_create(self, serializer):
+        company = get_company_from_request(self.request)
+        if not company:
+            raise ValidationError({"detail": "Company not found or not associated with user."})
+        serializer.save(company=company)

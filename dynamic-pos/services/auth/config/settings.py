@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     # Your apps (adjust names to your project)
     "apps.accounts",
     "apps.audit",
-    "apps.tenant",
     "apps.utils",
     "apps.core",
 ]
@@ -142,9 +141,9 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Dynamic POS - Auth Service",
     "DESCRIPTION": "Authentication & Authorization Microservice",
     "VERSION": "1.0.0",
-    "SWAGGER_UI_DIST": "SIDECAR",
-    "SWAGGER_UI_FAVICON_URL": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/favicon-32x32.png",
-    "REDOC_DIST": "SIDECAR",
+    # "SWAGGER_UI_DIST": "SIDECAR",  # Use CDN because Kong doesn't route /static/
+    # "REDOC_DIST": "SIDECAR",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 # ---------------------------
 # Static files (Whitenoise)
@@ -215,7 +214,7 @@ else:
 # Email settings
 # ---------------------------
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")

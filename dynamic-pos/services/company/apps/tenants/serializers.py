@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     Company, NavigationItem, CompanySetting, Wing,
-    Currency, InvoiceSettings, Employee
+    Currency, InvoiceSettings, Employee,
+    Department, Designation, AccountGroup, ChartOfAccount
 )
 
 
@@ -40,7 +41,42 @@ class InvoiceSettingsSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    department_name = serializers.ReadOnlyField(source='department.name')
+    designation_name = serializers.ReadOnlyField(source='designation.name')
+
     class Meta:
         model = Employee
         fields = "__all__"
         read_only_fields = ("id", "company", "date_joined")
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = "__all__"
+        read_only_fields = ("company",)
+
+class DesignationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Designation
+        fields = "__all__"
+        read_only_fields = ("company",)
+
+class AccountGroupSerializer(serializers.ModelSerializer):
+    subgroups = serializers.SerializerMethodField()
+    class Meta:
+        model = AccountGroup
+        fields = "__all__"
+        read_only_fields = ("company",)
+    
+    def get_subgroups(self, obj):
+        # simple recursion limiter could be added if needed
+        return AccountGroupSerializer(obj.subgroups.all(), many=True).data
+
+class ChartOfAccountSerializer(serializers.ModelSerializer):
+    group_name = serializers.ReadOnlyField(source='group.name')
+    class Meta:
+        model = ChartOfAccount
+        fields = "__all__"
+        read_only_fields = ("company", "current_balance")
+

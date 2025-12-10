@@ -3,6 +3,19 @@ _transform: true
 
 consumers:
   - username: product-client
+    jwt_secrets:
+      - key: prod-client-kid
+        algorithm: RS256
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvI0PgQikrEgektcb0Ebv
+          Xtv9X2O3hyP5EwzEqNx6y7UkfaofRZL5k8EZ72AsmR+vrkBh6CGwx5emF10d5pGm
+          wmZ2dJWrMbUFEYl4Dg32fCy1gXOIXJ/qn+WKrIHueGPHi/CKSzKPStppsgE1du3q
+          8BCD5LO9ts+oa8xVo8EKJ2j70E5Z9WHlDeE7PyUttnXdW5JFKMbavxAqLo9v4qp5
+          5tvhY9mVQGn/0A8JY2oON0PPz0dQBwGaJ0bpKFnry4sIUsOxBYhF5lbW5Y6LTbl+
+          swROaPwd7BezGjHtHW7vK6e/tG3Zsoe+7WXw0U+qJrazSny49/j2Ucu5RREt81hR
+          +wIDAQAB
+          -----END PUBLIC KEY-----
 
 services:
   - name: auth-service
@@ -15,7 +28,10 @@ services:
           - /api/auth/password/reset
           - /api/auth/verify-email
           - /api/auth/resend-verification
+          - /api/auth/resend-verification
           - /api/auth/docs
+          - /api/auth/schema
+          - /api/auth/schema/
         strip_path: false
 
       - name: auth-protected
@@ -31,6 +47,44 @@ services:
           - /api/company
         strip_path: false
 
+      - name: company-ws
+        protocols: ["http", "https"]
+        paths:
+          - /ws
+        strip_path: false
+
+  - name: product-service
+    url: http://product:8000
+    routes:
+      - name: product-all
+        paths:
+          - /api/product
+        strip_path: false
+
+  - name: pos-service
+    url: http://pos:8000
+    routes:
+      - name: pos-all
+        paths:
+          - /api/pos
+        strip_path: false
+
+  - name: inventory-service
+    url: http://inventory:8000
+    routes:
+      - name: inventory-all
+        paths:
+          - /api/inventory
+        strip_path: false
+
+  - name: purchase-service
+    url: http://purchase:8000
+    routes:
+      - name: purchase-all
+        paths:
+          - /api/purchase
+        strip_path: false
+
 plugins:
   - name: cors
     service: auth-service
@@ -40,14 +94,42 @@ plugins:
       headers: ["Authorization", "Content-Type"]
       credentials: true
 
-  - name: jwt
-    route: auth-protected
-    config:
-      claims_to_verify: ["exp"]
-      key_claim_name: iss
+  # JWT Plugin removed for Auth (handled by App)
 
   - name: cors
     service: company-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: product-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: inventory-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: purchase-service
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Authorization", "Content-Type", "X-Company-UUID"]
+      credentials: true
+
+  - name: cors
+    service: pos-service
     config:
       origins: ["*"]
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]

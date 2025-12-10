@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "rest_framework",
+    "corsheaders",
     "drf_spectacular",
     "apps.tenants",
 ]
@@ -24,8 +25,10 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "apps.tenants.middleware.JWTCompanyMiddleware",
+    "config.audit_middleware.AuditMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -40,7 +43,17 @@ TEMPLATES = [{
     "OPTIONS": {"context_processors": ["django.template.context_processors.debug","django.template.context_processors.request","django.contrib.auth.context_processors.auth","django.contrib.messages.context_processors.messages"]},
 }]
 
-WSGI_APPLICATION = "config.wsgi.application"
+WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://redis:6379/1")],
+        },
+    },
+}
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgres://postgres:password@postgres_company:5432/companydb")
 DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
@@ -97,3 +110,5 @@ SPECTACULAR_SETTINGS = {
     # Put BearerAuth as default for all endpoints in the doc UI (optional):
     "DEFAULT_SECURITY": [{"BearerAuth": []}],
 }
+
+CORS_ALLOW_ALL_ORIGINS = True

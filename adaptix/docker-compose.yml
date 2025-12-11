@@ -56,7 +56,9 @@ services:
     environment:
       - POSTGRES_DB=assetdb
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    ports:
+      - "5450:5432"
     volumes:
       - postgres_asset_data:/var/lib/postgresql/data
     healthcheck:

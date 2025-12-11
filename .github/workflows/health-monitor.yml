@@ -1,0 +1,77 @@
+# ================================================
+# Health Monitoring & Alerts
+# ================================================
+# Checks system health every 5 minutes
+# Sends alerts on failures
+
+name: 🏥 Health Monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # Every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Check System Health
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check API Gateway Health
+        id: api-health
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.PRODUCTION_DOMAIN }}/health || echo "000")
+          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ API Gateway unhealthy: $RESPONSE"
+            exit 1
+          fi
+          echo "✅ API Gateway: OK"
+
+      - name: Check Auth Service
+        id: auth-health
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.PRODUCTION_DOMAIN }}/api/auth/health/ || echo "000")
+          if [ "$RESPONSE" != "200" ]; then
+            echo "⚠️ Auth service might be down: $RESPONSE"
+          fi
+          echo "Auth status: $RESPONSE"
+
+      - name: Check Response Time
+        run: |
+          TIME=$(curl -s -o /dev/null -w "%{time_total}" https://${{ secrets.PRODUCTION_DOMAIN }}/health)
+          echo "Response time: ${TIME}s"
+
+          # Alert if response time > 2 seconds
+          if (( $(echo "$TIME > 2" | bc -l) )); then
+            echo "⚠️ Slow response time detected!"
+          fi
+
+      - name: Send Alert on Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            🚨 *PRODUCTION ALERT*
+            System health check failed!
+            Please check immediately.
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Send Email Alert
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 🚨 Adaptix Production Alert
+          body: |
+            Production system health check failed!
+
+            Time: ${{ github.event.head_commit.timestamp }}
+
+            Please check the system immediately.
+          to: ${{ secrets.ALERT_EMAIL }}
+          from: Adaptix Monitoring <noreply@adaptix.io>

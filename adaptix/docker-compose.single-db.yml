@@ -1,0 +1,358 @@
+# ================================================
+# Adaptix Single Database Configuration
+# ================================================
+# All services share ONE PostgreSQL database
+# Each service uses its own schema for isolation
+
+services:
+  # ============================================
+  # SINGLE DATABASE
+  # ============================================
+  postgres:
+    image: postgres:15
+    container_name: adaptix-postgres
+    environment:
+      POSTGRES_DB: adaptix
+      POSTGRES_USER: ${DB_USER:-adaptix}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adaptix123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adaptix -d adaptix"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # ============================================
+  # REDIS (Caching & Sessions)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: adaptix-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ============================================
+  # RABBITMQ (Message Queue)
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: adaptix-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${MQ_USER:-adaptix}
+      RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-adaptix123}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend
+
+  # ============================================
+  # API GATEWAY (Kong)
+  # ============================================
+  kong:
+    image: kong:3.0
+    container_name: adaptix-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong.yml:/kong/kong.yml:ro
+      - ./keys:/keys:ro
+    ports:
+      - "8101:8000"
+      - "8001:8001"
+    networks:
+      - backend
+    depends_on:
+      - auth
+
+  # ============================================
+  # MICROSERVICES (All using single DB)
+  # ============================================
+  
+  auth:
+    build: ./services/auth
+    container_name: adaptix-auth
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=auth
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - REDIS_URL=redis://redis:6379/0
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - PRIVATE_KEY_PATH=/keys/private.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  company:
+    build: ./services/company
+    container_name: adaptix-company
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=company
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  product:
+    build: ./services/product
+    container_name: adaptix-product
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=product
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  pos:
+    build: ./services/pos
+    container_name: adaptix-pos
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=pos
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  inventory:
+    build: ./services/inventory
+    container_name: adaptix-inventory
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=inventory
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  purchase:
+    build: ./services/purchase
+    container_name: adaptix-purchase
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=purchase
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  hrms:
+    build: ./services/hrms
+    container_name: adaptix-hrms
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=hrms
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  accounting:
+    build: ./services/accounting
+    container_name: adaptix-accounting
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=accounting
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  customer:
+    build: ./services/customer
+    container_name: adaptix-customer
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=customer
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  asset:
+    build: ./services/asset
+    container_name: adaptix-asset
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=asset
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  promotion:
+    build: ./services/promotion
+    container_name: adaptix-promotion
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=promotion
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  payment:
+    build: ./services/payment
+    container_name: adaptix-payment
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=payment
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  notification:
+    build: ./services/notification
+    container_name: adaptix-notification
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=notification
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  reporting:
+    build: ./services/reporting
+    container_name: adaptix-reporting
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=reporting
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  backend:
+    driver: bridge

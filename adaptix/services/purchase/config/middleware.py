@@ -35,11 +35,23 @@ class JWTCompanyMiddleware:
                     request.company_uuid = payload["company_uuid"]
 
             except jwt.ExpiredSignatureError:
+                print("JWT Error: Expired")
                 return JsonResponse({"detail": "Token expired"}, status=401)
-            except jwt.InvalidTokenError:
-                return JsonResponse({"detail": "Invalid token"}, status=401)
+            except jwt.InvalidTokenError as e:
+                print(f"JWT InvalidTokenError: {str(e)}")
+                # Print key details
+                try:
+                    print(f"Public Key Path: {settings.PUBLIC_KEY_PATH}")
+                    with open(settings.PUBLIC_KEY_PATH, 'rb') as f:
+                        k = f.read().decode()
+                        print(f"Key loaded: {k[:20]}...")
+                except Exception as ke:
+                    print(f"Key load error: {ke}")
+                return JsonResponse({"detail": f"Invalid token: {str(e)}"}, status=401)
             except Exception as e:
                 print(f"JWT Error: {e}")
+                import traceback
+                traceback.print_exc()
                 return JsonResponse({"detail": "Authentication failed"}, status=401)
 
         response = self.get_response(request)

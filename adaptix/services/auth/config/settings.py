@@ -130,6 +130,8 @@ AUTH_PASSWORD_VALIDATORS = [] if DEBUG else [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+ACTIVATE_USER_IMMEDIATELY = env_bool(os.getenv("ACTIVATE_USER_IMMEDIATELY", "True"))
+
 # ---------------------------
 # Internationalization & Timezone
 # ---------------------------

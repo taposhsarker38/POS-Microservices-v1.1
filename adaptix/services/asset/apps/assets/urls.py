@@ -4,7 +4,7 @@ from .views import AssetCategoryViewSet, AssetViewSet, DepreciationScheduleViewS
 
 router = DefaultRouter()
 router.register(r'categories', AssetCategoryViewSet)
-router.register(r'items', AssetViewSet)
+router.register(r'assets', AssetViewSet)
 router.register(r'depreciation', DepreciationScheduleViewSet)
 
 urlpatterns = [

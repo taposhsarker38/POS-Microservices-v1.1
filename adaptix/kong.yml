@@ -21,6 +21,16 @@ services:
           - http
           - https
 
+      - id: 5543c6e8-07b9-4a0b-96d5-1f92c3d5a415
+        name: auth-register-route
+        paths:
+          - /api/auth/register
+          - /api/auth/register/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
       - id: a2d8e9c4-6b11-4f3b-9b8d-2a3c4e5f6b7c
         name: auth-password-reset-route
         paths:
@@ -253,7 +263,7 @@ jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3
     consumer:
       id: 53a46fb7-0d86-4691-a3ab-6f963182211a
-    key: prod-client-kid
+    key: auth-service
     algorithm: RS256
     rsa_public_key: |
       -----BEGIN PUBLIC KEY-----
@@ -289,3 +299,8 @@ plugins:
       key_claim_name: iss
       uri_param_names: []
       cookie_names: []
+
+consumers:
+  - id: 53a46fb7-0d86-4691-a3ab-6f963182211a
+    username: auth-service-consumer
+

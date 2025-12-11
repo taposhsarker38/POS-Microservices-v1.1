@@ -28,6 +28,20 @@ class CompanyViewSet(viewsets.ModelViewSet):
         # Extend create to log audit
         response = super().create(request, *args, **kwargs)
         if response.status_code == 201:
+            # Assign user to this company
+            company_id = response.data['id']
+            company = Company.objects.get(id=company_id)
+            request.user.company = company
+            request.user.save()
+            
+            # Create Admin Role for this company
+            admin_role, _ = Role.objects.get_or_create(name="Admin", company=company)
+            # Assign all permissions to Admin role
+            all_perms = Permission.objects.all()
+            admin_role.permissions.set(all_perms)
+            # Assign Admin role to user
+            request.user.roles.add(admin_role)
+            
             log_audit(request.user, "company_created", {"company_id": response.data['id'], "name": response.data['name']})
         return response
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -315,7 +329,57 @@ class MenuView(APIView):
         data = MenuSerializer(qs, many=True).data
         return api_response(data=data, message="Menu list", success=True, status_code=http_status.HTTP_200_OK)
 
+
 @api_view(["POST"])
+@permission_classes([AllowAny])
+def register_view(request):
+    try:
+        serializer = UserSerializer(data=request.data)
+        if not serializer.is_valid():
+            return api_response(
+                message="Validation error",
+                success=False,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                errors=serializer.errors
+            )
+
+        serializer.save()
+        user = serializer.instance
+
+        if getattr(settings, "ACTIVATE_USER_IMMEDIATELY", False):
+            user.is_active = True
+            user.email_verified = True
+        else:
+            user.is_active = False
+            user.email_verified = False
+        
+        user.save()
+
+        # send verification email
+        try:
+            send_verification_email(user, request)
+        except Exception:
+            logger.exception("send_verification_email failed")
+
+        log_audit(None, "user_registered", {"user_id": str(user.id), "username": user.username})
+
+        data = serializer.data
+        return api_response(
+            data=data,
+            message="User registered (verification email sent)",
+            success=True,
+            status_code=http_status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        return api_response(
+            message=str(e),
+            success=False,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+@api_view(["POST"])
+
 @permission_classes([AllowAny])
 def login_view(request):
     try:

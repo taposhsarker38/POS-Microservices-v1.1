@@ -9,5 +9,5 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     
     # App URLs
-    path('api/reports/', include('apps.analytics.urls')),
+    path('api/reporting/', include('apps.analytics.urls')),
 ]

@@ -33,7 +33,7 @@ class RoleSerializer(serializers.ModelSerializer):
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ["id", "name", "code", "timezone"]
+        fields = ["id", "uuid", "name", "code", "timezone"]
 
 class UserSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)

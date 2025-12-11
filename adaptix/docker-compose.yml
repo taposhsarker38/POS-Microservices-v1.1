@@ -373,7 +373,11 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:01713447728@postgres_purchase:5432/purchasedb
       PUBLIC_KEY_PATH: /keys/public.pem
+      PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
+      JWT_ISSUER: "auth-service"
+      JWT_AUDIENCE: "pos-system"
+      JWT_ALGORITHM: "RS256"
     ports:
       - "8600:8000"
     volumes:

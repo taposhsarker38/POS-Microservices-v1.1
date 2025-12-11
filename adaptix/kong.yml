@@ -300,6 +300,59 @@ plugins:
       uri_param_names: []
       cookie_names: []
 
+  # ============================================
+  # 🔒 SECURITY PLUGINS
+  # ============================================
+
+  # Global Rate Limiting - Prevents DDoS and brute force
+  - name: rate-limiting
+    config:
+      minute: 100              # 100 requests per minute per IP
+      hour: 1000               # 1000 requests per hour per IP
+      policy: local            # Use 'redis' in production for distributed limiting
+      fault_tolerant: true     # Continue if rate limiting fails
+      hide_client_headers: false
+
+  # Stricter rate limiting for login endpoint
+  - name: rate-limiting
+    route:
+      id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
+    config:
+      minute: 10               # Only 10 login attempts per minute
+      hour: 50                 # Only 50 per hour
+      policy: local
+
+  # Request Size Limiting - Prevents large payload attacks
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10  # 10 MB max request size
+
+  # Response Rate Limiting (Bot Protection)
+  - name: response-ratelimiting
+    config:
+      limits:
+        limit_name:
+          minute: 200
+
+  # Bot Detection - Block common bad bots
+  - name: bot-detection
+    config:
+      deny:
+        - "curl"
+        - "wget"
+        - "python-requests"
+      allow:
+        - "PostmanRuntime"
+        - "insomnia"
+
+  # Request Termination for suspicious paths
+  - name: request-termination
+    route:
+      id: blocked-paths
+    config:
+      status_code: 403
+      message: "Access Denied"
+
 consumers:
   - id: 53a46fb7-0d86-4691-a3ab-6f963182211a
     username: auth-service-consumer

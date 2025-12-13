@@ -16,7 +16,7 @@ services:
       POSTGRES_USER: ${DB_USER:-adaptix}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-adaptix123}
     ports:
-      - "5432:5432"
+      - "5532:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
@@ -31,7 +31,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
 
   # ============================================
   # REDIS (Caching & Sessions)
@@ -41,7 +41,7 @@ services:
     container_name: adaptix-redis
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "6679:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -62,8 +62,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${MQ_USER:-adaptix}
       RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-adaptix123}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5673:5672"
+      - "15673:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -94,15 +94,15 @@ services:
     networks:
       - backend
     depends_on:
-      - auth
+      - auth-service
 
   # ============================================
   # MICROSERVICES (All using single DB)
   # ============================================
   
-  auth:
+  auth-service:
     build: ./services/auth
-    container_name: adaptix-auth
+    container_name: adaptix-auth-service
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=auth
@@ -157,7 +157,7 @@ services:
 
   pos:
     build: ./services/pos
-    container_name: adaptix-pos
+    # container_name: adaptix-pos # Removed for scaling replicas
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=pos
@@ -174,6 +174,11 @@ services:
         condition: service_healthy
     networks:
       - backend
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          memory: 1G
 
   inventory:
     build: ./services/inventory
@@ -209,9 +214,9 @@ services:
     networks:
       - backend
 
-  hrms:
+  hrms-service:
     build: ./services/hrms
-    container_name: adaptix-hrms
+    container_name: adaptix-hrms-service
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=hrms
@@ -347,6 +352,43 @@ services:
         condition: service_healthy
     networks:
       - backend
+
+  ai-service:
+    build: ./services/intelligence
+    container_name: adaptix-ai-service
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=intelligence
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    volumes:
+      - ./keys:/keys:ro
+      - ./services/intelligence:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  frontend-app:
+    build: ./frontend
+    container_name: adaptix-frontend-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - backend
+    depends_on:
+      - kong
 
 volumes:
   postgres_data:

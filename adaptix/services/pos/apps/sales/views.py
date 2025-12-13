@@ -16,7 +16,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Filter by company to ensure multi-tenancy isolation
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            qs = self.queryset.filter(company_uuid=uuid)
+            qs = self.queryset.filter(company_uuid=uuid).select_related('session').prefetch_related('items', 'payments')
             
             # Additional Filters
             module = self.request.query_params.get('module_type')
@@ -139,7 +139,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            return self.queryset.filter(company_uuid=uuid)
+            return self.queryset.filter(company_uuid=uuid).select_related('order')
         return self.queryset.none()
 
     def perform_create(self, serializer):

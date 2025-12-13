@@ -8,7 +8,9 @@ consumers:
 services:
   - id: 2915b562-3d36-4b29-82ed-c49aaeb45c4b
     name: auth-service
-    url: http://auth:8000
+    tags:
+      - auth-service
+    url: http://auth-service:8000
     routes:
       # public endpoints (no JWT)
       - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
@@ -194,7 +196,7 @@ services:
           - https
 
   - name: hrms-service
-    url: http://hrms:8000
+    url: http://hrms-service:8000
     routes:
       - name: hrms-route
         paths:
@@ -254,6 +256,16 @@ services:
       - name: payment-route
         paths:
           - /api/payment
+        strip_path: false
+        protocols:
+          - https
+
+  - name: intelligence-service
+    url: http://ai-service:8000
+    routes:
+      - name: intelligence-route
+        paths:
+          - /api/intelligence
         strip_path: false
         protocols:
           - http
@@ -338,20 +350,13 @@ plugins:
   - name: bot-detection
     config:
       deny:
-        - "curl"
         - "wget"
         - "python-requests"
       allow:
         - "PostmanRuntime"
         - "insomnia"
 
-  # Request Termination for suspicious paths
-  - name: request-termination
-    route:
-      id: blocked-paths
-    config:
-      status_code: 403
-      message: "Access Denied"
+
 
 consumers:
   - id: 53a46fb7-0d86-4691-a3ab-6f963182211a

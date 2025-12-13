@@ -88,6 +88,7 @@ class Order(SoftDeleteModel):
     
     # Meta
     company_uuid = models.UUIDField(editable=False) # Multi-tenant
+    branch_id = models.UUIDField(null=True, blank=True, db_index=True) # Branch-wise report
     created_by = models.CharField(max_length=100, blank=True, null=True) # User ID
     metadata = models.JSONField(default=dict, blank=True) # For any extra fields (Doctor Name, Case ID, Event Details)
 

@@ -16,8 +16,19 @@ class NavigationItemSerializer(serializers.ModelSerializer):
 class CompanySettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanySetting
-        fields = "__all__"
-        read_only_fields = ("company",)
+        fields = [
+            'id',
+            'primary_color',
+            'secondary_color',
+            'accent_color',
+            'background_color',
+            'text_color',
+            'logo',
+            'favicon',
+            'feature_flags',
+            'ui_schema',
+        ]
+        read_only_fields = ('id', 'company', 'feature_flags')
 
 
 class WingSerializer(serializers.ModelSerializer):

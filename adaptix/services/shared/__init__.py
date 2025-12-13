@@ -1,0 +1,3 @@
+"""
+Adaptix Shared Package
+"""

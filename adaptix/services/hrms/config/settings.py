@@ -42,7 +42,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.JWTCompanyMiddleware',  # JWT & company_uuid extraction
+    'config.middleware.AuditMiddleware',  # Audit logging
 ]
+
+# JWT Configuration
+JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'RS256')
+JWT_ISSUER = os.environ.get('JWT_ISSUER', 'auth-service')
+JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'pos-system')
+PUBLIC_KEY_PATH = os.environ.get('PUBLIC_KEY_PATH', '/keys/public.pem')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -106,3 +114,23 @@ try:
         setup_tracing("hrms-service")
 except Exception as e:
     print(f"Skipping tracing setup: {e}")
+
+# ==============================================
+# SCHEMA SUPPORT (Added for Single DB Migration)
+# ==============================================
+import dj_database_url
+import os
+
+database_url = os.environ.get("DATABASE_URL")
+db_schema = os.environ.get("DB_SCHEMA", "public")
+
+if database_url:
+    try:
+        db_config = dj_database_url.parse(database_url)
+        # Add schema to search path (schema first, then public)
+        db_config['OPTIONS'] = {'options': f'-c search_path={db_schema},public'}
+        DATABASES = {"default": db_config}
+        print(f"✅ Loaded Single DB Config for Schema: {db_schema}")
+    except Exception as e:
+        print(f"⚠️ Failed to configure Single DB: {e}")
+# ==============================================

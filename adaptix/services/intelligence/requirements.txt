@@ -1,0 +1,15 @@
+django==4.2
+djangorestframework
+django-cors-headers
+dj-database-url
+psycopg2-binary
+gunicorn
+python-dotenv
+# Machine Learning & Data Science
+numpy
+pandas
+scikit-learn
+prophet
+redis
+celery
+kombu

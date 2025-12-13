@@ -1,0 +1,77 @@
+# ================================================
+# Adaptix Production Dockerfile (Optimized)
+# ================================================
+# Multi-stage build - Only compiled bytecode in final image
+# NO source code in production image
+
+# Stage 1: Build stage
+FROM python:3.11-slim as builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir --target=/build/packages -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Compile Python to bytecode (.pyc) and remove source (.py)
+RUN python -m compileall -b . \
+    && find . -name "*.py" -type f ! -name "manage.py" -delete \
+    && find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Stage 2: Production stage (minimal)
+FROM python:3.11-slim as production
+
+# Security: Run as non-root user
+RUN groupadd --gid 1000 adaptix \
+    && useradd --uid 1000 --gid 1000 --shell /bin/bash adaptix
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy installed packages from builder
+COPY --from=builder /build/packages /usr/local/lib/python3.11/site-packages/
+
+# Copy compiled bytecode only (no .py source files)
+COPY --from=builder /build/*.pyc ./
+COPY --from=builder /build/config/*.pyc ./config/
+COPY --from=builder /build/apps/ ./apps/
+COPY --from=builder /build/manage.py ./
+
+# Copy static files and templates (if any)
+COPY --from=builder /build/static/ ./static/ 2>/dev/null || true
+COPY --from=builder /build/templates/ ./templates/ 2>/dev/null || true
+
+# Set ownership
+RUN chown -R adaptix:adaptix /app
+
+# Switch to non-root user
+USER adaptix
+
+# Environment
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Run
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

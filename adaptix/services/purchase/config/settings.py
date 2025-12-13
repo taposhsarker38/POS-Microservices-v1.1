@@ -116,3 +116,23 @@ try:
         setup_tracing("purchase-service")
 except Exception as e:
     print(f"Skipping tracing setup: {e}")
+
+# ==============================================
+# SCHEMA SUPPORT (Added for Single DB Migration)
+# ==============================================
+import dj_database_url
+import os
+
+database_url = os.environ.get("DATABASE_URL")
+db_schema = os.environ.get("DB_SCHEMA", "public")
+
+if database_url:
+    try:
+        db_config = dj_database_url.parse(database_url)
+        # Add schema to search path (schema first, then public)
+        db_config['OPTIONS'] = {'options': f'-c search_path={db_schema},public'}
+        DATABASES = {"default": db_config}
+        print(f"✅ Loaded Single DB Config for Schema: {db_schema}")
+    except Exception as e:
+        print(f"⚠️ Failed to configure Single DB: {e}")
+# ==============================================

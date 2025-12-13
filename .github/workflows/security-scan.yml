@@ -1,0 +1,116 @@
+# ================================================
+# Security Scanning
+# ================================================
+# Scans for vulnerabilities in code and dependencies
+# Runs weekly and on PRs
+
+name: 🔒 Security Scan
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Weekly on Sunday
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    name: 📦 Dependency Vulnerabilities
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Scan Auth Service Dependencies
+        run: |
+          cd adaptix/services/auth
+          pip install -r requirements.txt
+          safety check --full-report || true
+
+      - name: Scan POS Service Dependencies
+        run: |
+          cd adaptix/services/pos
+          pip install -r requirements.txt
+          safety check --full-report || true
+
+  code-scan:
+    name: 🔍 Code Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: python
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  docker-scan:
+    name: 🐳 Docker Image Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Auth Image
+        run: |
+          docker build -t adaptix-auth:scan adaptix/services/auth
+
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "adaptix-auth:scan"
+          format: "table"
+          exit-code: "0"
+          severity: "CRITICAL,HIGH"
+
+  secrets-scan:
+    name: 🔑 Secrets Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  report:
+    name: 📊 Security Report
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, code-scan, docker-scan, secrets-scan]
+    if: always()
+
+    steps:
+      - name: Generate Report
+        run: |
+          echo "# Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependencies | ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Analysis | ${{ needs.code-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Images | ${{ needs.docker-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secrets | ${{ needs.secrets-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Alert on Critical Issues
+        if: contains(needs.*.result, 'failure')
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "🔒 Security scan found issues! Please review."
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

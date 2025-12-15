@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create Axios instance
 const api = axios.create({
-  baseURL: "http://localhost:8000/api", // Pointing to Kong Gateway
+  baseURL: "http://localhost:8101/api", // Pointing to Kong Gateway on Host Port 8101
   headers: {
     "Content-Type": "application/json",
   },
@@ -12,7 +12,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -35,7 +35,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
+        const refreshToken = localStorage.getItem("refresh_token");
         if (!refreshToken) {
           throw new Error("No refresh token");
         }
@@ -48,15 +48,15 @@ api.interceptors.response.use(
           }
         );
 
-        localStorage.setItem("accessToken", data.access);
+        localStorage.setItem("access_token", data.access);
 
         // Retry original request
         originalRequest.headers.Authorization = `Bearer ${data.access}`;
         return api(originalRequest);
       } catch (refreshError) {
         // Logout if refresh fails
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }

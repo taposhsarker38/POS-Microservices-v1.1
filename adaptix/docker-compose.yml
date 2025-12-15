@@ -41,7 +41,7 @@ services:
       - DEBUG=True
       - DB_NAME=assetdb
       - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_HOST=postgres_asset
       - ENABLE_TRACING=True
     depends_on:
@@ -95,7 +95,7 @@ services:
     environment:
       POSTGRES_DB: authdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5437:5432"
     volumes:
@@ -115,7 +115,7 @@ services:
     environment:
       POSTGRES_DB: companydb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${COMPANY_DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5438:5432"
     volumes:
@@ -373,7 +373,7 @@ services:
       postgres_purchase:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:${PURCHASE_DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       JWT_ISSUER: "auth-service"
@@ -471,6 +471,7 @@ services:
       - "9001:9001"
     volumes:
       - ./services/ws-gateway:/app
+      - /app/node_modules
       - ./services/auth/keys:/keys:ro
     networks:
       - backend

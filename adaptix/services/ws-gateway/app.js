@@ -7,8 +7,7 @@ import amqp from "amqplib";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import { createAdapter } from "@socket.io/redis-adapter";
-import pkg from "ioredis";
-const { createClient } = pkg;
+import Redis from "ioredis"; // Standard import
 import cors from "cors";
 
 const PORT = process.env.PORT || 9001;
@@ -46,7 +45,9 @@ const io = new Server(server, {
 // setup redis adapter if redis url present (for horizontal scaling)
 async function setupRedisAdapter() {
   try {
-    const pubClient = createClient({ url: REDIS_URL });
+    console.log("Redis URL:", REDIS_URL);
+    // Use standard ioredis constructor
+    const pubClient = new Redis(REDIS_URL);
     const subClient = pubClient.duplicate();
     await Promise.all([pubClient.connect(), subClient.connect()]);
     io.adapter(createAdapter(pubClient, subClient));
@@ -59,7 +60,7 @@ async function setupRedisAdapter() {
 async function startAMQPConsumer(onMessage) {
   const conn = await amqp.connect(AMQP_URL);
   const ch = await conn.createChannel();
-  await ch.assertExchange(EXCHANGE, "fanout", { durable: false });
+  await ch.assertExchange(EXCHANGE, "topic", { durable: true });
   const q = await ch.assertQueue("", { exclusive: true });
   await ch.bindQueue(q.queue, EXCHANGE, "");
 

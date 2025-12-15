@@ -10,7 +10,7 @@ services:
     name: auth-service
     tags:
       - auth-service
-    url: http://auth-service:8000
+    url: http://adaptix-auth:8000
     routes:
       # public endpoints (no JWT)
       - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f

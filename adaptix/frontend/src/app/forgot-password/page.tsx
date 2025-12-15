@@ -1,124 +1,150 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Loader2, ArrowLeft, Mail } from "lucide-react";
+import { toast } from "sonner";
+
+import api from "@/lib/api";
+import { handleApiError } from "@/lib/utils/error-handler";
+import {
+  forgotPasswordSchema,
+  ForgotPasswordFormValues,
+} from "@/lib/schemas/auth"; // Use centralized schema
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
-import axios from "axios";
-import { WeatherBackground } from "@/components/layout/WeatherBackground";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const onSubmit = async (data: ForgotPasswordFormValues) => {
     setLoading(true);
-    setError("");
-
     try {
-      await axios.post("http://localhost:8000/api/auth/password/reset/", {
-        email,
+      // POST to /api/auth/password/reset/
+      await api.post("/auth/password/reset/", data);
+
+      setSuccess(true);
+      toast.success("Reset link sent!", {
+        description:
+          "Check your email for instructions to reset your password.",
       });
-      setSent(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to send reset email");
+    } catch (error: any) {
+      handleApiError(error, form, "Failed to send reset link.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (sent) {
-    return (
-      <WeatherBackground>
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-emerald-600" />
-              </div>
-              <CardTitle>Check Your Email</CardTitle>
-              <CardDescription>
-                We've sent password reset instructions to{" "}
-                <strong>{email}</strong>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href="/login">
-                <Button variant="outline" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Login
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </WeatherBackground>
-    );
-  }
-
   return (
-    <WeatherBackground>
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>Forgot Password?</CardTitle>
-            <CardDescription>
-              Enter your email address and we'll send you a link to reset your
-              password.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+      <Card className="w-full max-w-md shadow-lg border-slate-200 dark:border-slate-800">
+        <CardHeader className="space-y-1 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            Forgot password?
+          </CardTitle>
+          <CardDescription>
+            No worries, we'll send you reset instructions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {success ? (
+            <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-800 dark:text-emerald-200">
+                If an account exists for{" "}
+                <strong>{form.getValues("email")}</strong>, you will receive an
+                email shortly.
               </div>
-
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                  {error}
-                </div>
-              )}
-
               <Button
-                type="submit"
-                className="w-full bg-violet-600 hover:bg-violet-700"
-                disabled={loading}
+                asChild
+                className="w-full bg-slate-900 text-white hover:bg-slate-800"
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Send Reset Link
+                <Link href="/login">Back to Login</Link>
               </Button>
+            </div>
+          ) : (
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="name@example.com"
+                          disabled={loading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <Link href="/login">
-                <Button variant="ghost" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Login
+                <Button
+                  type="submit"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Reset Link"
+                  )}
                 </Button>
-              </Link>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </WeatherBackground>
+              </form>
+            </Form>
+          )}
+        </CardContent>
+        <CardFooter className="flex justify-center border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
+          <Link
+            href="/login"
+            className="flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to log in
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

@@ -97,7 +97,8 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="p-3 border-t border-slate-800">
         <button
           onClick={() => {
-            localStorage.removeItem("accessToken");
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
             window.location.href = "/login";
           }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors w-full"

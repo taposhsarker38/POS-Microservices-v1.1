@@ -20,8 +20,8 @@ export function UserNav() {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     router.push("/login");
   };
 

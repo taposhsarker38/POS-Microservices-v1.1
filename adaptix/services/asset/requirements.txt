@@ -6,7 +6,7 @@ gunicorn
 drf-spectacular
 whitenoise
 pika
-
+dj-database-url
 # Observability
 opentelemetry-api
 opentelemetry-sdk

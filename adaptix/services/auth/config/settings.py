@@ -25,7 +25,7 @@ def env_int(v, default):
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 DEBUG = env_bool(os.getenv("DEBUG", "true"))
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
+ALLOWED_HOSTS = ["*"]
 
 # CSRF / Frontend
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")

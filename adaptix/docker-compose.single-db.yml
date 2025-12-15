@@ -157,7 +157,7 @@ services:
 
   pos:
     build: ./services/pos
-    # container_name: adaptix-pos # Removed for scaling replicas
+    container_name: adaptix-pos
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=pos
@@ -174,11 +174,6 @@ services:
         condition: service_healthy
     networks:
       - backend
-    deploy:
-      replicas: 5
-      resources:
-        limits:
-          memory: 1G
 
   inventory:
     build: ./services/inventory

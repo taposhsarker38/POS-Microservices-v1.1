@@ -27,6 +27,7 @@ class Command(BaseCommand):
         # Declare queue and bind to routing key (pos.*)
         channel.queue_declare(queue=queue_name, durable=True)
         channel.queue_bind(exchange=exchange_name, queue=queue_name, routing_key="pos.*")
+        channel.queue_bind(exchange=exchange_name, queue=queue_name, routing_key="asset.*")
 
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue=queue_name, on_message_callback=self.process_message)
@@ -42,6 +43,10 @@ class Command(BaseCommand):
             if event_type == "pos.sale.closed":
                 self.handle_pos_sale(payload)
                 self.stdout.write(self.style.SUCCESS(f"Processed sale: {payload.get('order_number')}"))
+            
+            elif event_type == "asset.depreciation":
+                self.handle_asset_depreciation(payload)
+                self.stdout.write(self.style.SUCCESS(f"Processed depreciation: {payload.get('asset_name')}"))
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -101,4 +106,56 @@ class Command(BaseCommand):
                 debit=0,
                 credit=grand_total,
                 description="Revenue recognized"
+            )
+
+    def handle_asset_depreciation(self, payload):
+        company_uuid = payload.get("company_uuid")
+        amount = float(payload.get("amount", 0))
+        asset_name = payload.get("asset_name")
+        date = payload.get("date")
+        
+        with transaction.atomic():
+            # Create Header
+            entry = JournalEntry.objects.create(
+                company_uuid=company_uuid,
+                reference_number=f"DEP-{payload.get('schedule_id')}",
+                description=f"Depreciation for {asset_name}",
+                date=date,
+                is_posted=True
+            )
+            
+            # Simple Logic: 
+            # Dr. Depreciation Expense (Expense)
+            # Cr. Accumulated Depreciation (Contra-Asset or Liability)
+            
+            expense_account, _ = ChartOfAccount.objects.get_or_create(
+                company_uuid=company_uuid,
+                code="6000",
+                defaults={"name": "Depreciation Expense", "group_type": "expense"}
+            )
+            
+            accumulated_account, _ = ChartOfAccount.objects.get_or_create(
+                company_uuid=company_uuid,
+                code="1500",
+                defaults={"name": "Accumulated Depreciation", "group_type": "asset"}
+            )
+            
+            # Debit Expense
+            JournalItem.objects.create(
+                entry=entry,
+                company_uuid=company_uuid,
+                account=expense_account,
+                debit=amount,
+                credit=0,
+                description=f"Expense for {asset_name}"
+            )
+            
+            # Credit Accumulated Depreciation
+            JournalItem.objects.create(
+                entry=entry,
+                company_uuid=company_uuid,
+                account=accumulated_account,
+                debit=0,
+                credit=amount,
+                description=f"Accumulated Dep. for {asset_name}"
             )

@@ -99,6 +99,11 @@ class UserViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return api_response(message=str(e), success=False, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return api_response(data=serializer.data, message="Current user retrieved", success=True)
+
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()

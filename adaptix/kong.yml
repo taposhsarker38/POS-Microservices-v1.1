@@ -10,7 +10,7 @@ services:
     name: auth-service
     tags:
       - auth-service
-    url: http://adaptix-auth:8000
+    url: http://adaptix-auth-service:8000
     routes:
       # public endpoints (no JWT)
       - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
@@ -123,7 +123,7 @@ services:
           - https
 
   - name: asset-service
-    url: http://adaptix-asset:8000
+    url: http://asset:8000
     routes:
       - name: asset-route
         paths:
@@ -319,8 +319,8 @@ plugins:
   # Global Rate Limiting - Prevents DDoS and brute force
   - name: rate-limiting
     config:
-      minute: 100              # 100 requests per minute per IP
-      hour: 1000               # 1000 requests per hour per IP
+      minute: 5000             # 5000 requests per minute per IP
+      hour: 10000              # 10000 requests per hour per IP
       policy: local            # Use 'redis' in production for distributed limiting
       fault_tolerant: true     # Continue if rate limiting fails
       hide_client_headers: false
@@ -330,8 +330,8 @@ plugins:
     route:
       id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
     config:
-      minute: 10               # Only 10 login attempts per minute
-      hour: 50                 # Only 50 per hour
+      minute: 1000             # Only 1000 login attempts per minute
+      hour: 5000               # Only 5000 per hour
       policy: local
 
   # Request Size Limiting - Prevents large payload attacks

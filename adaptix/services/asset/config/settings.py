@@ -96,6 +96,9 @@ SPECTACULAR_SETTINGS = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Message Broker
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
+
 # Tracing
 ENABLE_TRACING = os.environ.get('ENABLE_TRACING', 'False') == 'True'
 if ENABLE_TRACING:

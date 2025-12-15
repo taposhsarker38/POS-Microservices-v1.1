@@ -1,0 +1,865 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: adaptix-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: adaptix-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  adaptix-asset:
+    image: adaptix_asset
+    container_name: adaptix-asset
+    build: ./services/asset
+    volumes:
+      - ./services/asset:/app
+    environment:
+      - DJANGO_SECRET_KEY=dev_secret_key
+      - DEBUG=True
+      - DB_NAME=assetdb
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=postgres_asset
+      - ENABLE_TRACING=True
+    depends_on:
+      postgres_asset:
+        condition: service_healthy
+    networks:
+      - backend
+
+  postgres_asset:
+    image: postgres:15
+    container_name: adaptix-postgres-asset
+    environment:
+      - POSTGRES_DB=assetdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    ports:
+      - "5450:5432"
+    volumes:
+      - postgres_asset_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  kong:
+    image: kong:3.0
+    container_name: adaptix-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong.yml:/kong/kong.yml:ro
+    ports:
+      - "8101:8000"   # তুই এটা দিয়ে access করবি
+      - "8102:8001"
+    networks:
+      - backend          # এটা যোগ কর
+    depends_on:
+      - company
+      - auth
+
+
+  postgres_auth:
+    image: postgres:15
+    container_name: adaptix-postgres-auth
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5437:5432"
+    volumes:
+      - pgdata_auth:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  postgres_company:
+    image: postgres:15
+    container_name: adaptix-postgres-company
+    environment:
+      POSTGRES_DB: companydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5438:5432"
+    volumes:
+      - pgdata_company:/var/lib/postgresql/data
+    healthcheck:                     # <-- এটা missing ছিল, এখন আছে
+      test: ["CMD-SHELL", "pg_isready -U postgres -d companydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  postgres_product:
+    image: postgres:15
+    container_name: adaptix-postgres-product
+    environment:
+      POSTGRES_DB: productdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5439:5432"
+    volumes:
+      - pgdata_product:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d productdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: adaptix-auth
+    depends_on:
+      postgres_auth:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: "django-insecure-nhyxuqdm3u33619f656b0q8huk2pvewo4jr7t8"
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_auth:5432/authdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+      ALLOWED_HOSTS: "*"
+      JWT_ALGORITHM: "RS256"
+      JWT_ISSUER: "auth-service"
+      JWT_AUDIENCE: "pos-system"
+    env_file:
+      - ./services/auth/.env
+    ports:
+      - "8100:8000"
+    volumes:
+      - ./services/auth:/app
+      - ./services/auth/keys:/keys:ro
+    networks:
+      - backend
+
+  company:
+    build:
+      context: ./services/company
+      dockerfile: Dockerfile
+    container_name: adaptix-company
+    depends_on:
+      postgres_company:
+        condition: service_healthy     # <-- এখন healthcheck আছে, error আসবে না
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_company:5432/companydb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "8200:8000"
+      - "8201:8001"
+    volumes:
+      - ./services/company:/app
+      - ./services/auth/keys:/keys:ro
+    # Using Daphne for both HTTP and WebSocket
+    command: bash -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    networks:
+      - backend
+
+  product:
+    build:
+      context: ./services/product
+      dockerfile: Dockerfile
+    container_name: adaptix-product
+    depends_on:
+      postgres_product:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_product:5432/productdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/2
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "8300:8000"
+    volumes:
+      - ./services/product:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_pos:
+    image: postgres:15
+    container_name: adaptix-postgres-pos
+    environment:
+      POSTGRES_DB: posdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5440:5432"
+    volumes:
+      - pgdata_pos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d posdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  pos:
+    build:
+      context: ./services/pos
+      dockerfile: Dockerfile
+    container_name: adaptix-pos
+    depends_on:
+      postgres_pos:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_pos:5432/posdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/3
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+    ports:
+      - "8400:8000"
+    volumes:
+      - ./services/pos:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_inventory:
+    image: postgres:15
+    container_name: adaptix-postgres-inventory
+    environment:
+      POSTGRES_DB: inventorydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5441:5432"
+    volumes:
+      - pgdata_inventory:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d inventorydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  inventory:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    container_name: adaptix-inventory
+    depends_on:
+      postgres_inventory:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_inventory:5432/inventorydb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+    ports:
+      - "8500:8000"
+    volumes:
+      - ./services/inventory:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  inventory-worker:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    container_name: adaptix-inventory-worker
+    depends_on:
+      postgres_inventory:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_inventory:5432/inventorydb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/inventory:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_inventory_consumer
+    networks:
+      - backend
+
+  postgres_purchase:
+    image: postgres:15
+    container_name: adaptix-postgres-purchase
+    environment:
+      POSTGRES_DB: purchasedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5442:5432"
+    volumes:
+      - pgdata_purchase:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d purchasedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  purchase:
+    build:
+      context: ./services/purchase
+      dockerfile: Dockerfile
+    container_name: adaptix-purchase
+    depends_on:
+      postgres_purchase:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      JWT_ISSUER: "auth-service"
+      JWT_AUDIENCE: "pos-system"
+      JWT_ALGORITHM: "RS256"
+    ports:
+      - "8600:8000"
+    volumes:
+      - ./services/purchase:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  pos-worker:
+    build:
+      context: ./services/pos
+      dockerfile: Dockerfile
+    container_name: adaptix-pos-worker
+    depends_on:
+      postgres_pos:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_pos:5432/posdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/pos:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_pos_consumer
+    networks:
+      - backend
+
+  purchase-worker:
+    build:
+      context: ./services/purchase
+      dockerfile: Dockerfile
+    container_name: adaptix-purchase-worker
+    depends_on:
+      postgres_purchase:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./services/purchase:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_purchase_consumer
+    networks:
+      - backend
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.46
+    container_name: adaptix-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - backend
+
+  ws-gateway:
+    build:
+      context: ./services/ws-gateway
+      dockerfile: Dockerfile
+    container_name: adaptix-ws-gateway
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 9001
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      AMQP_EXCHANGE: events
+      REDIS_URL: redis://redis:6379/4
+      AUTH_ISSUER: auth-service
+      PUBLIC_KEY_PATH: /keys/public.pem
+      ENABLE_TRACING: "True"
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./services/ws-gateway:/app
+      - /app/node_modules
+      - ./services/auth/keys:/keys:ro
+    networks:
+      - backend
+
+  postgres_customer:
+    image: postgres:15
+    container_name: adaptix-postgres-customer
+    environment:
+      POSTGRES_DB: customerdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5449:5432"
+    volumes:
+      - pgdata_customer:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d customerdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  customer:
+    build:
+      context: ./services/customer
+      dockerfile: Dockerfile
+    container_name: adaptix-customer
+    depends_on:
+      postgres_customer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_customer:5432/customerdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "9300:8000"
+    volumes:
+      - ./services/customer:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_notification:
+    image: postgres:15
+    container_name: adaptix-postgres-notification
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5443:5432"
+    volumes:
+      - pgdata_notification:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificationdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  notification:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    container_name: adaptix-notification
+    depends_on:
+      postgres_notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_notification:5432/notificationdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "8700:8000"
+    volumes:
+      - ./services/notification:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  notification-worker:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    container_name: adaptix-notification-worker
+    depends_on:
+      postgres_notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_notification:5432/notificationdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    volumes:
+      - ./services/notification:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_notification_consumer
+    networks:
+      - backend
+
+  postgres_reporting:
+    image: postgres:15
+    container_name: adaptix-postgres-reporting
+    environment:
+      POSTGRES_DB: reportingdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5444:5432"
+    volumes:
+      - pgdata_reporting:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reportingdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  reporting:
+    build:
+      context: ./services/reporting
+      dockerfile: Dockerfile
+    container_name: adaptix-reporting
+    depends_on:
+      postgres_reporting:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_reporting:5432/reportingdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "8800:8000"
+    volumes:
+      - ./services/reporting:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  reporting-worker:
+    build:
+      context: ./services/reporting
+      dockerfile: Dockerfile
+    container_name: adaptix-reporting-worker
+    depends_on:
+      postgres_reporting:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_reporting:5432/reportingdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    volumes:
+      - ./services/reporting:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_reporting_consumer
+    networks:
+      - backend
+
+  postgres_promotion:
+    image: postgres:15
+    container_name: adaptix-postgres-promotion
+    environment:
+      POSTGRES_DB: promotiondb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5445:5432"
+    volumes:
+      - pgdata_promotion:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d promotiondb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  promotion:
+    build:
+      context: ./services/promotion
+      dockerfile: Dockerfile
+    container_name: adaptix-promotion
+    depends_on:
+      postgres_promotion:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_promotion:5432/promotiondb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "8900:8000"
+    volumes:
+      - ./services/promotion:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_payment:
+    image: postgres:15
+    container_name: adaptix-postgres-payment
+    environment:
+      POSTGRES_DB: paymentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5446:5432"
+    volumes:
+      - pgdata_payment:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d paymentdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  payment:
+    build:
+      context: ./services/payment
+      dockerfile: Dockerfile
+    container_name: adaptix-payment
+    depends_on:
+      postgres_payment:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_payment:5432/paymentdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "9000:8000"
+    volumes:
+      - ./services/payment:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_hrms:
+    image: postgres:15
+    container_name: adaptix-postgres-hrms
+    environment:
+      POSTGRES_DB: hrmsdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5447:5432"
+    volumes:
+      - pgdata_hrms:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hrmsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  hrms:
+    build:
+      context: ./services/hrms
+      dockerfile: Dockerfile
+    container_name: adaptix-hrms
+    depends_on:
+      postgres_hrms:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_hrms:5432/hrmsdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "9100:8000"
+    volumes:
+      - ./services/hrms:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  postgres_accounting:
+    image: postgres:15
+    container_name: adaptix-postgres-accounting
+    environment:
+      POSTGRES_DB: accountingdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+    ports:
+      - "5448:5432"
+    volumes:
+      - pgdata_accounting:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d accountingdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  accounting:
+    build:
+      context: ./services/accounting
+      dockerfile: Dockerfile
+    container_name: adaptix-accounting
+    depends_on:
+      postgres_accounting:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_accounting:5432/accountingdb
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+      ENABLE_TRACING: "True"
+    ports:
+      - "9200:8000"
+    volumes:
+      - ./services/accounting:/app
+      - ./services/auth/keys:/keys:ro
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    networks:
+      - backend
+
+  accounting-worker:
+    build:
+      context: ./services/accounting
+      dockerfile: Dockerfile
+    container_name: adaptix-accounting-worker
+    depends_on:
+      postgres_accounting:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_accounting:5432/accountingdb
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
+      PUBLIC_KEY_PATH: /keys/public.pem
+      DEBUG: "True"
+    volumes:
+      - ./services/accounting:/app
+      - ./services/auth/keys:/keys:ro
+    command: python manage.py run_accounting_consumer
+    networks:
+      - backend
+
+volumes:
+  pgdata_auth:
+  pgdata_company:
+  pgdata_product:
+  pgdata_pos:
+  pgdata_inventory:
+  pgdata_purchase:
+  pgdata_customer:
+  pgdata_notification:
+  pgdata_reporting:
+  pgdata_promotion:
+  pgdata_payment:
+  pgdata_hrms:
+  pgdata_accounting:
+  postgres_asset_data:
+
+networks:
+  backend:
+    driver: bridge

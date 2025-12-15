@@ -33,13 +33,16 @@ class ChartOfAccount(models.Model):
     company_uuid = models.UUIDField(db_index=True)
     group = models.ForeignKey(AccountGroup, on_delete=models.PROTECT, related_name="accounts")
     name = models.CharField(max_length=120)
-    code = models.CharField(max_length=20, unique=True) 
+    code = models.CharField(max_length=20) 
     
     opening_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     current_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('company_uuid', 'code')
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -57,7 +60,8 @@ class JournalEntry(models.Model):
     total_debit = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     total_credit = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     
-    posted_by = models.UUIDField(null=True)
+    posted_by = models.UUIDField(null=True, blank=True)
+    is_posted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class JournalItem(models.Model):

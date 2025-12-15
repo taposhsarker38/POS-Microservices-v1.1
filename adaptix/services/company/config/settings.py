@@ -84,7 +84,7 @@ PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", DEFAULT_PUB_KEY)
 JWT_ISSUER = os.getenv("JWT_ISSUER", "auth-service")
 JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "pos-system")
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/"))
 AMQP_EXCHANGE = os.getenv("AMQP_EXCHANGE", "events")
 
 # drf-spectacular (OpenAPI) settings

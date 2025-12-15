@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import dj_database_url
+from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -76,12 +78,18 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
-    )
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [], # We use custom middleware for auth
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
 }
 
 # JWT / Security (Internal trust or PubKey verify)
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "RS256")
 PUBLIC_KEY_PATH = os.environ.get("PUBLIC_KEY_PATH", "/keys/public.pem")
+JWT_AUDIENCE = os.environ.get("JWT_AUDIENCE", "pos-system")
+JWT_ISSUER = os.environ.get("JWT_ISSUER", "auth-service")
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True

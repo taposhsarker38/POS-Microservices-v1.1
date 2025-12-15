@@ -1,0 +1,57 @@
+# ================================================
+# Dependabot Configuration
+# ================================================
+# Automatically updates dependencies
+
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/adaptix/services/auth"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    reviewers:
+      - "taposhsarker38"
+
+  - package-ecosystem: "pip"
+    directory: "/adaptix/services/pos"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "pip"
+    directory: "/adaptix/services/hrms"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/adaptix/services/auth"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Node.js (for ws-gateway)
+  - package-ecosystem: "npm"
+    directory: "/adaptix/services/ws-gateway"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "nodejs"

@@ -31,8 +31,9 @@ def send_verification_email(user, request):
     # build verification link
     base_url = getattr(settings, "FRONTEND_URL", None) or f"{request.scheme}://{request.get_host()}"
     
-    verify_path = reverse("verify-email")
-    verify_url = f"{base_url}{verify_path}?token={token}"
+    # Use frontend route for verification
+    verify_path = f"/verify-email?token={token}"
+    verify_url = f"{base_url.rstrip('/')}{verify_path}"
 
     subject = "Verify your email"
     message = f"Click the link below to verify your email:\n\n{verify_url}"

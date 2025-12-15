@@ -16,7 +16,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Filter by company to ensure multi-tenancy isolation
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            qs = self.queryset.filter(company_uuid=uuid)
+            qs = self.queryset.filter(company_uuid=uuid).select_related('session').prefetch_related('items', 'payments')
             
             # Additional Filters
             module = self.request.query_params.get('module_type')
@@ -41,14 +41,48 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Trigger Inventory Deduction
         try:
-            # We construct a dict or pass the object to helper
-            # For simplicity, passing validated data structure or re-serializing
-            # But order has items now.
-            
             # Hack: Re-serialize to get clean dict with items
             data = OrderSerializer(order).data
             # Pass order ID for tracking reason
             InventoryService.deduct_stock(data, order.id)
+            
+            # Publish Event for Accounting (Zero-Touch)
+            try:
+                from kombu import Connection, Exchange, Producer
+                import os
+                import json
+                
+                BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
+                connection = Connection(BROKER_URL)
+                connection.connect()
+                
+                exchange = Exchange("events", type="topic", durable=True)
+                producer = Producer(connection)
+                
+                event_payload = {
+                    "event": "pos.sale.closed",
+                    "order_id": str(order.id),
+                    "order_number": order.order_number,
+                    "company_uuid": str(order.company_uuid),
+                    "grand_total": str(order.grand_total),
+                    "items": data.get("items", []),
+                    "created_at": order.created_at.isoformat(),
+                    "payment_details": data.get("payments", [])
+                }
+                
+                producer.publish(
+                    json.dumps(event_payload),
+                    exchange=exchange,
+                    routing_key="pos.sale.closed",
+                    declare=[exchange],
+                    retry=True
+                )
+                connection.release()
+                print(f"Published pos.sale.closed event for Order {order.order_number}")
+                
+            except Exception as pub_error:
+                print(f"Failed to publish accounting event: {pub_error}")
+
         except Exception as e:
             # Log error but don't block sale in this MVP. 
             # In Strict mode, we would rollback transaction.
@@ -139,7 +173,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            return self.queryset.filter(company_uuid=uuid)
+            return self.queryset.filter(company_uuid=uuid).select_related('order')
         return self.queryset.none()
 
     def perform_create(self, serializer):

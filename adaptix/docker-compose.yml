@@ -41,7 +41,7 @@ services:
       - DEBUG=True
       - DB_NAME=assetdb
       - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_HOST=postgres_asset
       - ENABLE_TRACING=True
     depends_on:
@@ -56,7 +56,9 @@ services:
     environment:
       - POSTGRES_DB=assetdb
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    ports:
+      - "5450:5432"
     volumes:
       - postgres_asset_data:/var/lib/postgresql/data
     healthcheck:
@@ -93,7 +95,7 @@ services:
     environment:
       POSTGRES_DB: authdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5437:5432"
     volumes:
@@ -113,7 +115,7 @@ services:
     environment:
       POSTGRES_DB: companydb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5438:5432"
     volumes:
@@ -133,7 +135,7 @@ services:
     environment:
       POSTGRES_DB: productdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5439:5432"
     volumes:
@@ -161,7 +163,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: "django-insecure-nhyxuqdm3u33619f656b0q8huk2pvewo4jr7t8"
-      DATABASE_URL: postgres://postgres:01713447728@postgres_auth:5432/authdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_auth:5432/authdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/0
@@ -192,7 +194,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_company:5432/companydb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_company:5432/companydb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
@@ -219,7 +221,7 @@ services:
       postgres_product:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_product:5432/productdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_product:5432/productdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/2
@@ -241,7 +243,7 @@ services:
     environment:
       POSTGRES_DB: posdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5440:5432"
     volumes:
@@ -264,7 +266,7 @@ services:
       postgres_pos:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_pos:5432/posdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_pos:5432/posdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/3
@@ -285,7 +287,7 @@ services:
     environment:
       POSTGRES_DB: inventorydb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5441:5432"
     volumes:
@@ -308,7 +310,7 @@ services:
       postgres_inventory:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_inventory:5432/inventorydb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_inventory:5432/inventorydb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
     ports:
@@ -331,7 +333,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_inventory:5432/inventorydb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_inventory:5432/inventorydb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
@@ -348,7 +350,7 @@ services:
     environment:
       POSTGRES_DB: purchasedb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5442:5432"
     volumes:
@@ -371,8 +373,7 @@ services:
       postgres_purchase:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_purchase:5432/purchasedb
-      PUBLIC_KEY_PATH: /keys/public.pem
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       JWT_ISSUER: "auth-service"
@@ -398,7 +399,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_pos:5432/posdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_pos:5432/posdb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
@@ -420,7 +421,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_purchase:5432/purchasedb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_purchase:5432/purchasedb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
@@ -470,6 +471,7 @@ services:
       - "9001:9001"
     volumes:
       - ./services/ws-gateway:/app
+      - /app/node_modules
       - ./services/auth/keys:/keys:ro
     networks:
       - backend
@@ -480,7 +482,7 @@ services:
     environment:
       POSTGRES_DB: customerdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5449:5432"
     volumes:
@@ -503,7 +505,7 @@ services:
       postgres_customer:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_customer:5432/customerdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_customer:5432/customerdb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       ENABLE_TRACING: "True"
@@ -522,7 +524,7 @@ services:
     environment:
       POSTGRES_DB: notificationdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5443:5432"
     volumes:
@@ -547,7 +549,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_notification:5432/notificationdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_notification:5432/notificationdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
@@ -572,7 +574,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_notification:5432/notificationdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_notification:5432/notificationdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
@@ -590,7 +592,7 @@ services:
     environment:
       POSTGRES_DB: reportingdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5444:5432"
     volumes:
@@ -615,7 +617,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_reporting:5432/reportingdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_reporting:5432/reportingdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
@@ -640,7 +642,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_reporting:5432/reportingdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_reporting:5432/reportingdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
@@ -658,7 +660,7 @@ services:
     environment:
       POSTGRES_DB: promotiondb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5445:5432"
     volumes:
@@ -681,7 +683,7 @@ services:
       postgres_promotion:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_promotion:5432/promotiondb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_promotion:5432/promotiondb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       ENABLE_TRACING: "True"
@@ -700,7 +702,7 @@ services:
     environment:
       POSTGRES_DB: paymentdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5446:5432"
     volumes:
@@ -723,7 +725,7 @@ services:
       postgres_payment:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_payment:5432/paymentdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_payment:5432/paymentdb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       ENABLE_TRACING: "True"
@@ -742,7 +744,7 @@ services:
     environment:
       POSTGRES_DB: hrmsdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5447:5432"
     volumes:
@@ -765,7 +767,7 @@ services:
       postgres_hrms:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_hrms:5432/hrmsdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_hrms:5432/hrmsdb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       ENABLE_TRACING: "True"
@@ -784,7 +786,7 @@ services:
     environment:
       POSTGRES_DB: accountingdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "01713447728"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
     ports:
       - "5448:5432"
     volumes:
@@ -807,7 +809,7 @@ services:
       postgres_accounting:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_accounting:5432/accountingdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_accounting:5432/accountingdb
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"
       ENABLE_TRACING: "True"
@@ -831,7 +833,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:01713447728@postgres_accounting:5432/accountingdb
+      DATABASE_URL: postgres://postgres:${DB_PASSWORD:-postgres}@postgres_accounting:5432/accountingdb
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672/
       PUBLIC_KEY_PATH: /keys/public.pem
       DEBUG: "True"

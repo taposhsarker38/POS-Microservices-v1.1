@@ -8,6 +8,7 @@ gunicorn
 drf-spectacular
 whitenoise
 pika
+PyJWT
 
 # Observability
 opentelemetry-api

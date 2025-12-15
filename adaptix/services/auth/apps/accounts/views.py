@@ -407,7 +407,13 @@ def login_view(request):
         try:
             user_obj = User.objects.get(username=username)
         except User.DoesNotExist:
-            user_obj = None
+            # Username doesn't exist
+            return api_response(
+                message="User not found",
+                success=False,
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                errors={"username": "No account found with this username."}
+            )
 
         # 🔥 STEP 2: If user exists but email not verified → return 403 BEFORE authenticate()
         if user_obj and not user_obj.email_verified:
@@ -430,14 +436,16 @@ def login_view(request):
                 errors={"account": "User is inactive. Contact support."}
             )
 
-        # 🔥 STEP 4: NOW authenticate
+        # 🔥 STEP 4: NOW authenticate (check password)
         user = authenticate(request, username=username, password=password)
 
         if not user:
+            # User exists but password is wrong
             return api_response(
-                message="Invalid credentials",
+                message="Wrong password",
                 success=False,
                 status_code=http_status.HTTP_401_UNAUTHORIZED,
+                errors={"password": "Incorrect password. Please try again."}
             )
 
         # Fetch roles and permissions
@@ -574,19 +582,24 @@ def password_reset_request_view(request):
     email = request.data.get("email")
     if not email:
         return api_response(message="email required", success=False, status_code=status.HTTP_400_BAD_REQUEST)
+    
     qs = User.objects.filter(email__iexact=email)
     if qs.exists():
         user = qs.first()
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
         frontend_base = getattr(settings, "FRONTEND_URL", None) or f"{request.scheme}://{request.get_host()}"
-        reset_path = "/login/reset"
+        reset_path = "/password/reset/confirm"
         reset_url = f"{frontend_base.rstrip('/')}{reset_path}?uid={uid}&token={token}"
         subject = "Password reset"
         message = f"Click the link to reset your password: {reset_url}"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True)
         log_audit(user, "password_reset_requested", {})
-    return api_response(message="If that email exists, reset link sent.", success=True, status_code=status.HTTP_200_OK)
+    
+    # Always return same message for security (prevents email enumeration attack)
+    return api_response(message="If an account exists with this email, you will receive password reset instructions.", success=True, status_code=status.HTTP_200_OK)
+
+
 
 
 @api_view(["POST"])

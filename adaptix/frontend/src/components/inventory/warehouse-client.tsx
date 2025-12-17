@@ -135,7 +135,13 @@ export const WarehouseClient: React.FC = () => {
           <Plus className="mr-2 h-4 w-4" /> Add Warehouse
         </Button>
       </div>
-      <DataTable searchKey="name" columns={columns} data={data} />
+      <DataTable
+        searchKey="name"
+        columns={columns}
+        data={data}
+        enableExport={true}
+        exportFileName="warehouse_list"
+      />
       <WarehouseForm
         initialData={selectedItem}
         isOpen={open}

@@ -30,12 +30,16 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AssetForm } from "./asset-form";
+import { AlertModal } from "@/components/modals/alert-modal";
 
 export function AssetClient() {
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any | null>(null);
+
+  const [openAlert, setOpenAlert] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchAssets = async () => {
     try {
@@ -52,14 +56,23 @@ export function AssetClient() {
     fetchAssets();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete asset?")) return;
+  const onDelete = (id: string) => {
+    setDeleteId(id);
+    setOpenAlert(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/asset/assets/${id}/`);
+      setLoading(true);
+      await api.delete(`/asset/assets/${deleteId}/`);
       toast.success("Asset deleted");
       fetchAssets();
     } catch (e) {
       toast.error("Failed to delete");
+    } finally {
+      setLoading(false);
+      setOpenAlert(false);
+      setDeleteId(null);
     }
   };
 
@@ -90,6 +103,12 @@ export function AssetClient() {
 
   return (
     <div className="space-y-4">
+      <AlertModal
+        isOpen={openAlert}
+        onClose={() => setOpenAlert(false)}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Asset Management</h2>
         <Button onClick={openCreate}>
@@ -170,7 +189,7 @@ export function AssetClient() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500"
-                      onClick={() => handleDelete(item.id)}
+                      onClick={() => onDelete(item.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

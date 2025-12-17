@@ -13,7 +13,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Download } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,12 +38,16 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string;
+  enableExport?: boolean;
+  exportFileName?: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
+  enableExport = false,
+  exportFileName = "data_export",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -70,9 +76,106 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const handleExport = () => {
+    const rows = table.getFilteredRowModel().rows;
+    if (!rows || rows.length === 0) return;
+
+    // Get headers from columns
+    const headers = columns
+      .map((col: any) => {
+        if (typeof col.header === "string") return col.header;
+        if (col.accessorKey) return col.accessorKey;
+        return null;
+      })
+      .filter(Boolean);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => {
+        return columns
+          .map((col: any) => {
+            if (col.accessorKey) {
+              const val = (row.original as any)[col.accessorKey];
+              const stringVal =
+                val === null || val === undefined ? "" : String(val);
+              return `"${stringVal.replace(/"/g, '""')}"`;
+            }
+            return '""';
+          })
+          .filter((_, i) => headers[i] != null)
+          .join(",");
+      }),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `${exportFileName}_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    const rows = table.getFilteredRowModel().rows;
+    if (!rows || rows.length === 0) return;
+
+    const doc = new jsPDF();
+
+    const headers = columns
+      .map((col: any) => {
+        if (typeof col.header === "string") return col.header;
+        if (col.accessorKey) return col.accessorKey;
+        return null;
+      })
+      .filter(Boolean);
+
+    const body = rows.map((row) => {
+      return columns
+        .map((col: any) => {
+          if (col.accessorKey) {
+            const val = (row.original as any)[col.accessorKey];
+            return val === null || val === undefined ? "" : String(val);
+          }
+          return "";
+        })
+        .filter((_, i) => {
+          const col = columns[i] as any;
+          const header =
+            typeof col.header === "string" ? col.header : col.accessorKey;
+          return !!header;
+        });
+    });
+
+    autoTable(doc as any, {
+      head: [headers],
+      body: body,
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [22, 163, 74] },
+
+      didDrawPage: (data) => {
+        doc.setFontSize(20);
+        doc.text(
+          exportFileName.replace(/_/g, " ").toUpperCase(),
+          data.settings.margin.left,
+          15
+        );
+      },
+      margin: { top: 20 },
+    });
+
+    doc.save(`${exportFileName}_${new Date().toISOString().split("T")[0]}.pdf`);
+  };
+
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 gap-2">
         {searchKey && (
           <Input
             placeholder={`Filter ${searchKey}...`}
@@ -85,32 +188,46 @@ export function DataTable<TData, TValue>({
             className="max-w-sm"
           />
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <div className="ml-auto flex gap-2">
+          {enableExport && (
+            <>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="mr-2 h-4 w-4" /> CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportPDF}>
+                <Download className="mr-2 h-4 w-4" /> PDF
+              </Button>
+            </>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>

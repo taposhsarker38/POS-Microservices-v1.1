@@ -183,7 +183,13 @@ export const ProductClient: React.FC = () => {
         </Button>
       </div>
       <div className="mt-8">
-        <DataTable searchKey="name" columns={columns} data={data} />
+        <DataTable
+          searchKey="name"
+          columns={columns}
+          data={data}
+          enableExport={true}
+          exportFileName="product_list"
+        />
       </div>
       <ProductForm
         categories={categories}

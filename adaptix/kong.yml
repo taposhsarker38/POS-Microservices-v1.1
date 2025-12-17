@@ -349,24 +349,6 @@ plugins:
       claims_to_verify: ["exp"]
       key_claim_name: iss
 
-  - name: jwt
-    route:
-      id: purchase-route-id # Placeholder, using name matching is better if supported, but Kong DB-less uses ID or direct attachment
-    # Since I cannot easily modify the route objects above to add plugins directly without massive rewrite,
-    # I will try to use the 'service' or 'route' name targeting if valid in declaratve config,
-    # OR (cleaner) add the plugin to the service/route definition itself.
-    # But I am editing the 'plugins' section at the bottom.
-    # Actually, modifying the 'routes' entries above is cleaner.
-    
-    # WAIT. I will execute a different plan. 
-    # I will modify the `routes` sections for each service to include the `plugins` list directly in the route definition or linked via ID.
-    # However, `kong.yml` (decK format) allows defining plugins at the root and linking them, OR defining them nested.
-    # The current file has `plugins` at the root referencing `route: id: ...`.
-    # Many routes do not have IDs.
-    # I MUST add IDs or add nested plugins.
-    # Nested plugins are safer and easier to read.
-
-
   # ============================================
   # 🔒 SECURITY PLUGINS
   # ============================================
@@ -374,10 +356,10 @@ plugins:
   # Global Rate Limiting - Prevents DDoS and brute force
   - name: rate-limiting
     config:
-      minute: 5000             # 5000 requests per minute per IP
-      hour: 10000              # 10000 requests per hour per IP
-      policy: local            # Use 'redis' in production for distributed limiting
-      fault_tolerant: true     # Continue if rate limiting fails
+      minute: 5000 # 5000 requests per minute per IP
+      hour: 10000 # 10000 requests per hour per IP
+      policy: local # Use 'redis' in production for distributed limiting
+      fault_tolerant: true # Continue if rate limiting fails
       hide_client_headers: false
 
   # Stricter rate limiting for login endpoint
@@ -385,14 +367,14 @@ plugins:
     route:
       id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
     config:
-      minute: 1000             # Only 1000 login attempts per minute
-      hour: 5000               # Only 5000 per hour
+      minute: 1000 # Only 1000 login attempts per minute
+      hour: 5000 # Only 5000 per hour
       policy: local
 
   # Request Size Limiting - Prevents large payload attacks
   - name: request-size-limiting
     config:
-      allowed_payload_size: 10  # 10 MB max request size
+      allowed_payload_size: 10 # 10 MB max request size
 
   # Response Rate Limiting (Bot Protection)
   - name: response-ratelimiting
@@ -410,10 +392,3 @@ plugins:
       allow:
         - "PostmanRuntime"
         - "insomnia"
-
-
-
-consumers:
-  - id: 53a46fb7-0d86-4691-a3ab-6f963182211a
-    username: auth-service-consumer
-

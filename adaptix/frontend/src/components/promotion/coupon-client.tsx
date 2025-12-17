@@ -22,12 +22,16 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { CouponForm } from "./coupon-form";
+import { AlertModal } from "@/components/modals/alert-modal";
 
 export function CouponClient() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<any | null>(null);
+
+  const [openAlert, setOpenAlert] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchCoupons = async () => {
     try {
@@ -44,14 +48,23 @@ export function CouponClient() {
     fetchCoupons();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete coupon?")) return;
+  const onDelete = (id: string) => {
+    setDeleteId(id);
+    setOpenAlert(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/promotion/coupons/${id}/`);
+      setLoading(true);
+      await api.delete(`/promotion/coupons/${deleteId}/`);
       toast.success("Coupon deleted");
       fetchCoupons();
     } catch (e) {
       toast.error("Failed to delete");
+    } finally {
+      setLoading(false);
+      setOpenAlert(false);
+      setDeleteId(null);
     }
   };
 
@@ -72,6 +85,12 @@ export function CouponClient() {
 
   return (
     <div className="space-y-4">
+      <AlertModal
+        isOpen={openAlert}
+        onClose={() => setOpenAlert(false)}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Promotions & Coupons</h2>
         <Button onClick={openCreate}>
@@ -134,7 +153,7 @@ export function CouponClient() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500"
-                      onClick={() => handleDelete(c.id)}
+                      onClick={() => onDelete(c.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

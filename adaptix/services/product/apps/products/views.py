@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status, filters
+import uuid
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
@@ -60,6 +61,31 @@ class ProductViewSet(BaseCompanyViewSet):
     search_fields = ['name', 'category__name', 'brand__name']
     filterset_fields = ['category', 'brand', 'product_type', 'is_active']
     ordering_fields = ['name', 'created_at']
+
+    def perform_create(self, serializer):
+        cid = get_company_uuid(self.request)
+        if not cid:
+            raise ValidationError({"detail": "Company context missing."})
+        
+        product = serializer.save(company_uuid=cid)
+        
+        # Check if we should create a default variant
+        # Frontend might send 'price', 'cost', 'sku', 'quantity' in the root payload for simple products
+        data = self.request.data
+        should_create_variant = any(k in data for k in ['price', 'cost', 'sku', 'quantity'])
+        
+        # Or if no variants provided at all, create a default one
+        if should_create_variant or not product.variants.exists():
+            ProductVariant.objects.create(
+                company_uuid=cid,
+                product=product,
+                name="Default",
+                sku=data.get('sku') or f"SKU-{product.name[:3].upper()}-{uuid.uuid4().hex[:6].upper()}",
+                price=data.get('price', 0),
+                cost=data.get('cost', 0),
+                quantity=data.get('quantity', 0),
+                alert_quantity=data.get('alert_quantity', 10)
+            )
 
 
 

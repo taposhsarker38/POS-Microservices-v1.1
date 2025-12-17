@@ -33,6 +33,7 @@ const formSchema = z.object({
   department: z.string().optional(),
   designation: z.string().optional(),
   salary_basic: z.coerce.number().min(0, "Salary must be positive"),
+  joining_date: z.string().optional(),
 });
 
 interface EmployeeFormProps {
@@ -67,7 +68,7 @@ export function EmployeeForm({
   }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       first_name: initialData?.first_name || "",
       last_name: initialData?.last_name || "",
@@ -79,6 +80,8 @@ export function EmployeeForm({
       salary_basic: initialData?.salary_basic
         ? parseFloat(initialData.salary_basic)
         : 0,
+      joining_date:
+        initialData?.joining_date || new Date().toISOString().split("T")[0],
     },
   });
 
@@ -248,6 +251,20 @@ export function EmployeeForm({
               <FormLabel>Basic Salary</FormLabel>
               <FormControl>
                 <Input type="number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="joining_date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Joining Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

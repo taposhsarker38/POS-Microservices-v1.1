@@ -23,6 +23,9 @@ import {
   Ticket, // Add Ticket icon
   Monitor,
   Brain,
+  ChartColumn,
+  Briefcase,
+  Factory,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -85,8 +88,20 @@ const routes = [
     permission: "view_hr",
   },
   {
+    label: "Projects",
+    icon: Briefcase,
+    href: "/dashboard/projects",
+    permission: "view_project",
+  },
+  {
+    label: "Manufacturing",
+    icon: Factory,
+    href: "/dashboard/manufacturing",
+    permission: "view_manufacturing",
+  },
+  {
     label: "Analytics",
-    icon: BarChart3,
+    icon: ChartColumn,
     href: "/dashboard/analytics",
     permission: "view_analytics",
   },

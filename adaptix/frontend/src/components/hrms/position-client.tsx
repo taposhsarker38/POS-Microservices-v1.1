@@ -22,6 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { AlertModal } from "@/components/modals/alert-modal";
 
 interface Position {
   id: string;
@@ -35,6 +36,9 @@ export function PositionClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPos, setEditingPos] = useState<Position | null>(null);
   const [formData, setFormData] = useState({ name: "", rank: 1 });
+
+  const [openAlert, setOpenAlert] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchPositions = async () => {
     try {
@@ -72,14 +76,23 @@ export function PositionClient() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
+  const onDelete = (id: string) => {
+    setDeleteId(id);
+    setOpenAlert(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/hrms/employees/designations/${id}/`);
+      setLoading(true);
+      await api.delete(`/hrms/employees/designations/${deleteId}/`);
       toast.success("Position deleted");
       fetchPositions();
     } catch (error) {
       toast.error("Failed to delete");
+    } finally {
+      setLoading(false);
+      setOpenAlert(false);
+      setDeleteId(null);
     }
   };
 
@@ -97,6 +110,12 @@ export function PositionClient() {
 
   return (
     <div className="space-y-4">
+      <AlertModal
+        isOpen={openAlert}
+        onClose={() => setOpenAlert(false)}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">
           Positions (Designations)
@@ -145,7 +164,7 @@ export function PositionClient() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500"
-                      onClick={() => handleDelete(pos.id)}
+                      onClick={() => onDelete(pos.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -2,6 +2,14 @@ import jwt
 from django.http import JsonResponse
 from django.conf import settings
 
+class JWTUser:
+    def __init__(self, payload):
+        self.payload = payload
+        self.is_authenticated = True
+        self.pk = payload.get('user_id') or payload.get('sub')
+        self.id = self.pk
+        self.username = payload.get('email') or payload.get('username') or 'jwt_user'
+
 class JWTCompanyMiddleware:
     """
     Middleware to validate JWT tokens and extract user info.
@@ -58,6 +66,10 @@ class JWTCompanyMiddleware:
             user_id = payload.get('user_id') or payload.get('sub')
             payload['user_id'] = user_id # normalize
             request.user_claims = payload
+            
+            # Set request.user so IsAuthenticated works
+            request.user = JWTUser(payload)
+            
             
         except jwt.ExpiredSignatureError:
             return JsonResponse({'error': 'Token expired'}, status=401)

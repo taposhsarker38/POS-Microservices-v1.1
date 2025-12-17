@@ -38,7 +38,11 @@ class StockViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(company_uuid=uuid)
         
         # Filters
+        # Filters
         warehouse = self.request.query_params.get('warehouse')
+        product = self.request.query_params.get('product')
+        if warehouse:
+            qs = qs.filter(warehouse=warehouse)
         if product:
             qs = qs.filter(product_uuid=product)
         return qs

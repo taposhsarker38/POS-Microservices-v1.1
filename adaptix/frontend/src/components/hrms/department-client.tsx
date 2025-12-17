@@ -23,6 +23,7 @@ import {
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { AlertModal } from "@/components/modals/alert-modal";
 
 interface Department {
   id: string;
@@ -36,6 +37,9 @@ export function DepartmentClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [formData, setFormData] = useState({ name: "", code: "" });
+
+  const [openAlert, setOpenAlert] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchDepartments = async () => {
     try {
@@ -73,14 +77,23 @@ export function DepartmentClient() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
+  const onDelete = (id: string) => {
+    setDeleteId(id);
+    setOpenAlert(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/hrms/employees/departments/${id}/`);
+      setLoading(true);
+      await api.delete(`/hrms/employees/departments/${deleteId}/`);
       toast.success("Department deleted");
       fetchDepartments();
     } catch (error) {
       toast.error("Failed to delete");
+    } finally {
+      setLoading(false);
+      setOpenAlert(false);
+      setDeleteId(null);
     }
   };
 
@@ -98,6 +111,12 @@ export function DepartmentClient() {
 
   return (
     <div className="space-y-4">
+      <AlertModal
+        isOpen={openAlert}
+        onClose={() => setOpenAlert(false)}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
         <Button onClick={openCreate}>
@@ -144,7 +163,7 @@ export function DepartmentClient() {
                       variant="ghost"
                       size="icon"
                       className="text-red-500"
-                      onClick={() => handleDelete(dept.id)}
+                      onClick={() => onDelete(dept.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

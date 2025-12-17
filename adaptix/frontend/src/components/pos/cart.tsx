@@ -5,6 +5,7 @@ import { Trash2, ShoppingCart, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { CustomerSelector } from "@/components/pos/customer-selector";
 import { CheckoutDialog } from "@/components/pos/checkout-dialog";
 
 interface CartProps {
@@ -21,6 +22,7 @@ export const Cart: React.FC<CartProps> = ({
   onCheckoutSuccess,
 }) => {
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+  const [selectedCustomer, setSelectedCustomer] = React.useState<any>(null);
 
   // Simple Total Calc
   const subtotal = items.reduce(
@@ -32,19 +34,25 @@ export const Cart: React.FC<CartProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b flex justify-between items-center bg-card">
-        <h2 className="font-semibold flex items-center">
-          <ShoppingCart className="mr-2 h-5 w-5" /> Current Order
-        </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClear}
-          disabled={items.length === 0}
-          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+      <div className="p-4 border-b space-y-3 bg-card">
+        <div className="flex justify-between items-center">
+          <h2 className="font-semibold flex items-center">
+            <ShoppingCart className="mr-2 h-5 w-5" /> Current Order
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClear}
+            disabled={items.length === 0}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <CustomerSelector
+          onSelect={setSelectedCustomer}
+          selectedCustomer={selectedCustomer}
+        />
       </div>
 
       <ScrollArea className="flex-1">
@@ -125,7 +133,11 @@ export const Cart: React.FC<CartProps> = ({
         total={total}
         isOpen={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        onSuccess={onCheckoutSuccess}
+        onSuccess={() => {
+          onCheckoutSuccess();
+          setSelectedCustomer(null);
+        }}
+        customer={selectedCustomer}
       />
     </div>
   );

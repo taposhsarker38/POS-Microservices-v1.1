@@ -22,4 +22,4 @@ opentelemetry-exporter-otlp
 pytest
 pytest-django
 
- 
+ django-filter>=23.2

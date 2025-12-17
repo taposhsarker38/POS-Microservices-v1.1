@@ -2,6 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartOfAccountClient } from "@/components/accounting/account-client";
+import { AccountGroupClient } from "@/components/accounting/group-client";
 import { JournalEntryForm } from "@/components/accounting/journal-form";
 import { useState } from "react";
 import api from "@/lib/api";
@@ -74,11 +75,15 @@ export default function AccountingPage() {
       <Tabs defaultValue="chart-of-accounts" className="space-y-4">
         <TabsList>
           <TabsTrigger value="chart-of-accounts">Chart of Accounts</TabsTrigger>
+          <TabsTrigger value="groups">Account Groups</TabsTrigger>
           <TabsTrigger value="journals">Journal Entries</TabsTrigger>
           <TabsTrigger value="new-journal">New Transaction</TabsTrigger>
         </TabsList>
         <TabsContent value="chart-of-accounts" className="space-y-4">
           <ChartOfAccountClient />
+        </TabsContent>
+        <TabsContent value="groups" className="space-y-4">
+          <AccountGroupClient />
         </TabsContent>
         <TabsContent value="journals" className="space-y-4">
           <JournalList />

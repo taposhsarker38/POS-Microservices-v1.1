@@ -23,6 +23,7 @@ const customerSchema = z.object({
   phone: z.string().min(1, "Phone is required"),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
+  loyalty_points: z.coerce.number().min(0).default(0),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -31,6 +32,7 @@ interface CustomerFormProps {
   initialData?: any | null;
   onSuccess: () => void;
   onCancel: () => void;
+  isAdmin?: boolean; // Prop to optionally show admin fields
 }
 
 export function CustomerForm({
@@ -39,12 +41,13 @@ export function CustomerForm({
   onCancel,
 }: CustomerFormProps) {
   const form = useForm<CustomerFormValues>({
-    resolver: zodResolver(customerSchema),
+    resolver: zodResolver(customerSchema) as any,
     defaultValues: {
       name: "",
       phone: "",
       email: "",
       address: "",
+      loyalty_points: 0,
     },
   });
 
@@ -55,6 +58,7 @@ export function CustomerForm({
         phone: initialData.phone,
         email: initialData.email || "",
         address: initialData.address || "",
+        loyalty_points: Number(initialData.loyalty_points || 0),
       });
     }
   }, [initialData, form]);
@@ -127,6 +131,19 @@ export function CustomerForm({
               <FormLabel>Address</FormLabel>
               <FormControl>
                 <Textarea placeholder="123 Main St..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="loyalty_points"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Loyalty Points</FormLabel>
+              <FormControl>
+                <Input type="number" step="0.01" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

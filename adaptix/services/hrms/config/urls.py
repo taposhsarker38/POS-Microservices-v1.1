@@ -15,4 +15,6 @@ urlpatterns = [
     path('api/hrms/notices/', include('apps.noticeboard.urls')),
     path('api/hrms/shifts/', include('apps.shifts.urls')),
     path('api/hrms/leaves/', include('apps.leaves.urls')),
+    path('api/hrms/performance/', include('apps.performance.urls')),
+    path('api/hrms/projects/', include('apps.projects.urls')),
 ]

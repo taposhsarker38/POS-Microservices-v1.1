@@ -1,17 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FileEdit, Trash2, User } from "lucide-react";
+import { Plus, Search, FileEdit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +12,10 @@ import {
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { CustomerForm } from "./customer-form";
+import { DataTable } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import { AlertModal } from "@/components/modals/alert-modal";
+import { Badge } from "@/components/ui/badge";
 
 export function CustomerClient() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -29,21 +24,17 @@ export function CustomerClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
 
+  const [openAlert, setOpenAlert] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const fetchCustomers = async () => {
     try {
-      // Assuming customer service is exposed via /api/customer/customers/ or /api/customer/profiles/
-      // Need to verify URL via Kong/Service.
-      // Customer Service: http://customer:8000
-      // Kong: /api/customer -> http://customer:8000
-      // Apps: profiles -> /customers/ ?
-      // Let's assume /api/customer/profiles/ based on standard naming or /api/customer/customers/
       const response = await api.get("/customer/customers/", {
         params: { search: searchTerm },
       });
       setCustomers(response.data.results || response.data);
     } catch (error) {
       console.error("Failed to fetch customers", error);
-      // Fallback: dummy data if API fails (for now)
     } finally {
       setLoading(false);
     }
@@ -56,14 +47,23 @@ export function CustomerClient() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete customer?")) return;
+  const onDelete = (id: string) => {
+    setDeleteId(id);
+    setOpenAlert(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/customer/customers/${id}/`);
+      setLoading(true);
+      await api.delete(`/customer/customers/${deleteId}/`);
       toast.success("Customer deleted");
       fetchCustomers();
     } catch (e) {
       toast.error("Failed to delete");
+    } finally {
+      setLoading(false);
+      setOpenAlert(false);
+      setDeleteId(null);
     }
   };
 
@@ -82,8 +82,73 @@ export function CustomerClient() {
     fetchCustomers();
   };
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Phone",
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => row.original.email || "-",
+    },
+    {
+      accessorKey: "loyalty_points",
+      header: "Points",
+    },
+    {
+      accessorKey: "tier",
+      header: "Tier",
+      cell: ({ row }) => {
+        const tier = row.original.tier || "SILVER";
+        const colors: Record<string, string> = {
+          SILVER: "bg-slate-400 hover:bg-slate-500",
+          GOLD: "bg-yellow-500 hover:bg-yellow-600",
+          PLATINUM: "bg-cyan-500 hover:bg-cyan-600",
+          ELITE: "bg-purple-600 hover:bg-purple-700",
+        };
+        return <Badge className={colors[tier] || colors.SILVER}>{tier}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="text-right">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => openEdit(row.original)}
+          >
+            <FileEdit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-red-500"
+            onClick={() => onDelete(row.original.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
+      <AlertModal
+        isOpen={openAlert}
+        onClose={() => setOpenAlert(false)}
+        onConfirm={confirmDelete}
+        loading={loading}
+      />
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Customers</h2>
         <Button onClick={openCreate}>
@@ -91,69 +156,14 @@ export function CustomerClient() {
         </Button>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Search className="h-4 w-4 text-gray-500" />
-        <Input
-          placeholder="Search customers..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
-
       <div className="rounded-md border bg-white dark:bg-slate-950">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Points</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : customers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
-                  No customers found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              customers.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell>{c.phone}</TableCell>
-                  <TableCell>{c.email || "-"}</TableCell>
-                  <TableCell>{c.loyalty_points}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEdit(c)}
-                    >
-                      <FileEdit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={customers}
+          searchKey="name"
+          enableExport={true}
+          exportFileName="customer_list"
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

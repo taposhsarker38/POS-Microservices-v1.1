@@ -35,10 +35,15 @@ class PaymentSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     payments = PaymentSerializer(many=True, read_only=True)
-    session_id = serializers.PrimaryKeyRelatedField(
-        queryset=POSSession.objects.all(), source='session', required=False, allow_null=True
+    loyalty_action = serializers.ChoiceField(
+        choices=['EARN', 'REDEEM', 'NONE'], 
+        default='NONE', 
+        write_only=True
     )
-    
+    redeemed_points = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, write_only=True
+    )
+
     class Meta:
         model = Order
         fields = [
@@ -49,7 +54,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'subtotal', 'tax_total', 'discount_total', 'service_charge', 'grand_total', 
             'paid_amount', 'due_amount',
             'status', 'payment_status',
-            'metadata', 'created_at', 'updated_at', 'items', 'payments'
+            'metadata', 'created_at', 'updated_at', 'items', 'payments', 'payment_data',
+            'loyalty_action', 'redeemed_points'
         ]
         read_only_fields = [
             'order_number', 'company_uuid', 'created_by', 
@@ -57,7 +63,12 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
+        import requests
+        
         items_data = validated_data.pop('items')
+        payments_data = validated_data.pop('payment_data', [])
+        loyalty_action = validated_data.pop('loyalty_action', 'NONE')
+        redeemed_points = validated_data.pop('redeemed_points', 0)
         
         # company_uuid and created_by should be passed in save() from the view
         
@@ -86,6 +97,26 @@ class OrderSerializer(serializers.ModelSerializer):
             
             OrderItem.objects.create(order=order, **item_data)
         
+        # Loyalty Redemption Logic
+        loyalty_discount = 0
+        if loyalty_action == 'REDEEM' and order.customer_uuid and redeemed_points > 0:
+            try:
+                # 1. Deduct points from Customer Service
+                url = f"http://customer:8000/api/customers/{order.customer_uuid}/adjust_points/"
+                resp = requests.post(url, json={'action': 'deduct', 'points': float(redeemed_points)})
+                
+                if resp.status_code == 200:
+                    # 2. Apply Discount (1 Point = 1 Currency Unit for MVP)
+                    loyalty_discount = float(redeemed_points)
+                    calculated_discount += loyalty_discount
+                else:
+                    # Log error or warn, but maybe don't block order? 
+                    # For strictly correct logic, we should probably rollback. 
+                    # But for now, just don't apply discount.
+                    print(f"Failed to redeem points: {resp.text}")
+            except Exception as e:
+                print(f"Loyalty error: {e}")
+
         # Update Order Totals
         order.subtotal = calculated_subtotal
         order.tax_total = calculated_tax
@@ -93,7 +124,36 @@ class OrderSerializer(serializers.ModelSerializer):
         service = validated_data.get('service_charge', 0)
         
         order.grand_total = calculated_subtotal - calculated_discount + calculated_tax + service
-        order.due_amount = order.grand_total
+        
+        # Process Payments
+        total_paid = 0
+        for p_data in payments_data:
+            p_data['company_uuid'] = order.company_uuid
+            p_data['created_by'] = order.created_by
+            Payment.objects.create(order=order, **p_data)
+            total_paid += float(p_data.get('amount', 0))
+            
+        order.paid_amount = total_paid
+        order.due_amount = float(order.grand_total) - total_paid
+        
+        if order.due_amount <= 0:
+            order.payment_status = 'paid'
+        elif total_paid > 0:
+            order.payment_status = 'partial'
+        else:
+            order.payment_status = 'pending'
+            
         order.save()
+        
+        # Loyalty Earning Logic (Async-ish)
+        if loyalty_action == 'EARN' and order.customer_uuid:
+            try:
+                # Earn 1 point for every 10 currency units spent
+                points_to_add = order.grand_total / 10
+                if points_to_add > 0:
+                    url = f"http://customer:8000/api/customers/{order.customer_uuid}/adjust_points/"
+                    requests.post(url, json={'action': 'add', 'points': float(points_to_add)})
+            except Exception as e:
+                print(f"Loyalty earn error: {e}")
         
         return order

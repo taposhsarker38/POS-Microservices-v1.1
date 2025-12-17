@@ -63,7 +63,7 @@ export const StockAdjustmentDialog: React.FC<StockAdjustmentDialogProps> = ({
   const [loading, setLoading] = React.useState(false);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       type: "add",
       quantity: "",

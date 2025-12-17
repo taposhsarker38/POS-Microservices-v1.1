@@ -32,6 +32,8 @@ const couponSchema = z.object({
   min_purchase_amount: z.coerce.number().min(0).default(0),
   usage_limit: z.coerce.number().min(1).default(100),
   active: z.boolean().default(true),
+  valid_from: z.string().optional(),
+  valid_to: z.string().optional(),
 });
 
 type CouponFormValues = z.infer<typeof couponSchema>;
@@ -48,7 +50,7 @@ export function CouponForm({
   onCancel,
 }: CouponFormProps) {
   const form = useForm<CouponFormValues>({
-    resolver: zodResolver(couponSchema),
+    resolver: zodResolver(couponSchema) as any,
     defaultValues: {
       code: "",
       discount_type: "percent",
@@ -56,6 +58,8 @@ export function CouponForm({
       min_purchase_amount: 0,
       usage_limit: 100,
       active: true,
+      valid_from: new Date().toISOString().split("T")[0],
+      valid_to: "",
     },
   });
 
@@ -68,6 +72,12 @@ export function CouponForm({
         min_purchase_amount: Number(initialData.min_purchase_amount),
         usage_limit: initialData.usage_limit,
         active: initialData.active,
+        valid_from: initialData.valid_from
+          ? initialData.valid_from.split("T")[0]
+          : "",
+        valid_to: initialData.valid_to
+          ? initialData.valid_to.split("T")[0]
+          : "",
       });
     }
   }, [initialData, form]);
@@ -171,6 +181,35 @@ export function CouponForm({
                 <FormLabel>Usage Limit</FormLabel>
                 <FormControl>
                   <Input type="number" step="1" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="valid_from"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Valid From</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="valid_to"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Valid To</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

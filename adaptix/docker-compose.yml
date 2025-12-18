@@ -98,7 +98,7 @@ services:
 
   # ============================================
   quality-service:
-    build: 
+    build:
       context: .
       dockerfile: services/quality/Dockerfile
     container_name: adaptix-quality-service
@@ -120,10 +120,15 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   # ============================================
-  
+
   auth-service:
-    build: 
+    build:
       context: .
       dockerfile: services/auth/Dockerfile
     container_name: adaptix-auth-service
@@ -159,11 +164,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   company:
-    build: 
+    build:
       context: .
       dockerfile: services/company/Dockerfile
     container_name: adaptix-company
@@ -182,11 +192,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   product:
-    build: 
+    build:
       context: .
       dockerfile: services/product/Dockerfile
     container_name: adaptix-product
@@ -205,11 +220,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   pos:
-    build: 
+    build:
       context: .
       dockerfile: services/pos/Dockerfile
     container_name: adaptix-pos
@@ -234,7 +254,7 @@ services:
       - backend
 
   inventory:
-    build: 
+    build:
       context: .
       dockerfile: services/inventory/Dockerfile
     container_name: adaptix-inventory
@@ -253,11 +273,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   purchase:
-    build: 
+    build:
       context: .
       dockerfile: services/purchase/Dockerfile
     container_name: adaptix-purchase
@@ -276,11 +301,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   hrms-service:
-    build: 
+    build:
       context: .
       dockerfile: services/hrms/Dockerfile
     container_name: adaptix-hrms-service
@@ -299,11 +329,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   accounting:
-    build: 
+    build:
       context: .
       dockerfile: services/accounting/Dockerfile
     container_name: adaptix-accounting
@@ -322,11 +357,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   customer:
-    build: 
+    build:
       context: .
       dockerfile: services/customer/Dockerfile
     container_name: adaptix-customer
@@ -345,11 +385,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   asset:
-    build: 
+    build:
       context: .
       dockerfile: services/asset/Dockerfile
     container_name: adaptix-asset
@@ -368,11 +413,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   promotion:
-    build: 
+    build:
       context: .
       dockerfile: services/promotion/Dockerfile
     container_name: adaptix-promotion
@@ -391,11 +441,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   payment:
-    build: 
+    build:
       context: .
       dockerfile: services/payment/Dockerfile
     container_name: adaptix-payment
@@ -414,11 +469,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   notification:
-    build: 
+    build:
       context: .
       dockerfile: services/notification/Dockerfile
     container_name: adaptix-notification
@@ -443,11 +503,16 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
   reporting:
-    build: 
+    build:
       context: .
       dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting
@@ -466,31 +531,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - backend
-
-  ai-service:
-    build: ./services/intelligence
-    container_name: adaptix-ai-service
-    environment:
-      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
-      - DB_SCHEMA=intelligence
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
-      - DEBUG=True
-      - PUBLIC_KEY_PATH=/keys/public.pem
-      - REDIS_URL=redis://redis:6379/0
-      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
-    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
-    volumes:
-      - ./keys:/keys:ro
-      - ./services/intelligence:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
@@ -510,7 +555,7 @@ services:
       - kong
 
   logistics-service:
-    build: 
+    build:
       context: .
       dockerfile: services/logistics/Dockerfile
     container_name: adaptix-logistics
@@ -533,7 +578,7 @@ services:
       - backend
 
   intelligence-service:
-    build: 
+    build:
       context: .
       dockerfile: services/intelligence/Dockerfile
     container_name: adaptix-intelligence

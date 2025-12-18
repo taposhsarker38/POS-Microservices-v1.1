@@ -5,7 +5,17 @@ import time
 from decimal import Decimal
 
 # Setup Django Context for HRMS to trigger event
-sys.path.append('/app')
+# Detect environment (Docker vs Local)
+if os.path.exists('/app'):
+    sys.path.append('/app')
+else:
+    # Fallback for local execution
+    # Script is in adaptix/services/hrms/verify_automation.py
+    # Needs to see 'config' package which is in the same directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.append(current_dir)
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 

@@ -1,9 +1,15 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import viewsets
 from django.db import connection
 import pandas as pd
 from .models import CustomerSegmentation
+from .serializers import CustomerSegmentationSerializer
 from datetime import datetime
+
+class CustomerSegmentationViewSet(viewsets.ModelViewSet):
+    queryset = CustomerSegmentation.objects.all()
+    serializer_class = CustomerSegmentationSerializer
 
 class RFMView(APIView):
     def post(self, request):

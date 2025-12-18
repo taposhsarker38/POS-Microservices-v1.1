@@ -311,6 +311,54 @@ services:
               claims_to_verify: ["exp"]
               key_claim_name: iss
 
+  - name: quality-service
+    url: http://quality-service:8000
+    routes:
+      - name: quality-route
+        paths:
+          - /api/quality
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+
+  - name: logistics-service
+    url: http://logistics-service:8000
+    routes:
+      - name: logistics-route
+        paths:
+          - /api/logistics
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+
+  - name: intelligence-service
+    url: http://intelligence-service:8000
+    routes:
+      - name: intelligence-route
+        paths:
+          - /api/intelligence
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+
 jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3
     consumer:

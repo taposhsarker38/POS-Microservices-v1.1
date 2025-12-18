@@ -11,10 +11,16 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Copy Shared Core FIRST
+COPY shared /shared
+RUN pip install -e /shared/adaptix_core
+
+# Copy Service Requirements
+COPY services/purchase/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy Service Code
+COPY services/purchase .
 
 RUN addgroup --system app && adduser --system --group app
 USER app

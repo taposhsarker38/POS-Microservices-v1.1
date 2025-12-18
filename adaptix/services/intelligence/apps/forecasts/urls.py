@@ -1,6 +1,10 @@
-from django.urls import path
-from .views import SalesForecastView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import SalesForecastViewSet
+
+router = DefaultRouter()
+router.register(r'sales', SalesForecastViewSet)
 
 urlpatterns = [
-    path('sales/', SalesForecastView.as_view(), name='sales-forecast'),
+    path('', include(router.urls)),
 ]

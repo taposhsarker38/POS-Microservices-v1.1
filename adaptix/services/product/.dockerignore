@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.gpt_engineer/
+.git/
+.gitignore
+.vscode/
+.idea/
+htmlcov/
+*.log

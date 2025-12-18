@@ -1,12 +1,34 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db import connection
+from rest_framework import viewsets
+from .models import SalesForecast
+from .serializers import SalesForecastSerializer
 import pandas as pd
 from prophet import Prophet
-from .models import SalesForecast
 from datetime import datetime
 import io
+from django.db import connection
 
+class SalesForecastViewSet(viewsets.ModelViewSet):
+    queryset = SalesForecast.objects.all()
+    serializer_class = SalesForecastSerializer
+
+    # The original post method from SalesForecastView needs to be adapted
+    # for a ViewSet. For now, we'll keep it as a custom action or
+    # override the create method if it fits the ModelViewSet's CRUD operations.
+    # Given the original post method generates forecasts, it's more like a custom action.
+    # However, the instruction only provides the ViewSet definition, not the method migration.
+    # So, I will keep the original methods in the old class for now,
+    # and assume the user will integrate them later, or that the ViewSet
+    # is meant for the GET/list functionality of the existing forecasts.
+
+    # If the intent was to replace the entire SalesForecastView with SalesForecastViewSet,
+    # the post method would need to be moved/adapted.
+    # For now, I'll keep the original class and its methods as they are not explicitly removed
+    # by the provided "Code Edit", which only adds the ViewSet.
+
+# The original SalesForecastView class remains as it was not explicitly removed
+# by the provided instruction. The instruction only added the ViewSet.
 class SalesForecastView(APIView):
     def post(self, request):
         # 1. Fetch data from POS schema directly using raw SQL

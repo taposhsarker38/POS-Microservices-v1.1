@@ -11,9 +11,15 @@ RUN apt-get update \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Copy Shared Core FIRST
+COPY shared /shared
+RUN pip install -e /shared/adaptix_core
+
+# Copy Service Requirements
+COPY services/inventory/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy Service Code
+COPY services/inventory .
 
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

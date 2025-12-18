@@ -1,8 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import viewsets
 from django.db import connection
 import pandas as pd
 from .models import InventoryOptimization
+from .serializers import InventoryOptimizationSerializer
+
+class InventoryOptimizationViewSet(viewsets.ModelViewSet):
+    queryset = InventoryOptimization.objects.all()
+    serializer_class = InventoryOptimizationSerializer
 
 class ReorderPointView(APIView):
     def post(self, request):

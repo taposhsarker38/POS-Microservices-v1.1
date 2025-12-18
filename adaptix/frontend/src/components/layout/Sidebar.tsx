@@ -26,6 +26,8 @@ import {
   ChartColumn,
   Briefcase,
   Factory,
+  ShieldCheck,
+  Truck,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -98,6 +100,18 @@ const routes = [
     icon: Factory,
     href: "/dashboard/manufacturing",
     permission: "view_manufacturing",
+  },
+  {
+    label: "Quality Control",
+    icon: ShieldCheck,
+    href: "/dashboard/quality",
+    permission: "view_quality",
+  },
+  {
+    label: "Logistics",
+    icon: Truck,
+    href: "/dashboard/logistics",
+    permission: "view_logistics",
   },
   {
     label: "Analytics",

@@ -1,6 +1,10 @@
-from django.urls import path
-from .views import ReorderPointView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import InventoryOptimizationViewSet
+
+router = DefaultRouter()
+router.register(r'opt', InventoryOptimizationViewSet)
 
 urlpatterns = [
-    path('reorder-points/', ReorderPointView.as_view(), name='reorder-points'),
+    path('', include(router.urls)),
 ]

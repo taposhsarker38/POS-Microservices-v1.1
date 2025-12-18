@@ -1,6 +1,10 @@
-from django.urls import path
-from .views import RFMView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CustomerSegmentationViewSet
+
+router = DefaultRouter()
+router.register(r'segments', CustomerSegmentationViewSet)
 
 urlpatterns = [
-    path('segmentation/', RFMView.as_view(), name='customer-segmentation'),
+    path('', include(router.urls)),
 ]

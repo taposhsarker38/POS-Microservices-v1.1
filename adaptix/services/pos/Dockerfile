@@ -14,9 +14,15 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Copy Shared Core FIRST
+COPY shared /shared
+RUN pip install -e /shared/adaptix_core
+
+# Copy Service Requirements
+COPY services/pos/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy Service Code
+COPY services/pos .
 
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

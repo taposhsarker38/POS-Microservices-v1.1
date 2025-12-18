@@ -7,10 +7,16 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Copy Shared Core FIRST (for caching)
+COPY shared /shared
+RUN pip install -e /shared/adaptix_core
+
+# Copy Service Requirements
+COPY services/hrms/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy Service Code
+COPY services/hrms .
 
 # Create a non-root user
 RUN addgroup --system app && adduser --system --ingroup app app

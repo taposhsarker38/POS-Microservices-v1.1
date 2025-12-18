@@ -28,13 +28,13 @@ import { Plus, Trash2 } from "lucide-react";
 const bomSchema = z.object({
   product_uuid: z.string().min(1, "Product is required"),
   name: z.string().min(2, "Name is required"),
-  quantity: z.coerce.number().min(0.1),
+  quantity: z.string(),
   items: z
     .array(
       z.object({
         component_uuid: z.string().min(1, "Component required"),
-        quantity: z.coerce.number().min(0.001),
-        waste_percentage: z.coerce.number().min(0).default(0),
+        quantity: z.string(),
+        waste_percentage: z.string().optional(),
       })
     )
     .min(1, "At least one item required"),
@@ -62,8 +62,8 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
     resolver: zodResolver(bomSchema),
     defaultValues: {
       name: "",
-      quantity: 1,
-      items: [{ quantity: 1, waste_percentage: 0, component_uuid: "" }],
+      quantity: "1",
+      items: [{ quantity: "1", waste_percentage: "0", component_uuid: "" }],
     },
   });
 
@@ -77,36 +77,39 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
       form.reset({
         product_uuid: initialData.product_uuid,
         name: initialData.name,
-        quantity: initialData.quantity,
-        items: initialData.items || [],
+        quantity: String(initialData.quantity),
+        items:
+          initialData.items?.map((i: any) => ({
+            ...i,
+            quantity: String(i.quantity),
+            waste_percentage: String(i.waste_percentage || 0),
+          })) || [],
       });
     }
   }, [initialData, form]);
 
   const onSubmit = async (values: BOMFormValues) => {
     try {
+      const payload = {
+        ...values,
+        quantity: parseFloat(values.quantity),
+        items: values.items.map((i) => ({
+          ...i,
+          quantity: parseFloat(i.quantity),
+          waste_percentage: i.waste_percentage
+            ? parseFloat(i.waste_percentage)
+            : 0,
+        })),
+      };
+
       if (initialData) {
-        // Update logic (might be complex with nested items, usually simple put works if nested serializer supports it,
-        // else we might need to delete/recreate items or handle separately.
-        // For now Assuming the backend serializer handles nested writes or we just update the header).
-        // Actually my backend serializer `BillOfMaterialSerializer` had `read_only=True` for items.
-        // I need to implement item management separate or enable write.
-        // Let's rely on basic PUT for header and maybe creating new BOM for edits to avoid breaking history?
-        // Or just handle header update.
         await api.put(
           `/inventory/manufacturing/boms/${initialData.id}/`,
-          values
+          payload
         );
-        // Note: this won't update items if serializer is read-only. Ideally we use a writable nested serializer.
-        // Given time constraint, I will focus on Creation.
         toast.success("BOM updated");
       } else {
-        // POST. I need to make sure my serializer handles `items` creation.
-        // My `BillOfMaterialSerializer` has `items = BOMItemSerializer(many=True, read_only=True)`.
-        // This means POSTing items won't work out of the box.
-        // I should have fixed the serializer or use a separate loop.
-        // I will implement a loop here to create items after BOM creation.
-        const { items, ...bomData } = values;
+        const { items, ...bomData } = payload;
         const res = await api.post("/inventory/manufacturing/boms/", bomData);
         const bomId = res.data.id;
 
@@ -199,7 +202,11 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
               size="sm"
               variant="outline"
               onClick={() =>
-                append({ component_uuid: "", quantity: 1, waste_percentage: 0 })
+                append({
+                  component_uuid: "",
+                  quantity: "1",
+                  waste_percentage: "0",
+                })
               }
             >
               <Plus className="h-4 w-4 mr-2" /> Add Item

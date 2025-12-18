@@ -109,6 +109,9 @@ SPECTACULAR_SETTINGS = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Message Queue
+RABBITMQ_URL = os.environ.get('RABBITMQ_URL', 'amqp://guest:guest@rabbitmq:5672/')
+
 # Tracing
 try:
     from config.tracing import setup_tracing

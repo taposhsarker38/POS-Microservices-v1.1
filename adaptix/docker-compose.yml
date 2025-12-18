@@ -97,11 +97,35 @@ services:
       - auth-service
 
   # ============================================
-  # MICROSERVICES (All using single DB)
+  quality-service:
+    build: 
+      context: .
+      dockerfile: services/quality/Dockerfile
+    container_name: adaptix-quality-service
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=quality_schema
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - JWT_ALGORITHM=RS256
+      - JWT_AUDIENCE=pos-system
+      - JWT_ISSUER=auth-service
+    volumes:
+      - ./services/quality:/app
+      - ./keys:/keys:ro
+      - ./shared:/shared
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
   # ============================================
   
   auth-service:
-    build: ./services/auth
+    build: 
+      context: .
+      dockerfile: services/auth/Dockerfile
     container_name: adaptix-auth-service
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -115,7 +139,7 @@ services:
       - EMAIL_HOST=sg2plzcpnl476824.prod.sin2.secureserver.net
       - EMAIL_PORT=465
       - EMAIL_HOST_USER=info@expotechglobal.com
-      - EMAIL_HOST_PASSWORD=Ca[_TcR^!O$]
+      - EMAIL_HOST_PASSWORD=Ca[_TcR^!O$$]
       - EMAIL_USE_TLS=False
       - EMAIL_USE_SSL=True
       - SERVER_EMAIL=info@expotechglobal.com
@@ -126,8 +150,12 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/auth:/app
+      - ./shared:/shared
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -135,7 +163,9 @@ services:
       - backend
 
   company:
-    build: ./services/company
+    build: 
+      context: .
+      dockerfile: services/company/Dockerfile
     container_name: adaptix-company
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -147,6 +177,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/company:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,7 +186,9 @@ services:
       - backend
 
   product:
-    build: ./services/product
+    build: 
+      context: .
+      dockerfile: services/product/Dockerfile
     container_name: adaptix-product
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -166,6 +200,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/product:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,7 +209,9 @@ services:
       - backend
 
   pos:
-    build: ./services/pos
+    build: 
+      context: .
+      dockerfile: services/pos/Dockerfile
     container_name: adaptix-pos
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -185,6 +223,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/pos:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -194,7 +234,9 @@ services:
       - backend
 
   inventory:
-    build: ./services/inventory
+    build: 
+      context: .
+      dockerfile: services/inventory/Dockerfile
     container_name: adaptix-inventory
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -206,6 +248,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/inventory:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -213,7 +257,9 @@ services:
       - backend
 
   purchase:
-    build: ./services/purchase
+    build: 
+      context: .
+      dockerfile: services/purchase/Dockerfile
     container_name: adaptix-purchase
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -225,6 +271,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/purchase:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -232,7 +280,9 @@ services:
       - backend
 
   hrms-service:
-    build: ./services/hrms
+    build: 
+      context: .
+      dockerfile: services/hrms/Dockerfile
     container_name: adaptix-hrms-service
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -244,6 +294,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/hrms:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -251,7 +303,9 @@ services:
       - backend
 
   accounting:
-    build: ./services/accounting
+    build: 
+      context: .
+      dockerfile: services/accounting/Dockerfile
     container_name: adaptix-accounting
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -263,6 +317,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/accounting:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -270,7 +326,9 @@ services:
       - backend
 
   customer:
-    build: ./services/customer
+    build: 
+      context: .
+      dockerfile: services/customer/Dockerfile
     container_name: adaptix-customer
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -282,6 +340,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/customer:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -289,7 +349,9 @@ services:
       - backend
 
   asset:
-    build: ./services/asset
+    build: 
+      context: .
+      dockerfile: services/asset/Dockerfile
     container_name: adaptix-asset
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -301,6 +363,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/asset:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -308,7 +372,9 @@ services:
       - backend
 
   promotion:
-    build: ./services/promotion
+    build: 
+      context: .
+      dockerfile: services/promotion/Dockerfile
     container_name: adaptix-promotion
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -320,6 +386,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/promotion:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -327,7 +395,9 @@ services:
       - backend
 
   payment:
-    build: ./services/payment
+    build: 
+      context: .
+      dockerfile: services/payment/Dockerfile
     container_name: adaptix-payment
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -339,6 +409,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/payment:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -346,7 +418,9 @@ services:
       - backend
 
   notification:
-    build: ./services/notification
+    build: 
+      context: .
+      dockerfile: services/notification/Dockerfile
     container_name: adaptix-notification
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -355,9 +429,15 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_HOST_USER=test@gmail.com
+      - EMAIL_HOST_PASSWORD=test
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/notification:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -367,7 +447,9 @@ services:
       - backend
 
   reporting:
-    build: ./services/reporting
+    build: 
+      context: .
+      dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -379,6 +461,8 @@ services:
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
+      - ./services/reporting:/app
+      - ./shared:/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -424,6 +508,52 @@ services:
       - backend
     depends_on:
       - kong
+
+  logistics-service:
+    build: 
+      context: .
+      dockerfile: services/logistics/Dockerfile
+    container_name: adaptix-logistics
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=logistics
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DEBUG=True
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./keys:/keys:ro
+      - ./services/logistics:/app
+      - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  intelligence-service:
+    build: 
+      context: .
+      dockerfile: services/intelligence/Dockerfile
+    container_name: adaptix-intelligence
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=intelligence
+      - DEBUG=True
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    volumes:
+      - ./keys:/keys:ro
+      - ./services/intelligence:/app
+      - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
 
 volumes:
   postgres_data:

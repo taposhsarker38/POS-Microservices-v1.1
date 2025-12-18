@@ -2,12 +2,14 @@ import pika
 import json
 import os
 
+from django.conf import settings
+
 def publish_event(exchange, routing_key, payload):
     """
     Publish an event to RabbitMQ.
     """
     try:
-        broker_url = os.environ.get('CELERY_BROKER_URL', 'amqp://guest:guest@rabbitmq:5672/')
+        broker_url = getattr(settings, 'RABBITMQ_URL', 'amqp://guest:guest@rabbitmq:5672/')
         params = pika.URLParameters(broker_url)
         connection = pika.BlockingConnection(params)
         channel = connection.channel()

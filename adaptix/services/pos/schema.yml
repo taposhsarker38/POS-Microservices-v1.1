@@ -1,0 +1,1088 @@
+openapi: 3.0.3
+info:
+  title: Adaptix - POS API
+  version: 1.0.0
+  description: Point of Sale, Orders, and Sales Management.
+paths:
+  /api/pos/orders/:
+    get:
+      operationId: orders_list
+      tags:
+      - orders
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+          description: ''
+    post:
+      operationId: orders_create
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Order'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Order'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/pos/orders/{id}/:
+    get:
+      operationId: orders_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this order.
+        required: true
+      tags:
+      - orders
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+    put:
+      operationId: orders_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this order.
+        required: true
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Order'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Order'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+    patch:
+      operationId: orders_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this order.
+        required: true
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrder'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+    delete:
+      operationId: orders_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this order.
+        required: true
+      tags:
+      - orders
+      responses:
+        '204':
+          description: No response body
+  /api/pos/orders/calculate/:
+    post:
+      operationId: orders_calculate_create
+      description: |-
+        Dry-run calculation for UI.
+        Expects same payload as create (items list).
+        Returns totals.
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Order'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Order'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/pos/payments/:
+    get:
+      operationId: payments_list
+      tags:
+      - payments
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+          description: ''
+    post:
+      operationId: payments_create
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/pos/payments/{id}/:
+    get:
+      operationId: payments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this payment.
+        required: true
+      tags:
+      - payments
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    put:
+      operationId: payments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    patch:
+      operationId: payments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    delete:
+      operationId: payments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this payment.
+        required: true
+      tags:
+      - payments
+      responses:
+        '204':
+          description: No response body
+  /api/pos/sessions/:
+    get:
+      operationId: sessions_list
+      tags:
+      - sessions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/POSSession'
+          description: ''
+    post:
+      operationId: sessions_create
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSession'
+          description: ''
+  /api/pos/sessions/{id}/:
+    get:
+      operationId: sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this pos session.
+        required: true
+      tags:
+      - sessions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSession'
+          description: ''
+    put:
+      operationId: sessions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this pos session.
+        required: true
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSession'
+          description: ''
+    patch:
+      operationId: sessions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this pos session.
+        required: true
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPOSSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPOSSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPOSSession'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSession'
+          description: ''
+    delete:
+      operationId: sessions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this pos session.
+        required: true
+      tags:
+      - sessions
+      responses:
+        '204':
+          description: No response body
+  /api/pos/sessions/{id}/close/:
+    post:
+      operationId: sessions_close_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this pos session.
+        required: true
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/POSSession'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/POSSession'
+          description: ''
+components:
+  schemas:
+    ItemTypeEnum:
+      enum:
+      - product
+      - service
+      - rental
+      - fee
+      - package
+      type: string
+      description: |-
+        * `product` - Product
+        * `service` - Service
+        * `rental` - Rental
+        * `fee` - Fee
+        * `package` - Package
+    LoyaltyActionEnum:
+      enum:
+      - EARN
+      - REDEEM
+      - NONE
+      type: string
+      description: |-
+        * `EARN` - EARN
+        * `REDEEM` - REDEEM
+        * `NONE` - NONE
+    MethodEnum:
+      enum:
+      - cash
+      - card
+      - mobile_banking
+      - bank_transfer
+      - cheque
+      - credit
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `card` - Card
+        * `mobile_banking` - Mobile Banking
+        * `bank_transfer` - Bank Transfer
+        * `cheque` - Cheque
+        * `credit` - Store Credit
+    ModuleTypeEnum:
+      enum:
+      - retail
+      - restaurant
+      - service
+      - booking
+      - rental
+      - medical
+      - consultancy
+      - manufacturing
+      type: string
+      description: |-
+        * `retail` - Retail
+        * `restaurant` - Restaurant
+        * `service` - Service
+        * `booking` - Booking
+        * `rental` - Rental
+        * `medical` - Medical
+        * `consultancy` - Consultancy
+        * `manufacturing` - Manufacturing
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+        module_type:
+          $ref: '#/components/schemas/ModuleTypeEnum'
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+        customer_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        customer_name:
+          type: string
+          maxLength: 255
+        customer_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        customer_address:
+          type: string
+          nullable: true
+        table_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        token_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        delivery_date:
+          type: string
+          format: date-time
+          nullable: true
+        pickup_date:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          type: string
+          maxLength: 10
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        tax_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        discount_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        service_charge:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        grand_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/OrderStatusEnum'
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        metadata: {}
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+          readOnly: true
+        payment_data:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          writeOnly: true
+        loyalty_action:
+          allOf:
+          - $ref: '#/components/schemas/LoyaltyActionEnum'
+          writeOnly: true
+          default: NONE
+        redeemed_points:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          writeOnly: true
+      required:
+      - created_at
+      - due_amount
+      - grand_total
+      - id
+      - items
+      - order_number
+      - paid_amount
+      - payments
+      - session_id
+      - subtotal
+      - updated_at
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        item_type:
+          $ref: '#/components/schemas/ItemTypeEnum'
+        product_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        product_name:
+          type: string
+          maxLength: 255
+        sku:
+          type: string
+          nullable: true
+          maxLength: 100
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        assigned_staff_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        variant_attributes: {}
+        metadata: {}
+      required:
+      - id
+      - product_name
+      - subtotal
+      - unit_price
+    OrderStatusEnum:
+      enum:
+      - draft
+      - confirmed
+      - processing
+      - ready
+      - completed
+      - cancelled
+      - returned
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `confirmed` - Confirmed
+        * `processing` - Processing
+        * `ready` - Ready
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `returned` - Returned
+    POSSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        company_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_deleted:
+          type: boolean
+        user_uuid:
+          type: string
+          format: uuid
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        closing_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        expected_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/POSSessionStatusEnum'
+          readOnly: true
+        note:
+          type: string
+          nullable: true
+      required:
+      - closing_balance
+      - company_uuid
+      - created_at
+      - id
+      - opening_balance
+      - status
+      - updated_at
+      - user_uuid
+    POSSessionStatusEnum:
+      enum:
+      - open
+      - closed
+      - reconciled
+      type: string
+      description: |-
+        * `open` - Open
+        * `closed` - Closed
+        * `reconciled` - Reconciled
+    PatchedOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+        module_type:
+          $ref: '#/components/schemas/ModuleTypeEnum'
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+        customer_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        customer_name:
+          type: string
+          maxLength: 255
+        customer_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        customer_address:
+          type: string
+          nullable: true
+        table_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        token_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        delivery_date:
+          type: string
+          format: date-time
+          nullable: true
+        pickup_date:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          type: string
+          maxLength: 10
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        tax_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        discount_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        service_charge:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        grand_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/OrderStatusEnum'
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        metadata: {}
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+          readOnly: true
+        payment_data:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          writeOnly: true
+        loyalty_action:
+          allOf:
+          - $ref: '#/components/schemas/LoyaltyActionEnum'
+          writeOnly: true
+          default: NONE
+        redeemed_points:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          writeOnly: true
+    PatchedPOSSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        company_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_deleted:
+          type: boolean
+        user_uuid:
+          type: string
+          format: uuid
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        closing_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        expected_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/POSSessionStatusEnum'
+          readOnly: true
+        note:
+          type: string
+          nullable: true
+    PatchedPayment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_deleted:
+          type: boolean
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        transaction_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        note:
+          type: string
+          nullable: true
+        company_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+          nullable: true
+        order:
+          type: string
+          format: uuid
+          readOnly: true
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_deleted:
+          type: boolean
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        transaction_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        note:
+          type: string
+          nullable: true
+        company_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+          nullable: true
+        order:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - amount
+      - company_uuid
+      - created_at
+      - created_by
+      - id
+      - order
+      - updated_at
+    PaymentStatusEnum:
+      enum:
+      - pending
+      - partial
+      - paid
+      - refunded
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `partial` - Partial
+        * `paid` - Paid
+        * `refunded` - Refunded

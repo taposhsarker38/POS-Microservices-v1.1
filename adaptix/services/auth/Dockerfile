@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Copy Shared Core
 COPY shared /shared
-RUN pip install -e /shared/adaptix_core
+RUN pip install /shared/adaptix_core
 
 # Copy Service Requirements
 COPY services/auth/requirements.txt .

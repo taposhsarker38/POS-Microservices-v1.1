@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy Shared Core FIRST
 COPY shared /shared
-RUN pip install -e /shared/adaptix_core
+RUN pip install /shared/adaptix_core
 
 # Copy Service Requirements
 COPY services/purchase/requirements.txt .

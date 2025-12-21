@@ -148,6 +148,22 @@ export interface paths {
         patch: operations["forecast_sales_partial_update"];
         trace?: never;
     };
+    "/api/intelligence/forecast/sales/trigger_forecast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["forecast_sales_trigger_forecast_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intelligence/hr/attrition-risk/": {
         parameters: {
             query?: never;
@@ -194,6 +210,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["inventory_opt_partial_update"];
+        trace?: never;
+    };
+    "/api/intelligence/inventory/opt/trigger_analysis/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["inventory_opt_trigger_analysis_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/intelligence/schema/": {
@@ -280,6 +312,8 @@ export interface components {
         InventoryOptimization: {
             readonly id: number;
             /** Format: uuid */
+            company_uuid?: string | null;
+            /** Format: uuid */
             product_uuid: string;
             /** Format: uuid */
             branch_id?: string | null;
@@ -288,6 +322,10 @@ export interface components {
             avg_daily_consumption: number;
             suggested_reorder_point: number;
             suggested_reorder_qty: number;
+            /** Format: double */
+            stockout_risk_score?: number;
+            /** Format: date */
+            estimated_stockout_date?: string | null;
             /** Format: date-time */
             readonly last_updated: string;
         };
@@ -330,6 +368,8 @@ export interface components {
         PatchedInventoryOptimization: {
             readonly id?: number;
             /** Format: uuid */
+            company_uuid?: string | null;
+            /** Format: uuid */
             product_uuid?: string;
             /** Format: uuid */
             branch_id?: string | null;
@@ -338,11 +378,20 @@ export interface components {
             avg_daily_consumption?: number;
             suggested_reorder_point?: number;
             suggested_reorder_qty?: number;
+            /** Format: double */
+            stockout_risk_score?: number;
+            /** Format: date */
+            estimated_stockout_date?: string | null;
             /** Format: date-time */
             readonly last_updated?: string;
         };
         PatchedSalesForecast: {
             readonly id?: number;
+            /** Format: uuid */
+            company_uuid?: string | null;
+            /** Format: uuid */
+            product_uuid?: string | null;
+            forecast_type?: string;
             /** Format: date */
             date?: string;
             /** Format: double */
@@ -356,6 +405,11 @@ export interface components {
         };
         SalesForecast: {
             readonly id: number;
+            /** Format: uuid */
+            company_uuid?: string | null;
+            /** Format: uuid */
+            product_uuid?: string | null;
+            forecast_type?: string;
             /** Format: date */
             date: string;
             /** Format: double */
@@ -779,8 +833,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this sales forecast. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -801,8 +854,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this sales forecast. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -829,8 +881,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this sales forecast. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -850,8 +901,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this sales forecast. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -860,6 +910,31 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedSalesForecast"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedSalesForecast"];
                 "multipart/form-data": components["schemas"]["PatchedSalesForecast"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesForecast"];
+                };
+            };
+        };
+    };
+    forecast_sales_trigger_forecast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesForecast"];
+                "application/x-www-form-urlencoded": components["schemas"]["SalesForecast"];
+                "multipart/form-data": components["schemas"]["SalesForecast"];
             };
         };
         responses: {
@@ -958,8 +1033,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this inventory optimization. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -980,8 +1054,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this inventory optimization. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1008,8 +1081,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this inventory optimization. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1029,8 +1101,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A unique integer value identifying this inventory optimization. */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1039,6 +1110,31 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedInventoryOptimization"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedInventoryOptimization"];
                 "multipart/form-data": components["schemas"]["PatchedInventoryOptimization"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryOptimization"];
+                };
+            };
+        };
+    };
+    inventory_opt_trigger_analysis_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InventoryOptimization"];
+                "application/x-www-form-urlencoded": components["schemas"]["InventoryOptimization"];
+                "multipart/form-data": components["schemas"]["InventoryOptimization"];
             };
         };
         responses: {

@@ -48,8 +48,8 @@ class JWTCompanyMiddleware:
              request.user_claims = {"company_uuid": header_uuid, "permissions": []} 
              return self.get_response(request)
 
-        # Skip exempt paths
-        if self._is_exempt(request.path):
+        # Skip exempt paths and OPTIONS requests
+        if request.method == 'OPTIONS' or self._is_exempt(request.path):
             return self.get_response(request)
         
         # Extract token from Authorization header
@@ -79,12 +79,20 @@ class JWTCompanyMiddleware:
             request.user_claims = payload
             
         except jwt.ExpiredSignatureError:
+            print(f"JWT Middleware: Token Expired. Headers: {auth_header[:20]}...")
             return JsonResponse({'error': 'Token expired'}, status=401)
         except jwt.InvalidTokenError as e:
+            print(f"JWT Middleware: Invalid Token. Error: {e}")
+            try:
+                # Debug payload
+                unverified = jwt.decode(token, options={"verify_signature": False})
+                print(f"Unverified Payload: {unverified}")
+            except:
+                pass
             return JsonResponse({'error': f'Invalid token: {str(e)}'}, status=401)
         except Exception as e:
             # Log but don't block - let view handle auth
-            print(f"JWT Middleware Error: {e}")
+            print(f"JWT Middleware Generic Error: {e}")
             request.company_uuid = None
             request.user_claims = {}
         
@@ -156,3 +164,25 @@ class AuditMiddleware:
                 print(f"[Core] AUDIT SENT from {ip}: {request.method} {request.path}")
         except Exception as e:
             print(f"Audit logging failed: {e}")
+import uuid
+from .logging import set_correlation_id
+
+class CorrelationIDMiddleware:
+    """
+    Middleware to extract or generate correlation ID and store in thread-local.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        correlation_id = request.headers.get('X-Correlation-ID') or request.headers.get('X-Request-ID')
+        if not correlation_id:
+            correlation_id = str(uuid.uuid4())
+        
+        set_correlation_id(correlation_id)
+        
+        response = self.get_response(request)
+        
+        # Return ID in response headers for tracing
+        response['X-Correlation-ID'] = correlation_id
+        return response

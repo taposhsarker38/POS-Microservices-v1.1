@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, Download } from "lucide-react";
+import { ChevronDown, Download, LayoutList, Rows } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -23,6 +23,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +39,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string;
+  hideSearch?: boolean; // New prop to hide internal search
   enableExport?: boolean;
   exportFileName?: string;
 }
@@ -46,6 +48,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
+  hideSearch = false,
   enableExport = false,
   exportFileName = "data_export",
 }: DataTableProps<TData, TValue>) {
@@ -56,6 +59,9 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [density, setDensity] = React.useState<"default" | "compact">(
+    "default"
+  );
 
   const table = useReactTable({
     data,
@@ -176,7 +182,7 @@ export function DataTable<TData, TValue>({
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-2">
-        {searchKey && (
+        {searchKey && !hideSearch && (
           <Input
             placeholder={`Filter ${searchKey}...`}
             value={
@@ -227,6 +233,26 @@ export function DataTable<TData, TValue>({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                {density === "compact" ? (
+                  <LayoutList className="h-4 w-4" />
+                ) : (
+                  <Rows className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setDensity("default")}>
+                Default
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDensity("compact")}>
+                Compact
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="rounded-md border">
@@ -257,7 +283,10 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={density === "compact" ? "py-1" : "py-4"}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

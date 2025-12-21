@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intelligence-service
+  namespace: adaptix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: intelligence-service
+  template:
+    metadata:
+      labels:
+        app: intelligence-service
+    spec:
+      containers:
+        - name: intelligence-service
+          image: adaptix-intelligence-service:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: adaptix-config
+            - secretRef:
+                name: adaptix-secrets
+          env:
+            - name: SERVICE_NAME
+              value: "intelligence-service"
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+        # Celery Worker Sidecar (or separate deployment)
+        - name: celery-worker
+          image: adaptix-intelligence-service:latest
+          command: ["celery", "-A", "config", "worker", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: adaptix-config
+            - secretRef:
+                name: adaptix-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: intelligence-service
+  namespace: adaptix
+spec:
+  selector:
+    app: intelligence-service
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

@@ -67,10 +67,13 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'adaptix_core.middleware.JWTCompanyMiddleware',
+    'adaptix_core.middleware.AuditMiddleware',
+    'adaptix_core.middleware.CorrelationIDMiddleware',
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "apps.audit.middleware.AuditMiddleware",  # optional - keep if exists
-    "adaptix_core.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -259,10 +262,23 @@ AUDIT_LOCAL_QUEUE = os.getenv("AUDIT_LOCAL_QUEUE", "/tmp/auth_audit_queue.log")
 # Logging
 # ---------------------------
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'adaptix_core.logging.JSONFormatter',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
 }
 
 # ---------------------------

@@ -3,9 +3,14 @@
 import * as React from "react";
 import { ProductGrid } from "@/components/pos/product-grid";
 import { Cart } from "@/components/pos/cart";
+import { usePOSShortcuts } from "@/hooks/usePOSShortcuts";
+import { toast } from "sonner";
 
 export default function POSPage() {
   const [cartItems, setCartItems] = React.useState<any[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const addToCart = (product: any) => {
     setCartItems((prev) => {
@@ -19,6 +24,7 @@ export default function POSPage() {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
+    // Optional: add toast or sound for ultra-fast feedback
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -36,20 +42,44 @@ export default function POSPage() {
   };
 
   const clearCart = () => {
-    setCartItems([]);
+    if (cartItems.length > 0) {
+      setCartItems([]);
+      toast.info("Cart cleared");
+    }
   };
 
+  // Keyboard Shortcuts Integration
+  usePOSShortcuts({
+    onSearch: () => {
+      const input = document.querySelector(
+        'input[placeholder*="Search"]'
+      ) as HTMLInputElement;
+      input?.focus();
+      input?.select();
+    },
+    onCheckout: () => {
+      if (cartItems.length > 0) {
+        setCheckoutOpen(true);
+      } else {
+        toast.error("Cart is empty");
+      }
+    },
+    onClearCart: clearCart,
+  });
+
   return (
-    <div className="flex h-full h-[calc(100vh-4rem)] gap-4 p-4">
-      <div className="flex-1 overflow-hidden rounded-lg border bg-background shadow-sm">
+    <div className="flex h-[calc(100vh-4rem)] gap-0 p-0 overflow-hidden bg-slate-100 dark:bg-black">
+      <div className="flex-1 overflow-hidden border-r bg-white dark:bg-slate-950 shadow-xl z-0">
         <ProductGrid onAddToCart={addToCart} />
       </div>
-      <div className="w-[400px] flex-none rounded-lg border bg-surface shadow-sm overflow-hidden flex flex-col">
+      <div className="w-[380px] xl:w-[420px] flex-none bg-white dark:bg-slate-950 shadow-2xl z-10 overflow-hidden flex flex-col">
         <Cart
           items={cartItems}
           onUpdateQuantity={updateQuantity}
           onClear={clearCart}
-          onCheckoutSuccess={clearCart}
+          onCheckoutSuccess={() => setCartItems([])}
+          checkoutOpen={checkoutOpen}
+          onCheckoutOpenChange={setCheckoutOpen}
         />
       </div>
     </div>

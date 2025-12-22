@@ -5,9 +5,10 @@ import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckCircle, XCircle, Clock } from "lucide-react";
-import api from "@/lib/api";
+import { Plus, CheckCircle, XCircle, Eye } from "lucide-react";
+import { qualityApi, Inspection } from "@/lib/api/quality";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -17,16 +18,18 @@ import {
 import { InspectionForm } from "./inspection-form";
 
 export function InspectionList() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/quality/inspections/");
-      setData(res.data);
+      const res = await qualityApi.getInspections();
+      setData(res);
     } catch (error) {
       console.error("Failed to fetch inspections", error);
+      toast.error("Could not load inspections");
     } finally {
       setLoading(false);
     }
@@ -36,16 +39,45 @@ export function InspectionList() {
     fetchData();
   }, []);
 
-  const columns: ColumnDef<any>[] = [
+  const handleStatusUpdate = async (
+    id: number,
+    status: "PASSED" | "FAILED"
+  ) => {
+    try {
+      await qualityApi.updateInspectionStatus(
+        id,
+        status,
+        `Manual update to ${status}`
+      );
+      toast.success(`Inspection marked as ${status}`);
+      fetchData();
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const columns: ColumnDef<Inspection>[] = [
     {
       accessorKey: "id",
       header: "ID",
+      cell: ({ row }) => (
+        <span className="font-mono">#{row.getValue("id")}</span>
+      ),
     },
     {
       accessorKey: "reference_type",
       header: "Type",
       cell: ({ row }) => (
         <Badge variant="outline">{row.original.reference_type}</Badge>
+      ),
+    },
+    {
+      accessorKey: "reference_uuid",
+      header: "Ref UUID",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">
+          {row.original.reference_uuid.substring(0, 8)}...
+        </span>
       ),
     },
     {
@@ -72,21 +104,49 @@ export function InspectionList() {
       accessorKey: "inspection_date",
       header: "Date",
       cell: ({ row }) =>
-        format(new Date(row.original.created_at || new Date()), "PPP"),
+        row.original.inspection_date
+          ? format(new Date(row.original.inspection_date), "PPP p")
+          : "-",
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <Button size="sm" variant="ghost">
-          View
-        </Button>
-      ),
+      header: "Actions",
+      cell: ({ row }) => {
+        const inspection = row.original;
+        const isPending = inspection.status === "PENDING";
+
+        return (
+          <div className="flex gap-2 justify-end">
+            {isPending && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => handleStatusUpdate(inspection.id, "PASSED")}
+                  title="Pass Inspection"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleStatusUpdate(inspection.id, "FAILED")}
+                  title="Fail Inspection"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            <Button size="sm" variant="ghost">
+              <Eye className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // ... imports and previous code ...
 
   return (
     <div className="space-y-4">
@@ -95,7 +155,12 @@ export function InspectionList() {
           <Plus className="mr-2 h-4 w-4" /> New Inspection
         </Button>
       </div>
-      <DataTable columns={columns} data={data} searchKey="reference_type" />
+      <DataTable
+        columns={columns}
+        data={data}
+        searchKey="reference_uuid"
+        isLoading={loading}
+      />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

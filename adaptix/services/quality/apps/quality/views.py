@@ -1,72 +1,66 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets
 from .models import QualityStandard, Inspection, TestResult
 from .serializers import QualityStandardSerializer, InspectionSerializer, TestResultSerializer
+from adaptix_core.permissions import HasPermission
+import os
+import json
+from kombu import Connection, Exchange, Producer
+from django.core.serializers.json import DjangoJSONEncoder
 
 class QualityStandardViewSet(viewsets.ModelViewSet):
     queryset = QualityStandard.objects.all()
     serializer_class = QualityStandardSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['product_uuid', 'is_active']
+    permission_classes = [HasPermission]
+    required_permission = "quality.standard"
 
 class InspectionViewSet(viewsets.ModelViewSet):
     queryset = Inspection.objects.all()
     serializer_class = InspectionSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['reference_type', 'reference_uuid', 'status']
+    permission_classes = [HasPermission]
+    required_permission = "quality.inspection"
+    
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_status = instance.status
+        updated_instance = serializer.save()
+        new_status = updated_instance.status
+        
+        if old_status != new_status and new_status in ['PASSED', 'FAILED']:
+            self.publish_completion_event(updated_instance)
 
-    @action(detail=True, methods=['post'])
-    def add_result(self, request, pk=None):
-        inspection = self.get_object()
-        serializer = TestResultSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(inspection=inspection)
+    def publish_completion_event(self, inspection):
+        try:
+            BROKER_URL = os.environ.get("RABBITMQ_URL", "amqp://adaptix:adaptix123@rabbitmq:5672/")
+            connection = Connection(BROKER_URL)
+            connection.connect()
             
-            # Auto-update status logic
-            self._update_inspection_status(inspection)
+            exchange = Exchange("events", type="topic", durable=True)
+            producer = Producer(connection)
             
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            event_payload = {
+                "event": "quality.inspection.completed",
+                "inspection_id": inspection.id,
+                "reference_uuid": str(inspection.reference_uuid),
+                "reference_type": inspection.reference_type,
+                "status": inspection.status,
+                "notes": inspection.notes
+            }
+            
+            producer.publish(
+                json.dumps(event_payload, cls=DjangoJSONEncoder),
+                exchange=exchange,
+                routing_key="quality.inspection.completed",
+                declare=[exchange],
+                retry=True
+            )
+            connection.release()
+            print(f"Published quality.inspection.completed event for {inspection.reference_uuid}")
+            
+        except Exception as e:
+            print(f"Failed to publish Quality event: {e}")
 
-    def _update_inspection_status(self, inspection):
-        # 1. Get all standards for the product
-        standards = QualityStandard.objects.filter(product_uuid=inspection.reference_uuid, is_active=True)
-        # Note: reference_uuid in Inspection equals product_uuid? 
-        # Inspection.reference_uuid could be Inventory ID or Production Order ID, invalid assumption?
-        # Let's check model. Inspection has reference_type and reference_uuid.
-        # QualityStandard has product_uuid.
-        # We need to look up the product UUID from the reference (e.g. Inventory check -> Product).
-        # Since we don't have cross-service calls easily here, we might assume reference_uuid IS product_uuid for 'RECEIVING' or similar,
-        # OR we just check the results associated with this inspection against the standard ID stored in the result.
-        
-        # Simpler approach: Check if ANY result failed -> FAILED.
-        # If ALL standards linked to this inspection have results and they passed -> PASSED.
-        
-        # But we don't know "All standards" without cross-referencing product.
-        # Let's rely on what we have:
-        results = inspection.results.all()
-        
-        # If any test failed, the whole inspection fails
-        if results.filter(passed=False).exists():
-            inspection.status = 'FAILED'
-        else:
-            # Check if we have results for ALL active standards (if we can find them)
-            # Without product linkage, we can at least say: if we have some results and NO failures, are we done?
-            # Maybe just keep PENDING until explicitly closed? 
-            # OR assume if user added a result, they might be done.
-            # Let's implement: If Any Fail -> FAIL. If No Fail and at least one result -> Check if we want to auto-PASS.
-            # For now, let's auto-PASS if no failures and we have results. 
-            # Users can reopen if needed (or we'd need a "complete" action).
-            # BETTER: Just fail fast. Pass requires manual check or advanced logic.
-            # WAIT, the plan said "If all passed -> Mark PASSED".
-            # Let's Stick to: Any Fail -> Fail. 
-            inspection.status = 'FAILED' # Default to fail if bad result found
-            
-        if not results.filter(passed=False).exists() and results.exists():
-             # In a real app we'd verify coverage of all required standards. 
-             # Here we assume if entered and passed, it's good.
-             inspection.status = 'PASSED'
-             
-        inspection.save()
+class TestResultViewSet(viewsets.ModelViewSet):
+    queryset = TestResult.objects.all()
+    serializer_class = TestResultSerializer
+    permission_classes = [HasPermission]
+    required_permission = "quality.inspection"

@@ -10,5 +10,6 @@ urlpatterns = [
     
     # App URLs
     path('api/customer/', include('apps.profiles.urls')),
+    path('api/customer/loyalty/', include('apps.loyalty.urls')),
     path('api/crm/', include('apps.crm.urls')),
 ]

@@ -100,8 +100,8 @@ services:
     - DEBUG=True
     - REDIS_URL=redis://redis:6379/0
     - PUBLIC_KEY_PATH=/keys/public.pem
-    - PRIVATE_KEY_PATH=/keys/private.pem
     - JWT_ALGORITHM=RS256
+    - PRIVATE_KEY_PATH=/keys/private.pem
     - JWT_ISSUER=auth-service
     - JWT_AUDIENCE=pos-system
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
@@ -130,6 +130,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=company
     volumes:
@@ -152,6 +153,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=product
     volumes:
@@ -174,11 +176,34 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=pos
     volumes:
     - ./keys:/keys:ro
     - ./services/pos:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    container_name: adaptix-inventory-worker
+    command: python manage.py run_inventory_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=inventory
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=inventory-worker
+    volumes:
+    - ./services/inventory:/app
     - ./shared:/shared
     depends_on:
       postgres:
@@ -198,6 +223,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=inventory
     volumes:
@@ -220,6 +246,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=purchase
     volumes:
@@ -242,6 +269,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=hrms
     volumes:
@@ -264,6 +292,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=accounting
     volumes:
@@ -286,6 +315,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=customer
     volumes:
@@ -294,6 +324,29 @@ services:
     - ./shared:/shared
     depends_on:
       postgres:
+        condition: service_healthy
+    networks:
+    - backend
+  customer-worker:
+    build:
+      context: .
+      dockerfile: services/customer/Dockerfile
+    container_name: adaptix-customer-worker
+    command: python manage.py run_loyalty_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=customer
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=customer-worker
+    volumes:
+    - ./keys:/keys:ro
+    - ./services/customer:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
     - backend
@@ -308,6 +361,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=asset
     volumes:
@@ -330,6 +384,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=promotion
     volumes:
@@ -352,6 +407,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=payment
     volumes:
@@ -374,6 +430,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=notification
     volumes:
@@ -398,6 +455,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=reporting
@@ -424,6 +482,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=reporting-worker
@@ -451,6 +510,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - REDIS_URL=redis://redis:6379/0
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=ai
@@ -525,6 +585,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - DEBUG=True
     - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=logistics
     volumes:
@@ -586,6 +647,75 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+  manufacturing-worker:
+    build:
+      context: .
+      dockerfile: services/manufacturing/Dockerfile
+    container_name: adaptix-manufacturing-worker
+    command: python manage.py run_mrp_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=manufacturing
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=manufacturing-worker
+    volumes:
+    - ./services/manufacturing:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+  manufacturing:
+    build:
+      context: .
+      dockerfile: services/manufacturing/Dockerfile
+    container_name: adaptix-manufacturing
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=manufacturing
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=True
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=manufacturing
+    volumes:
+    - ./keys:/keys:ro
+    - ./services/manufacturing:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+  quality-worker:
+    build:
+      context: .
+      dockerfile: services/quality/Dockerfile
+    container_name: adaptix-quality-worker
+    command: python manage.py run_quality_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=quality
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=quality-worker
+    volumes:
+    - ./services/quality:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy

@@ -11,7 +11,7 @@ export default function Header() {
       <div className="flex h-16 items-center px-4">
         <MobileSidebar />
         <div className="ml-auto flex items-center space-x-4">
-          {/* <ModeToggle /> */}
+          <ModeToggle />
           <NotificationBell />
           <UserNav />
         </div>

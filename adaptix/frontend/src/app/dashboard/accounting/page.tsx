@@ -66,12 +66,17 @@ function JournalList() {
   );
 }
 
+import { AnomalyAlert } from "@/components/intelligence/anomaly-alert";
+
 export default function AccountingPage() {
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Accounting</h2>
       </div>
+
+      <AnomalyAlert />
+
       <Tabs defaultValue="chart-of-accounts" className="space-y-4">
         <TabsList>
           <TabsTrigger value="chart-of-accounts">Chart of Accounts</TabsTrigger>

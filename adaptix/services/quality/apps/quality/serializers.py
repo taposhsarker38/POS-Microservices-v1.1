@@ -7,8 +7,6 @@ class QualityStandardSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TestResultSerializer(serializers.ModelSerializer):
-    standard_name = serializers.CharField(source='standard.name', read_only=True)
-
     class Meta:
         model = TestResult
         fields = '__all__'

@@ -2,6 +2,8 @@ import Header from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import AuthGuard from "@/components/auth/AuthGuard";
 
+import { CompanySetupWizard } from "@/components/onboarding/CompanySetupWizard";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -16,6 +18,7 @@ export default function DashboardLayout({
         <main className="md:pl-64">
           <Header />
           <div className="p-8">{children}</div>
+          <CompanySetupWizard />
         </main>
       </div>
     </AuthGuard>

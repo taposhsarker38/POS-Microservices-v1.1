@@ -210,7 +210,7 @@ services:
     routes:
       - name: notification-route
         paths:
-          - /api/notifications
+          - /api/notification
         strip_path: false
         protocols:
           - http
@@ -260,6 +260,17 @@ services:
           - http
           - https
 
+  - name: manufacturing-service
+    url: http://manufacturing:8000
+    routes:
+      - name: manufacturing-route
+        paths:
+          - /api/manufacturing
+        strip_path: false
+        protocols:
+          - http
+          - https
+
 jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3
     consumer:
@@ -278,12 +289,10 @@ jwt_secrets:
       -----END PUBLIC KEY-----
 
 plugins:
-  # CORS applied to the auth service (keeps browser swagger working)
+  # Global CORS
   - name: cors
-    service:
-      id: 2915b562-3d36-4b29-82ed-c49aaeb45c4b
     config:
-      origins: ["*"]
+      origins: ["http://localhost:3000"]
       methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
       headers: ["Authorization", "Content-Type", "Accept"]
       credentials: true

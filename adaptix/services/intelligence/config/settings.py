@@ -47,10 +47,16 @@ INSTALLED_APPS = [
     'apps.crm_opt',
     'apps.hr_opt',
     'apps.automation',
+    'apps.financial_anomalies',
+    'apps.sales_trends',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [], 
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny', 
+    ],
 }
 
 MIDDLEWARE = [

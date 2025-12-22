@@ -10,25 +10,37 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         broker_url = getattr(settings, "CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
         exchange = Exchange("events", type="topic", durable=True)
-        # Using a dedicated queue for inventory updates to ensure persistence/load balancing if needed
-        # But 'events' is fanout, so we need a unique queue or shared if we want load balancing.
-        # Let's use exclusive=False + durable=True queue to ensure we catch messages even if consumer restarts?
-        # Fanout broadcasts to ALL bound queues. So we just bind OUR queue.
         queue = Queue("inventory_updates", exchange=exchange, routing_key="stock.update")
+        
+        # New Bindings for Manufacturing
+        queue_mfg = Queue("inventory_mfg_updates", exchange=exchange, routing_key="production.*") # Catch all production events
 
         self.stdout.write(f"Listening for inventory events on {broker_url}...")
 
         with Connection(broker_url) as conn:
-            with Consumer(conn, queues=[queue], callbacks=[self.process_message], accept=['json']):
+            # We listen on BOTH queues
+            with Consumer(conn, queues=[queue, queue_mfg], callbacks=[self.process_message], accept=['json']):
                 while True:
                     conn.drain_events()
 
     def process_message(self, body, message):
         try:
             data = body
-            # Expected: {type, product_uuid, quantity, action, company_uuid, ...}
+            event_type = data.get("event") or data.get("type")
             
-            if data.get("type") != "stock.update":
+            if event_type == "production.output_created":
+                self.handle_output_created(data)
+                message.ack()
+                return
+            elif event_type == "production.materials_consumed":
+                self.handle_materials_consumed(data)
+                message.ack()
+                return
+            elif event_type == "stock.update":
+                # Fallthrough to existing logic
+                pass
+            else:
+                # Unknown event
                 message.ack()
                 return
 
@@ -123,3 +135,60 @@ class Command(BaseCommand):
                 )
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Failed to publish result: {e}"))
+
+    def handle_output_created(self, data):
+        # Add Finished Good to Stock
+        self.update_stock(
+            company_uuid=data.get("company_uuid"),
+            product_uuid=data.get("product_uuid"),
+            quantity=float(data.get("quantity", 0)),
+            action="increase",
+            reason=f"Production Output: Order {data.get('order_id')}"
+        )
+
+    def handle_materials_consumed(self, data):
+        # Deduct Raw Materials from Stock
+        # Payload expected: { ..., "items": [{ "component_uuid": "...", "quantity": 10 }, ...] }
+        for item in data.get("items", []):
+            self.update_stock(
+                company_uuid=data.get("company_uuid"),
+                product_uuid=item.get("component_uuid"),
+                quantity=float(item.get("quantity", 0)),
+                action="decrease",
+                reason=f"Production Consumption: Order {data.get('order_id')}"
+            )
+
+    def update_stock(self, company_uuid, product_uuid, quantity, action, reason):
+            warehouse, _ = Warehouse.objects.get_or_create(
+                company_uuid=company_uuid, 
+                name="Main Warehouse",
+                defaults={"is_active": True}
+            )
+
+            stock, created = Stock.objects.get_or_create(
+                company_uuid=company_uuid,
+                warehouse=warehouse,
+                product_uuid=product_uuid,
+                defaults={"quantity": 0, "avg_cost": 0}
+            )
+
+            old_qty = stock.quantity
+            
+            if action == 'increase':
+                stock.quantity += quantity
+            elif action == 'decrease':
+                stock.quantity -= quantity
+            
+            stock.save()
+
+            StockTransaction.objects.create(
+                company_uuid=company_uuid,
+                stock=stock,
+                type='in' if action == 'increase' else 'out',
+                quantity_change=quantity if action == 'increase' else -quantity,
+                balance_after=stock.quantity,
+                notes=reason,
+                created_by="system-manufacturing"
+            )
+
+            self.stdout.write(self.style.SUCCESS(f"Updated stock {product_uuid}: {old_qty} -> {stock.quantity} ({action})"))

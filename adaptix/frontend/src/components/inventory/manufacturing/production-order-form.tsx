@@ -48,6 +48,11 @@ export function ProductionOrderForm({
 }: ProductionOrderFormProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [boms, setBoms] = useState<any[]>([]);
+  const [stockCheckResult, setStockCheckResult] = useState<any>(null);
+
+  // Import implicitly or use api directly? existing code uses `api` defaulting to axios instance.
+  // I created `manufacturingApi` but need to import it.
+  // Let's import it at top or use dynamic import if needed, but standard import is better.
 
   useEffect(() => {
     api.get("/product/products/").then((res) => {
@@ -59,7 +64,7 @@ export function ProductionOrderForm({
   }, []);
 
   const form = useForm<POFormValues>({
-    resolver: zodResolver(poSchema),
+    resolver: zodResolver(poSchema) as any,
     defaultValues: {
       quantity_planned: 1,
       status: "DRAFT",
@@ -88,6 +93,31 @@ export function ProductionOrderForm({
       });
     }
   }, [initialData, form]);
+
+  const checkStock = async () => {
+    const bomId = form.getValues("bom");
+    const qty = form.getValues("quantity_planned");
+    if (!bomId) {
+      toast.error("Please select a Recipe (BOM) first");
+      return;
+    }
+
+    // We can use the generic 'api' valid for now if we don't want to import separate file
+    // But I added logic to manufacturingApi. Let's try to use `api` client with raw endpoint
+    // to avoid import errors if I didn't add the import statement yet.
+    try {
+      const res = await api.post(
+        "/inventory/manufacturing/orders/check-availability/",
+        {
+          bom_id: bomId,
+          quantity: qty,
+        }
+      );
+      setStockCheckResult(res.data);
+    } catch (e) {
+      toast.error("Failed to check stock");
+    }
+  };
 
   const onSubmit = async (values: POFormValues) => {
     try {
@@ -175,10 +205,51 @@ export function ProductionOrderForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Quantity to Produce</FormLabel>
-              <FormControl>
-                <Input type="number" step="1" {...field} />
-              </FormControl>
+              <div className="flex gap-2">
+                <FormControl>
+                  <Input type="number" step="1" {...field} />
+                </FormControl>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={checkStock}
+                  disabled={!form.watch("bom")}
+                >
+                  Check Stock
+                </Button>
+              </div>
               <FormMessage />
+              {stockCheckResult && (
+                <div
+                  className={`text-sm mt-2 p-2 rounded border ${
+                    stockCheckResult.status === "AVAILABLE"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {stockCheckResult.status === "AVAILABLE" ? (
+                    <div className="flex items-center">
+                      <span className="mr-2">✅</span>
+                      Materials Available
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="font-semibold flex items-center">
+                        <span className="mr-2">❌</span>
+                        Material Shortage
+                      </div>
+                      <ul className="list-disc list-inside mt-1 text-xs">
+                        {stockCheckResult.shortages?.map((s: any) => (
+                          <li key={s.component_uuid}>
+                            Missing {s.shortage} units (Have: {s.available},
+                            Need: {s.needed})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </FormItem>
           )}
         />

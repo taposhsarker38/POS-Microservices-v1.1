@@ -49,6 +49,8 @@ class OrderSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
+    wing = serializers.UUIDField(source='branch_id', required=False, allow_null=True)
+
     class Meta:
         model = Order
         fields = [
@@ -60,7 +62,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'paid_amount', 'due_amount',
             'status', 'payment_status',
             'metadata', 'created_at', 'updated_at', 'items', 'payments', 'payment_data',
-            'loyalty_action', 'redeemed_points'
+            'loyalty_action', 'redeemed_points', 'wing'
         ]
         read_only_fields = [
             'order_number', 'company_uuid', 'created_by', 
@@ -155,16 +157,5 @@ class OrderSerializer(serializers.ModelSerializer):
                 
             order.save()
             
-            # Loyalty Earning Logic (Async-ish)
-            if loyalty_action == 'EARN' and order.customer_uuid:
-                try:
-                    # Earn 1 point for every 10 currency units spent
-                    points_to_add = order.grand_total / 10
-                    if points_to_add > 0:
-                        from adaptix_core.service_registry import ServiceRegistry
-                        url = f"{ServiceRegistry.get_api_url('customer')}/customers/{order.customer_uuid}/adjust_points/"
-                        requests.post(url, json={'action': 'add', 'points': float(points_to_add)})
-                except Exception as e:
-                    print(f"Loyalty earn error: {e}")
             
             return order

@@ -38,6 +38,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'adaptix_core.middleware.JWTCompanyMiddleware', 
     'adaptix_core.middleware.AuditMiddleware',
+    'adaptix_core.middleware.CorrelationIDMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -139,3 +140,23 @@ if database_url:
     except Exception as e:
         pass # print(f"⚠️ Failed to configure Single DB: {e}")
 # ==============================================
+# LOGGING
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'adaptix_core.logging.JSONFormatter',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

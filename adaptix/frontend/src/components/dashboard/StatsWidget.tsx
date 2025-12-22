@@ -18,6 +18,7 @@ interface StatsWidgetProps {
   className?: string;
   delay?: number; // Animation delay
   isCurrency?: boolean;
+  onClick?: () => void;
 }
 
 /**
@@ -51,13 +52,14 @@ export function StatsWidget({
   className,
   delay = 0,
   isCurrency = false,
+  onClick,
 }: StatsWidgetProps) {
   // 1. Loading State (Skeleton)
   if (loading) {
     return (
       <Card
         className={cn(
-          "rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm",
+          "rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-sm",
           className
         )}
       >
@@ -80,11 +82,16 @@ export function StatsWidget({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: delay, duration: 0.4 }}
+      transition={{ delay }}
+      onClick={onClick}
+      className={cn(
+        "h-full",
+        onClick && "cursor-pointer transition-transform hover:scale-[1.02]"
+      )}
     >
       <Card
         className={cn(
-          "rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300",
+          "h-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300",
           className
         )}
       >

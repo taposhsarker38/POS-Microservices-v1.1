@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: adaptix
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adaptix-config
+  namespace: adaptix
+data:
+  # Shared
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  TIME_ZONE: "UTC"
+
+  # Service URLs (Internal DNS)
+  AUTH_SERVICE_URL: "http://auth-service:8000"
+  POS_SERVICE_URL: "http://pos-service:8000"
+  INTELLIGENCE_SERVICE_URL: "http://intelligence-service:8000"
+
+  # Database Hosts (Assuming external or separate StatefulSets)
+  POSTGRES_HOST: "adaptix-postgres"
+  POSTGRES_PORT: "5432"
+  REDIS_URL: "redis://adaptix-redis:6379/0"
+  RABBITMQ_URL: "amqp://adaptix:adaptix123@adaptix-rabbitmq:5672/"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: adaptix-secrets
+  namespace: adaptix
+type: Opaque
+data:
+  # Base64 encoded values (Placeholders)
+  SECRET_KEY: "c3VwZXJzZWNyZXRrZXk=" # supersecretkey
+  POSTGRES_PASSWORD: "cG9zdGdyZXNwYXNzd29yZA==" # postgrespassword

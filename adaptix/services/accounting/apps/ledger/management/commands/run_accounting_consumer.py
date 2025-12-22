@@ -26,22 +26,73 @@ class Command(BaseCommand):
         channel.queue_declare(queue=queue_name, durable=True)
         channel.queue_bind(exchange='events', queue=queue_name, routing_key='hrms.payroll.finalized')
 
+        # Sales Queue
+        queue_sales = 'accounting_sales_queue'
+        channel.queue_declare(queue=queue_sales, durable=True)
+        channel.queue_bind(exchange='events', queue=queue_sales, routing_key='pos.sale.closed')
+
         def callback(ch, method, properties, body):
             try:
                 data = json.loads(body)
-                event_type = data.get('type')
+                event = data.get('event') or data.get('type') # 'event' from POS, 'type' from Payroll
                 
-                if event_type == 'payroll_finalized':
+                logger.info(f"Received Event: {event}")
+
+                if event == 'payroll_finalized':
                     self.process_payroll(data)
+                elif event == 'pos.sale.closed':
+                    self.process_sale(data)
 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
-                # ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False) # Dead letter?
+                # ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False) 
 
         logger.info(' [*] Waiting for Accounting events...')
         channel.basic_consume(queue=queue_name, on_message_callback=callback)
+        channel.basic_consume(queue=queue_sales, on_message_callback=callback)
         channel.start_consuming()
+
+    def process_sale(self, data):
+        company_uuid = data['company_uuid']
+        grand_total = Decimal(str(data['grand_total']))
+        order_number = data['order_number']
+        
+        logger.info(f"Processing Sale Journal: {order_number} for {grand_total}")
+        
+        # 1. Accounts
+        sales_account = self.get_or_create_account(company_uuid, "Sales Revenue", "income", "4001")
+        cash_account = self.get_or_create_account(company_uuid, "Cash on Hand", "asset", "1001") # Assuming Cash for MVP
+        
+        # 2. Journal Entry
+        entry = JournalEntry.objects.create(
+            company_uuid=company_uuid,
+            date=timezone.now().date(),
+            reference=f"INV-{order_number}",
+            description=f"POS Sale: {order_number}",
+            total_debit=grand_total,
+            total_credit=grand_total,
+            is_posted=True
+        )
+
+        # 3. Items
+        # Debit Cash (Asset increases)
+        JournalItem.objects.create(
+            entry=entry,
+            account=cash_account,
+            debit=grand_total,
+            credit=0,
+            description="Cash Received"
+        )
+        # Credit Revenue (Income increases)
+        JournalItem.objects.create(
+            entry=entry,
+            account=sales_account,
+            debit=0,
+            credit=grand_total,
+            description="Sales Revenue"
+        )
+        logger.info(f"✅ Sales Journal Created: {entry.reference}")
 
     def process_payroll(self, data):
         company_uuid = data['company_uuid']
@@ -62,7 +113,8 @@ class Command(BaseCommand):
             reference=f"PAYAP-{payslip_id[:8]}",
             description=f"Payroll Automation: {period}",
             total_debit=net_pay,
-            total_credit=net_pay
+            total_credit=net_pay,
+            is_posted=True # Auto post
         )
 
         # 3. Create Items (Debit Expense, Credit Liability)

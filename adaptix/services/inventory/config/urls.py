@@ -18,7 +18,7 @@ router.register(r'bom', BillOfMaterialViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/inventory/', include(router.urls)),
-    path('api/inventory/manufacturing/', include('apps.manufacturing.urls')),
+
     
     # OpenAPI
     path('api/inventory/schema/', SpectacularAPIView.as_view(), name='schema'),

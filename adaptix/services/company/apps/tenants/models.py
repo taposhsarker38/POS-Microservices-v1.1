@@ -20,6 +20,10 @@ class Company(models.Model):
     timezone = models.CharField(max_length=50, default='UTC')
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Hierarchy for Group of Companies
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subsidiaries')
+    is_group = models.BooleanField(default=False, help_text="Is this a Group/Holding Company?")
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding

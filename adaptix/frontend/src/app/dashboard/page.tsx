@@ -10,7 +10,11 @@ import {
   AlertCircle,
   Activity,
   TrendingUp,
+  Brain,
+  Pointer,
+  Factory,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Bar,
   BarChart,
@@ -23,10 +27,13 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { LiveClock } from "@/components/ui/LiveClock";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatsWidget } from "@/components/dashboard/StatsWidget"; // Reusable Component
+import { StatsWidget } from "@/components/dashboard/StatsWidget";
 import { motion } from "framer-motion";
+import { SalesTrendWidget } from "@/components/intelligence/sales-trend-widget";
+import { StockoutModal } from "@/components/intelligence/stockout-modal";
+import { ProductTour } from "@/components/onboarding/ProductTour";
+import { useState } from "react";
 
-// Keep chart static for now until chart API is ready
 const salesData = [
   { name: "Jan", total: 4200 },
   { name: "Feb", total: 3800 },
@@ -37,12 +44,19 @@ const salesData = [
 ];
 
 export default function DashboardPage() {
-  const { analytics, recentOrders, lowStockCount, isLoading } =
-    useDashboardStats();
+  const {
+    analytics,
+    recentOrders,
+    lowStockCount,
+    highRiskCount,
+    manufacturingStats,
+    isLoading,
+  } = useDashboardStats();
 
-  const salesTrend = (((analytics?.total_revenue || 0) * 0.1) / 100).toFixed(1); // Mock trend for now
+  const [showStockoutModal, setShowStockoutModal] = useState(false);
 
-  // Stagger variants
+  const salesTrend = (((analytics?.total_revenue || 0) * 0.1) / 100).toFixed(1);
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -60,8 +74,13 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 space-y-4 p-8">
-        <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 space-y-4 p-8 pt-6"
+      >
+        <div className="flex items-center justify-between space-y-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-8 w-24 rounded-full" />
         </div>
@@ -71,8 +90,8 @@ export default function DashboardPage() {
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
-        <Skeleton className="h-[300px]" />
-      </div>
+        <Skeleton className="h-80" />
+      </motion.div>
     );
   }
 
@@ -105,8 +124,35 @@ export default function DashboardPage() {
           </span>
         </div>
       </motion.div>
-
-      {/* Stats Grid - Using Reusable Widget */}
+      {/* AI Intelligence Banner - NEW */}
+      {highRiskCount > 0 && (
+        <motion.div
+          variants={item}
+          className="bg-indigo-600 rounded-xl p-4 text-white flex items-center justify-between shadow-lg shadow-indigo-500/20"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Brain className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-bold">AI Proactive Alert</p>
+              <p className="text-sm text-indigo-100">
+                AI has detected {highRiskCount} products with a critical
+                stockout risk ( &gt; 70%) within 14 days.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+            onClick={() => setShowStockoutModal(true)}
+          >
+            Review Insights
+          </Button>
+        </motion.div>
+      )}
+      <SalesTrendWidget /> {/* Added SalesTrendWidget */}
+      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsWidget
           title="Total Revenue"
@@ -120,14 +166,15 @@ export default function DashboardPage() {
           delay={0.1}
         />
         <StatsWidget
-          title="Transactions"
-          value={analytics?.total_transactions || 0}
-          icon={CreditCard}
-          trend="+12%"
-          trendUp={true}
-          description="from last month"
+          title="AI Risk Level"
+          value={highRiskCount > 0 ? "High" : "Optimal"}
+          icon={Brain}
+          trend={highRiskCount > 0 ? `${highRiskCount} Risks` : "Safe"}
+          trendUp={highRiskCount === 0}
+          description="Predicted stockout threats"
           loading={isLoading}
           delay={0.2}
+          onClick={() => setShowStockoutModal(true)}
         />
         <StatsWidget
           title="Products in Stock"
@@ -149,8 +196,31 @@ export default function DashboardPage() {
           loading={isLoading}
           delay={0.4}
         />
+        <StatsWidget
+          title="Factory Output"
+          value={manufacturingStats?.total_produced || 0}
+          icon={Factory}
+          trend={`${manufacturingStats?.total_defects || 0} Defects`}
+          trendUp={(manufacturingStats?.total_defects || 0) === 0}
+          description="units produced today"
+          loading={isLoading}
+          delay={0.5}
+        />
+        <StatsWidget
+          title="Efficiency Rate"
+          value={`${manufacturingStats?.efficiency_rate || 100}%`}
+          icon={Activity}
+          trend={
+            (manufacturingStats?.efficiency_rate || 100) > 90
+              ? "High Performance"
+              : "Needs Attention"
+          }
+          trendUp={(manufacturingStats?.efficiency_rate || 100) > 90}
+          description="yield rate (produced vs defects)"
+          loading={isLoading}
+          delay={0.6}
+        />
       </div>
-
       {/* Charts & Recent Orders */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
         <motion.div variants={item} className="col-span-4">
@@ -246,7 +316,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
       </div>
-
       {/* Quick Actions - Compact */}
       <motion.div variants={item} className="grid gap-3 md:grid-cols-3">
         <Card className="border-l-2 border-l-violet-400 hover:shadow-sm transition-shadow cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50">
@@ -301,6 +370,11 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </motion.div>
+      <StockoutModal
+        open={showStockoutModal}
+        onOpenChange={setShowStockoutModal}
+      />
+      <ProductTour />
     </motion.div>
   );
 }

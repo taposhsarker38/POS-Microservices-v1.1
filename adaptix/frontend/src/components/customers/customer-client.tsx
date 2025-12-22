@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FileEdit, Trash2 } from "lucide-react";
+import { Plus, Search, FileEdit, Trash2, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,9 +9,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { CustomerForm } from "./customer-form";
+import { LoyaltyView } from "./loyalty-view";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { AlertModal } from "@/components/modals/alert-modal";
@@ -23,6 +31,8 @@ export function CustomerClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [loyaltyCustomer, setLoyaltyCustomer] = useState<any | null>(null);
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
 
   const [openAlert, setOpenAlert] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -131,6 +141,17 @@ export function CustomerClient() {
           <Button
             variant="ghost"
             size="icon"
+            className="text-amber-500 hover:text-amber-600"
+            onClick={() => {
+              setLoyaltyCustomer(row.original);
+              setIsLoyaltyOpen(true);
+            }}
+          >
+            <Award className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-red-500"
             onClick={() => onDelete(row.original.id)}
           >
@@ -180,6 +201,19 @@ export function CustomerClient() {
           />
         </DialogContent>
       </Dialog>
+
+      <Sheet open={isLoyaltyOpen} onOpenChange={setIsLoyaltyOpen}>
+        <SheetContent className="overflow-y-auto sm:max-w-xl">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Loyalty Program</SheetTitle>
+            <SheetDescription>
+              Managing rewards for {loyaltyCustomer?.name}
+            </SheetDescription>
+          </SheetHeader>
+
+          {loyaltyCustomer && <LoyaltyView customerId={loyaltyCustomer.id} />}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

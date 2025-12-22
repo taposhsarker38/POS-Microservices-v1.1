@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     # Local
     'apps.profiles',
     'apps.crm',
+    'apps.loyalty',
 ]
 
 MIDDLEWARE = [

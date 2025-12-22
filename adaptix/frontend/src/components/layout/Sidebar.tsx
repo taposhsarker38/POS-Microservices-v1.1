@@ -102,6 +102,12 @@ const routes = [
     permission: "view_manufacturing",
   },
   {
+    label: "Shop Floor",
+    icon: Monitor,
+    href: "/dashboard/manufacturing/shop-floor",
+    permission: "view_manufacturing",
+  },
+  {
     label: "Quality Control",
     icon: ShieldCheck,
     href: "/dashboard/quality",
@@ -173,6 +179,12 @@ const adminRoutes = [
     href: "/dashboard/admin/permissions",
     permission: "view_permission",
   },
+  {
+    label: "Audit Logs",
+    icon: Shield,
+    href: "/dashboard/admin/audit",
+    permission: "view_audit_log", // Assuming admin has this
+  },
 ];
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -233,7 +245,7 @@ export function Sidebar({ className }: SidebarProps) {
               key={route.href}
               href={route.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
                 pathname === route.href
                   ? "bg-violet-600 text-white"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"

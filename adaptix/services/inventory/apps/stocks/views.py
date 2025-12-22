@@ -93,6 +93,32 @@ class StockViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response(StockSerializer(stock).data)
 
+    @action(detail=False, methods=['post'])
+    def bulk_check(self, request):
+        """
+        Check stock for multiple products.
+        Payload: { "product_uuids": ["uuid1", "uuid2"] }
+        """
+        uuids = request.data.get('product_uuids', [])
+        company_uuid = getattr(request, "company_uuid", None)
+        
+        if not company_uuid:
+             return Response({"detail": "Company context missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Aggregate stock per product across all warehouses
+        # Or just return list of stock records
+        stocks = Stock.objects.filter(company_uuid=company_uuid, product_uuid__in=uuids)
+        
+        # Group by product
+        results = {}
+        for s in stocks:
+            p_uuid = str(s.product_uuid)
+            if p_uuid not in results:
+                results[p_uuid] = 0
+            results[p_uuid] += float(s.quantity)
+            
+        return Response(results)
+
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = StockTransaction.objects.all()
     serializer_class = StockTransactionSerializer

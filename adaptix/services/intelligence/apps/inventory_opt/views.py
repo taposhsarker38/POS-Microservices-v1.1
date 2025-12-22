@@ -7,6 +7,8 @@ import pandas as pd
 from .models import InventoryOptimization
 from .serializers import InventoryOptimizationSerializer
 from .tasks import analyze_stockout_risk
+from apps.forecasts.models import SalesForecast
+from datetime import date, timedelta
 
 class InventoryOptimizationViewSet(viewsets.ModelViewSet):
     serializer_class = InventoryOptimizationSerializer
@@ -29,6 +31,61 @@ class InventoryOptimizationViewSet(viewsets.ModelViewSet):
             "status": "Accepted", 
             "message": "Stockout risk analysis has been queued."
         }, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=False, methods=['get'], url_path='prediction-details')
+    def prediction_details(self, request):
+        """
+        Returns daily stock projection for a specific product.
+        Query params: product_uuid
+        """
+        product_uuid = request.query_params.get('product_uuid')
+        company_uuid = request.user_claims.get('company_uuid')
+        
+        if not product_uuid:
+            return Response({"error": "product_uuid is required"}, status=400)
+            
+        # 1. Get current snapshot
+        try:
+            opt = InventoryOptimization.objects.get(
+                company_uuid=company_uuid, 
+                product_uuid=product_uuid
+            )
+            current_stock = opt.current_stock
+        except InventoryOptimization.DoesNotExist:
+            return Response({"error": "Optimization data not found for this product"}, status=404)
+            
+        # 2. Get forecasts
+        forecasts = SalesForecast.objects.filter(
+            company_uuid=company_uuid,
+            product_uuid=product_uuid,
+            date__gte=date.today(),
+            forecast_type='sales'
+        ).order_by('date')
+        
+        if not forecasts.exists():
+             return Response({"error": "No forecast data generated yet"}, status=404)
+             
+        # 3. Simulate depletion
+        projection = []
+        running_stock = current_stock
+        
+        for f in forecasts:
+            running_stock -= f.predicted_sales
+            projection.append({
+                "date": f.date,
+                "predicted_sales": round(f.predicted_sales, 2),
+                "projected_stock": round(running_stock, 2),
+                "confidence_lower": f.confidence_lower,
+                "confidence_upper": f.confidence_upper
+            })
+            
+        return Response({
+            "product_uuid": product_uuid,
+            "current_stock": current_stock,
+            "risk_score": opt.stockout_risk_score,
+            "estimated_stockout_date": opt.estimated_stockout_date,
+            "projection": projection
+        })
 
 class ReorderPointView(APIView):
     def post(self, request):

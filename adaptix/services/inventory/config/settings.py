@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.stocks',
-    'apps.manufacturing',
 ]
 
 

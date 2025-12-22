@@ -48,38 +48,25 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Publish Event for Accounting (Zero-Touch)
             try:
-                from kombu import Connection, Exchange, Producer
+                from adaptix_core.messaging import publish_event
                 from django.core.serializers.json import DjangoJSONEncoder
-                import os
                 import json
-                
-                BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672/")
-                connection = Connection(BROKER_URL)
-                connection.connect()
-                
-                exchange = Exchange("events", type="topic", durable=True)
-                producer = Producer(connection)
                 
                 event_payload = {
                     "event": "pos.sale.closed",
                     "order_id": str(order.id),
                     "order_number": order.order_number,
                     "company_uuid": str(order.company_uuid),
+                    "wing_uuid": str(order.branch_id) if order.branch_id else None,
                     "grand_total": str(order.grand_total),
                     "items": data.get("items", []),
                     "created_at": order.created_at.isoformat(),
-                    "payment_details": data.get("payments", [])
+                    "payment_details": data.get("payments", []),
+                    "customer_uuid": str(order.customer_uuid) if order.customer_uuid else None
                 }
                 
-                producer.publish(
-                    json.dumps(event_payload, cls=DjangoJSONEncoder),
-                    exchange=exchange,
-                    routing_key="pos.sale.closed",
-                    declare=[exchange],
-                    retry=True
-                )
-                connection.release()
-                print(f"Published pos.sale.closed event for Order {order.order_number}")
+                # Use shared utility which uses correct settings/env
+                publish_event("events", "pos.sale.closed", event_payload)
                 
             except Exception as pub_error:
                 print(f"Failed to publish accounting event: {pub_error}")

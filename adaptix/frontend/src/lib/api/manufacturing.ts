@@ -1,0 +1,105 @@
+import axiosInstance from "@/lib/axios";
+
+export interface WorkCenter {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  capacity_per_day: string;
+}
+
+export interface BillOfMaterial {
+  id: number;
+  product_uuid: string;
+  name: string;
+  quantity: string;
+  version: string;
+  items: BOMItem[];
+}
+
+export interface BOMItem {
+  id: number;
+  component_uuid: string;
+  quantity: string;
+}
+
+export interface ProductionOrder {
+  id: number;
+  work_center: number | null;
+  work_center_name?: string;
+  product_uuid: string;
+  bom: number | null;
+  bom_name?: string;
+  quantity_planned: string;
+  quantity_produced: string;
+  status:
+    | "DRAFT"
+    | "CONFIRMED"
+    | "IN_PROGRESS"
+    | "QUALITY_CHECK"
+    | "COMPLETED"
+    | "CANCELLED";
+  start_date: string | null;
+  due_date: string | null;
+  notes: string;
+}
+
+export const manufacturingApi = {
+  // Work Centers
+  getWorkCenters: async () => {
+    const response = await axiosInstance.get<WorkCenter[]>(
+      "/manufacturing/work-centers/"
+    );
+    return response.data;
+  },
+
+  // BOMs
+  getBOMs: async () => {
+    const response = await axiosInstance.get<BillOfMaterial[]>(
+      "/manufacturing/boms/"
+    );
+    return response.data;
+  },
+
+  // Production Orders
+  getOrders: async () => {
+    const response = await axiosInstance.get<ProductionOrder[]>(
+      "/manufacturing/orders/"
+    );
+    return response.data;
+  },
+
+  createOrder: async (data: Partial<ProductionOrder>) => {
+    const response = await axiosInstance.post<ProductionOrder>(
+      "/manufacturing/orders/",
+      data
+    );
+    return response.data;
+  },
+
+  updateOrder: async (id: number, data: Partial<ProductionOrder>) => {
+    const response = await axiosInstance.patch<ProductionOrder>(
+      `/manufacturing/orders/${id}/`,
+      data
+    );
+    return response.data;
+  },
+
+  checkAvailability: async (payload: {
+    bom_id?: number;
+    quantity?: number;
+    order_id?: number;
+  }) => {
+    const response = await axiosInstance.post<{
+      status: "AVAILABLE" | "SHORTAGE";
+      can_produce: boolean;
+      shortages?: {
+        component_uuid: string;
+        needed: number;
+        available: number;
+        shortage: number;
+      }[];
+    }>("/manufacturing/orders/check-availability/", payload);
+    return response.data;
+  },
+};

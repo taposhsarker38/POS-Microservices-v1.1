@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: adaptix-ingress
+  namespace: adaptix
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8000
+          - path: /api/pos
+            pathType: Prefix
+            backend:
+              service:
+                name: pos-service
+                port:
+                  number: 8000
+          - path: /api/intelligence
+            pathType: Prefix
+            backend:
+              service:
+                name: intelligence-service
+                port:
+                  number: 8000

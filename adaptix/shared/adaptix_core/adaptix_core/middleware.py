@@ -42,11 +42,11 @@ class JWTCompanyMiddleware:
     
     def __call__(self, request):
         # Allow header override for testing if configured
-        header_uuid = request.headers.get("X-Company-UUID")
-        if header_uuid and settings.DEBUG:
-             request.company_uuid = header_uuid
-             request.user_claims = {"company_uuid": header_uuid, "permissions": []} 
-             return self.get_response(request)
+        # header_uuid = request.headers.get("X-Company-UUID")
+        # if header_uuid and settings.DEBUG:
+        #      request.company_uuid = header_uuid
+        #      request.user_claims = {"company_uuid": header_uuid, "permissions": []} 
+        #      return self.get_response(request)
 
         # Skip exempt paths and OPTIONS requests
         if request.method == 'OPTIONS' or self._is_exempt(request.path):
@@ -75,7 +75,12 @@ class JWTCompanyMiddleware:
             )
             
             # Inject into request
-            request.company_uuid = payload.get('company_uuid') or payload.get('company')
+            token_company = payload.get('company_uuid') or payload.get('company')
+            # Allow header override if token has no company (e.g. Superuser)
+            # This enables Admin to act on behalf of any company
+            header_company = request.headers.get("X-Company-UUID")
+            
+            request.company_uuid = token_company or header_company
             request.user_claims = payload
             
         except jwt.ExpiredSignatureError:

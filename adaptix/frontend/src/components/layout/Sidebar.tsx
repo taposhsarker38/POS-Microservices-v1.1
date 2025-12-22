@@ -179,6 +179,12 @@ const adminRoutes = [
     href: "/dashboard/admin/permissions",
     permission: "view_permission",
   },
+  {
+    label: "Audit Logs",
+    icon: Shield,
+    href: "/dashboard/admin/audit",
+    permission: "view_audit_log", // Assuming admin has this
+  },
 ];
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}

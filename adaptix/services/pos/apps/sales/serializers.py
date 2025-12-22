@@ -49,6 +49,8 @@ class OrderSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
+    wing = serializers.UUIDField(source='branch_id', required=False, allow_null=True)
+
     class Meta:
         model = Order
         fields = [
@@ -60,7 +62,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'paid_amount', 'due_amount',
             'status', 'payment_status',
             'metadata', 'created_at', 'updated_at', 'items', 'payments', 'payment_data',
-            'loyalty_action', 'redeemed_points'
+            'loyalty_action', 'redeemed_points', 'wing'
         ]
         read_only_fields = [
             'order_number', 'company_uuid', 'created_by', 

@@ -7,6 +7,11 @@ interface DashboardStats {
   recentOrders: Order[];
   lowStockCount: number;
   highRiskCount: number; // AI-detected risks
+  manufacturingStats: {
+    total_produced: number;
+    total_defects: number;
+    efficiency_rate: number;
+  };
   isLoading: boolean;
   error: any;
 }
@@ -62,6 +67,16 @@ export const useDashboardStats = (): DashboardStats => {
     initialData: [],
   });
 
+  // 5. Fetch Manufacturing Stats
+  const { data: mfgData, isLoading: mfgLoading } = useQuery({
+    queryKey: ["dashboard-manufacturing"],
+    queryFn: async () => {
+      const res = await api.get("/reporting/manufacturing/machine_stats/");
+      return res.data;
+    },
+    initialData: { total_produced: 0, total_defects: 0, efficiency_rate: 100 },
+  });
+
   // Calculate Low Stock
   const lowStockCount = (stockData as Stock[]).filter((s) => {
     const qty = parseFloat(s.quantity);
@@ -79,8 +94,13 @@ export const useDashboardStats = (): DashboardStats => {
     recentOrders: ordersData,
     lowStockCount,
     highRiskCount,
+    manufacturingStats: mfgData,
     isLoading:
-      analyticsLoading || ordersLoading || stockLoading || intelLoading,
+      analyticsLoading ||
+      ordersLoading ||
+      stockLoading ||
+      intelLoading ||
+      mfgLoading,
     error: analyticsError || ordersError || stockError,
   };
 };

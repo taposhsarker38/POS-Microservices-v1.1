@@ -10,3 +10,9 @@ class TopProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = TopProduct
         fields = '__all__'
+
+class DailyProductionSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import DailyProduction
+        model = DailyProduction
+        fields = '__all__'

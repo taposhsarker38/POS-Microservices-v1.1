@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Brain,
   Pointer,
+  Factory,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,8 +44,14 @@ const salesData = [
 ];
 
 export default function DashboardPage() {
-  const { analytics, recentOrders, lowStockCount, highRiskCount, isLoading } =
-    useDashboardStats();
+  const {
+    analytics,
+    recentOrders,
+    lowStockCount,
+    highRiskCount,
+    manufacturingStats,
+    isLoading,
+  } = useDashboardStats();
 
   const [showStockoutModal, setShowStockoutModal] = useState(false);
 
@@ -188,6 +195,30 @@ export default function DashboardPage() {
           description="items below reorder level"
           loading={isLoading}
           delay={0.4}
+        />
+        <StatsWidget
+          title="Factory Output"
+          value={manufacturingStats?.total_produced || 0}
+          icon={Factory}
+          trend={`${manufacturingStats?.total_defects || 0} Defects`}
+          trendUp={(manufacturingStats?.total_defects || 0) === 0}
+          description="units produced today"
+          loading={isLoading}
+          delay={0.5}
+        />
+        <StatsWidget
+          title="Efficiency Rate"
+          value={`${manufacturingStats?.efficiency_rate || 100}%`}
+          icon={Activity}
+          trend={
+            (manufacturingStats?.efficiency_rate || 100) > 90
+              ? "High Performance"
+              : "Needs Attention"
+          }
+          trendUp={(manufacturingStats?.efficiency_rate || 100) > 90}
+          description="yield rate (produced vs defects)"
+          loading={isLoading}
+          delay={0.6}
         />
       </div>
       {/* Charts & Recent Orders */}

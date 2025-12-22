@@ -6,6 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView,Spe
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include(accounts_urls)),
+    path("api/auth/audit/", include("apps.audit.urls")),
     path("health/", lambda req: __import__("django.http").http.JsonResponse({"ok": True})),
     path("api/auth/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/auth/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

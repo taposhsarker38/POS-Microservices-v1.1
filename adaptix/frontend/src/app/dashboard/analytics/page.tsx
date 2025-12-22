@@ -18,6 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AnalyticsPage() {
   const [summary, setSummary] = useState({
@@ -25,18 +32,40 @@ export default function AnalyticsPage() {
     total_transactions: 0,
     top_products: [],
   });
+  const [wings, setWings] = useState<any[]>([]);
+  const [selectedWing, setSelectedWing] = useState<string>("all");
+
+  useEffect(() => {
+    // Fetch Wings for filter
+    const fetchWings = async () => {
+      try {
+        const res = await api.get("/company/wings/");
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data.results || [];
+        setWings(data);
+      } catch (e) {
+        console.error("Failed to fetch wings", e);
+      }
+    };
+    fetchWings();
+  }, []);
 
   useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const res = await api.get("/reporting/dashboard/");
+        let url = "/reporting/dashboard/";
+        if (selectedWing && selectedWing !== "all") {
+          url += `?wing_uuid=${selectedWing}`;
+        }
+        const res = await api.get(url);
         setSummary(res.data);
       } catch (e) {
         console.error(e);
       }
     };
     fetchSummary();
-  }, []);
+  }, [selectedWing]);
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -44,6 +73,21 @@ export default function AnalyticsPage() {
         <h2 className="text-3xl font-bold tracking-tight">
           Analytics Dashboard
         </h2>
+        <div className="flex items-center space-x-2">
+          <Select value={selectedWing} onValueChange={setSelectedWing}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Branches</SelectItem>
+              {wings.map((w: any) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -121,10 +165,10 @@ export default function AnalyticsPage() {
                       {p.product_name}
                     </TableCell>
                     <TableCell className="text-right">
-                      {p.total_quantity}
+                      {p.total_sold || p.total_quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      ${p.total_revenue}
+                      ${p.total_revenue || 0}
                     </TableCell>
                   </TableRow>
                 ))}

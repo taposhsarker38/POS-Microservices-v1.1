@@ -20,7 +20,7 @@ opentelemetry-exporter-otlp
 
 # Testing
 pytest==8.0.0
-pytest-django==4.8.0
+pytest-django==4.11.1
 
  django-filter>=23.2
 cryptography

@@ -295,22 +295,6 @@ services:
               claims_to_verify: ["exp"]
               key_claim_name: iss
 
-  - name: intelligence-service
-    url: http://ai-service:8000
-    routes:
-      - name: intelligence-route
-        paths:
-          - /api/intelligence
-        strip_path: false
-        protocols:
-          - http
-          - https
-        plugins:
-          - name: jwt
-            config:
-              claims_to_verify: ["exp"]
-              key_claim_name: iss
-
   - name: quality-service
     url: http://quality-service:8000
     routes:
@@ -358,6 +342,12 @@ services:
             config:
               claims_to_verify: ["exp"]
               key_claim_name: iss
+          - name: cors
+            config:
+              origins: ["*"]
+              methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
+              headers: ["Authorization", "Content-Type", "Accept"]
+              credentials: true
 
 jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3

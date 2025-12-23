@@ -4,6 +4,8 @@ import AuthGuard from "@/components/auth/AuthGuard";
 
 import { CompanySetupWizard } from "@/components/onboarding/CompanySetupWizard";
 
+import { AIAssistantWidget } from "@/components/intelligence/ai-assistant-widget";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -19,6 +21,7 @@ export default function DashboardLayout({
           <Header />
           <div className="p-8">{children}</div>
           <CompanySetupWizard />
+          <AIAssistantWidget />
         </main>
       </div>
     </AuthGuard>

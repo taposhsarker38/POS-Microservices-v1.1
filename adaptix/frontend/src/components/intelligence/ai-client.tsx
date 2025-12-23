@@ -9,6 +9,7 @@ import {
   Users,
   AlertTriangle,
   ArrowRight,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,7 @@ export function AIClient() {
 
   const fetchForecast = async () => {
     try {
-      const res = await api.get("/intelligence/forecast/sales/");
+      const res = await api.get("/intelligence/forecast/predictions/");
       setData(res.data);
     } catch (e) {
       console.error(e);
@@ -78,7 +79,7 @@ export function AIClient() {
   const generateForecast = async () => {
     setLoading(true);
     try {
-      await api.post("/intelligence/forecast/sales/trigger_forecast/");
+      await api.post("/intelligence/forecast/predictions/trigger/");
       toast.success("AI Training started in background!");
       // Poll or wait
       setTimeout(fetchForecast, 5000);
@@ -109,6 +110,10 @@ export function AIClient() {
       fetchInventoryOpt();
     }
   }, [module]);
+
+  const goToDemandForecasting = () => {
+    window.location.href = "/dashboard/intelligence/forecasts";
+  };
 
   const renderContent = () => {
     switch (module) {
@@ -396,24 +401,51 @@ export function AIClient() {
             </Card>
           </div>
         );
-      case "hr-retention":
+      case "demand-planning":
         return (
-          <div className="flex flex-col items-center justify-center h-96 text-center space-y-4 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border-2 border-dashed">
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-sm border">
-              <Users className="h-12 w-12 text-slate-400" />
+          <div className="flex flex-col items-center justify-center h-96 text-center space-y-4 bg-violet-50 dark:bg-violet-900/10 rounded-2xl border-2 border-dashed border-violet-200">
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-sm border border-violet-100">
+              <TrendingUp className="h-12 w-12 text-violet-600" />
             </div>
             <div>
-              <h3 className="font-bold text-xl">Employee Retention Analysis</h3>
+              <h3 className="font-bold text-xl">Advanced Demand Planning</h3>
               <p className="text-muted-foreground max-w-sm mx-auto">
-                Predict turnover risk factors using historical HR and engagement
-                data. Currently under development.
+                Detailed product-level forecasting, stock-out risk charts, and
+                automated supply suggestions.
               </p>
             </div>
-            <Button variant="outline" disabled>
-              Notify me when ready
+            <Button
+              onClick={goToDemandForecasting}
+              className="bg-violet-600 hover:bg-violet-700"
+            >
+              Open Demand Planner <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         );
+      case "automation-hub":
+        return (
+          <div className="flex flex-col items-center justify-center h-96 text-center space-y-4 bg-amber-50 dark:bg-amber-950/10 rounded-2xl border-2 border-dashed border-amber-200">
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-full shadow-sm border border-amber-100">
+              <Zap className="h-12 w-12 text-amber-500 fill-amber-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xl">Rules & Automations</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                Set up "If-This-Then-That" triggers to automate your business
+                operations and notifications.
+              </p>
+            </div>
+            <Button
+              onClick={() =>
+                (window.location.href = "/dashboard/intelligence/automation")
+              }
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Open Automation Hub <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+      case "hr-retention":
       default:
         return null;
     }
@@ -455,6 +487,12 @@ export function AIClient() {
                 </SelectItem>
                 <SelectItem value="inventory-opt">
                   Inventory Optimization
+                </SelectItem>
+                <SelectItem value="demand-planning">
+                  Demand Planning (Phase 1.2)
+                </SelectItem>
+                <SelectItem value="automation-hub">
+                  Automation (Phase 1.3)
                 </SelectItem>
                 <SelectItem value="hr-retention">Employee Insights</SelectItem>
               </SelectContent>

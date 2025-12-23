@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useWebSockets } from "@/hooks/useWebSockets";
 
 interface Anomaly {
   id: string;
@@ -19,9 +20,9 @@ interface Anomaly {
 export function AnomalyAlert() {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [visible, setVisible] = useState(true);
+  const { socket } = useWebSockets();
 
-  useEffect(() => {
-    // In a real app, this would be a polling interval or websocket
+  const fetchAnomalies = () => {
     api
       .get("/intelligence/financial-anomalies/")
       .then((res) => {
@@ -30,7 +31,22 @@ export function AnomalyAlert() {
         }
       })
       .catch((err) => console.error("Failed to fetch anomalies", err));
+  };
+
+  useEffect(() => {
+    fetchAnomalies();
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("intelligence.alert", (newAnomaly: Anomaly) => {
+        setAnomalies((prev) => [newAnomaly, ...prev]);
+      });
+    }
+    return () => {
+      if (socket) socket.off("intelligence.alert");
+    };
+  }, [socket]);
 
   if (!visible || anomalies.length === 0) return null;
 

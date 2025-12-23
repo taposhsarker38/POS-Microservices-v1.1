@@ -30,8 +30,8 @@ class Command(BaseCommand):
                 data = json.loads(body)
                 self.stdout.write(f" [x] Received audit event from {data.get('service_name', 'unknown')}: {method.routing_key}")
                 
-                # Save to database
-                AuditLog.objects.create(
+                # Save to database using the ledger-secured manager
+                AuditLog.objects.create_with_ledger(
                     user_id=data.get('user_id'),
                     username=data.get('username'),
                     company_uuid=data.get('company_uuid'),

@@ -2,7 +2,7 @@ import pandas as pd
 from celery import shared_task
 from django.db import connection
 from apps.inventory_opt.models import InventoryOptimization
-from apps.forecasts.models import SalesForecast
+from apps.forecasts.models import Forecast
 from datetime import date, timedelta
 import logging
 
@@ -42,12 +42,11 @@ def analyze_stockout_risk(company_uuid=None):
         qty = float(row['current_stock'])
         
         # Get future forecasts for this product
-        forecasts = SalesForecast.objects.filter(
+        forecasts = Forecast.objects.filter(
             company_uuid=comp_id,
             product_uuid=prod_id,
-            date__gte=today,
-            forecast_type='sales'
-        ).order_by('date')
+            forecast_date__gte=today
+        ).order_by('forecast_date')
         
         if not forecasts.exists():
             continue
@@ -59,9 +58,9 @@ def analyze_stockout_risk(company_uuid=None):
         
         # Simple projection: when does qty - cumulative_demand < 0?
         for f in forecasts:
-            cumulative_demand += f.predicted_sales
+            cumulative_demand += float(f.predicted_quantity)
             if qty - cumulative_demand <= 0:
-                stockout_date = f.date
+                stockout_date = f.forecast_date
                 break
         
         # Calculate risk score (0-100)

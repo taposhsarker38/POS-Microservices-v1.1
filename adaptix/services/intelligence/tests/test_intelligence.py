@@ -3,7 +3,7 @@ import uuid
 from apps.automation.models import AutomationRule, ActionLog
 from apps.automation.services import RuleEngine
 from apps.crm_opt.models import CustomerSegmentation
-from apps.forecasts.models import SalesForecast
+from apps.forecasts.models import Forecast, SalesHistory
 from apps.inventory_opt.models import InventoryOptimization
 
 @pytest.mark.django_db
@@ -25,7 +25,7 @@ class TestIntelligenceLogic:
         assert seg.customer_email == "test@example.com"
         
         # Test Forecast
-        forecast = SalesForecast.objects.create(
+        forecast = Forecast.objects.create(
             date="2024-01-01",
             predicted_sales=100.0,
             confidence_lower=90.0,

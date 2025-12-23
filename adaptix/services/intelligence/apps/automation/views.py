@@ -6,8 +6,15 @@ from .serializers import AutomationRuleSerializer, ActionLogSerializer
 from .services import RuleEngine
 
 class AutomationRuleViewSet(viewsets.ModelViewSet):
-    queryset = AutomationRule.objects.all()
     serializer_class = AutomationRuleSerializer
+
+    def get_queryset(self):
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        return AutomationRule.objects.filter(company_uuid=company_uuid, is_deleted=False)
+
+    def perform_create(self, serializer):
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        serializer.save(company_uuid=company_uuid)
 
 class ActionLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ActionLog.objects.all()

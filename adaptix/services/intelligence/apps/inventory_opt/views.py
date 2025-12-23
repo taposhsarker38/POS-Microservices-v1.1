@@ -7,7 +7,7 @@ import pandas as pd
 from .models import InventoryOptimization
 from .serializers import InventoryOptimizationSerializer
 from .tasks import analyze_stockout_risk
-from apps.forecasts.models import SalesForecast
+from apps.forecasts.models import Forecast
 from datetime import date, timedelta
 
 class InventoryOptimizationViewSet(viewsets.ModelViewSet):
@@ -55,12 +55,11 @@ class InventoryOptimizationViewSet(viewsets.ModelViewSet):
             return Response({"error": "Optimization data not found for this product"}, status=404)
             
         # 2. Get forecasts
-        forecasts = SalesForecast.objects.filter(
+        forecasts = Forecast.objects.filter(
             company_uuid=company_uuid,
             product_uuid=product_uuid,
-            date__gte=date.today(),
-            forecast_type='sales'
-        ).order_by('date')
+            forecast_date__gte=date.today()
+        ).order_by('forecast_date')
         
         if not forecasts.exists():
              return Response({"error": "No forecast data generated yet"}, status=404)
@@ -70,13 +69,12 @@ class InventoryOptimizationViewSet(viewsets.ModelViewSet):
         running_stock = current_stock
         
         for f in forecasts:
-            running_stock -= f.predicted_sales
+            running_stock -= float(f.predicted_quantity)
             projection.append({
-                "date": f.date,
-                "predicted_sales": round(f.predicted_sales, 2),
+                "date": f.forecast_date,
+                "predicted_sales": float(f.predicted_quantity),
                 "projected_stock": round(running_stock, 2),
-                "confidence_lower": f.confidence_lower,
-                "confidence_upper": f.confidence_upper
+                "confidence_score": f.confidence_score
             })
             
         return Response({

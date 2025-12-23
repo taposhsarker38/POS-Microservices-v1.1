@@ -1,7 +1,12 @@
 from rest_framework import serializers
-from .models import SalesForecast
+from .models import Forecast, SalesHistory
 
-class SalesForecastSerializer(serializers.ModelSerializer):
+class ForecastSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SalesForecast
+        model = Forecast
+        fields = '__all__'
+
+class SalesHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesHistory
         fields = '__all__'

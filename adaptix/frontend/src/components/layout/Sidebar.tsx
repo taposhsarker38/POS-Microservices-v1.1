@@ -181,9 +181,15 @@ const adminRoutes = [
   },
   {
     label: "Audit Logs",
-    icon: Shield,
+    icon: History,
     href: "/dashboard/admin/audit",
-    permission: "view_audit_log", // Assuming admin has this
+    permission: "view_audit_log",
+  },
+  {
+    label: "Security Center",
+    icon: ShieldCheck,
+    href: "/dashboard/security",
+    permission: "view_audit_log",
   },
 ];
 

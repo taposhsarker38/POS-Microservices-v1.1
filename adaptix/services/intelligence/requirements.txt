@@ -19,3 +19,4 @@ pytest-mock==3.12.0
 drf-spectacular
 cryptography
 djangorestframework-simplejwt
+pika==1.3.2

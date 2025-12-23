@@ -35,15 +35,19 @@ class Command(BaseCommand):
                 except User.DoesNotExist:
                     pass
             
-            AuditLog.objects.create(
-                user=user,
+            AuditLog.objects.create_with_ledger(
+                user_id=data.get("user_id"),
+                username=data.get("username", "system"),
+                company_uuid=data.get("company_uuid"),
+                service_name=data.get("service", "unknown"),
                 path=data.get("path", "")[:400],
                 method=data.get("method", "LOG"),
                 status_code=data.get("status_code", 200),
-                request_body=json.dumps(data.get("payload", {})),
-                response_body=data.get("meta", ""),
-                ip=data.get("ip", "0.0.0.0"),
-                user_agent=data.get("service", "unknown")  # Storing service name in user_agent for now
+                request_body=json.dumps(data.get("payload_preview", {})),
+                payload_preview=data.get("payload_preview", {}),
+                response_body=data.get("response_body", ""),
+                ip=data.get("ip_address", "0.0.0.0"),
+                user_agent=data.get("user_agent", "")
             )
             self.stdout.write(f"Logged action from {data.get('service')}")
             message.ack()

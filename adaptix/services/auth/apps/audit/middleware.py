@@ -9,10 +9,14 @@ class AuditMiddleware(MiddlewareMixin):
             request._saved_body = ""
 
     def process_response(self, request, response):
+        print(f"DEBUG: AuditMiddleware processing {request.method} {request.path}")
         try:
             user = getattr(request, "user", None)
-            AuditLog.objects.create(
-                user = user if user and user.is_authenticated else None,
+            AuditLog.objects.create_with_ledger(
+                user_id = str(user.id) if user and user.is_authenticated else None,
+                username = user.username if user and user.is_authenticated else "anon",
+                company_uuid = getattr(request, "company_uuid", None),
+                service_name = "auth-service",
                 path = request.path[:400],
                 method = request.method,
                 status_code = getattr(response, "status_code", 0),

@@ -1,10 +1,10 @@
 FROM node:20-alpine
 
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY services/ws-gateway/package.json services/ws-gateway/package-lock.json* ./
 RUN npm install --production
 
-COPY . .
+COPY services/ws-gateway/ .
 
 # create non-root user
 RUN addgroup -S app && adduser -S app -G app

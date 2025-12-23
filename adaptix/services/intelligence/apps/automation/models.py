@@ -1,7 +1,8 @@
 import uuid
 from django.db import models
+from apps.utils.models import SoftDeleteModel
 
-class AutomationRule(models.Model):
+class AutomationRule(SoftDeleteModel):
     TRIGGER_CHOICES = (
         ('stock_level', 'Stock Level Change'),
         ('new_order', 'New Order'),
@@ -31,6 +32,10 @@ class AutomationRule(models.Model):
     
     action_type = models.CharField(max_length=50, choices=ACTION_CHOICES)
     action_config = models.JSONField(default=dict, blank=True) # e.g. {"to": "admin@example.com", "body": "Low Stock!"}
+    
+    company_uuid = models.UUIDField(db_index=True, null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    last_triggered_at = models.DateTimeField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -73,7 +73,7 @@ MIDDLEWARE = [
     'adaptix_core.middleware.CorrelationIDMiddleware',
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "apps.audit.middleware.AuditMiddleware",  # optional - keep if exists
+    # "apps.audit.middleware.AuditMiddleware",  # redundant, audit-consumer handles this
 ]
 
 ROOT_URLCONF = "config.urls"

@@ -152,21 +152,30 @@ class AuditMiddleware:
                 'ip_address': ip,
                 'user_agent': user_agent,
                 'service_name': os.environ.get('SERVICE_NAME', 'unknown'),
+                'payload_preview': None,
             }
             
-            # Only include payload for small requests to avoid bloating logs
-            if request.method in ['POST', 'PUT', 'PATCH'] and len(request.body) < 10000:
-                try:
+            # Safe body extraction
+            try:
+                if hasattr(request, '_body'):
                     import json
-                    audit_data['payload_preview'] = json.loads(request.body.decode('utf-8'))
-                except Exception:
-                    pass
+                    body_str = request._body.decode('utf-8')
+                    if body_str:
+                       audit_data['payload_preview'] = json.loads(body_str)
+            except Exception:
+                pass
 
+            import threading
             routing_key = f"audit.{request.method.lower()}"
-            publish_event('audit_logs', routing_key, audit_data)
+            # Publish in a separate thread to avoid blocking the main request
+            threading.Thread(
+                target=publish_event, 
+                args=('audit_logs', routing_key, audit_data),
+                daemon=True
+            ).start()
             
             if response.status_code < 400:
-                print(f"[Core] AUDIT SENT from {ip}: {request.method} {request.path}")
+                print(f"[Core] AUDIT QUEUED from {ip}: {request.method} {request.path}")
         except Exception as e:
             print(f"Audit logging failed: {e}")
 import uuid

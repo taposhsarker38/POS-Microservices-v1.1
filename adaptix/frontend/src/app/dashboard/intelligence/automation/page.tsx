@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap,
   Settings,
@@ -15,6 +16,7 @@ import {
   FileText,
   MoreVertical,
   Activity,
+  ArrowRight,
 } from "lucide-react";
 import {
   Card,
@@ -54,6 +56,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface AutomationRule {
   id: string;
@@ -155,32 +158,37 @@ export default function AutomationHub() {
   const getActionIcon = (type: string) => {
     switch (type) {
       case "email":
-        return <Mail className="h-4 w-4 text-blue-500" />;
+        return <Mail className="h-4 w-4 text-primary" />;
       case "webhook":
         return <Globe className="h-4 w-4 text-emerald-500" />;
       case "log":
-        return <FileText className="h-4 w-4 text-slate-500" />;
+        return <FileText className="h-4 w-4 text-muted-foreground" />;
       default:
         return <Settings className="h-4 w-4" />;
     }
   };
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6 bg-background min-h-screen text-foreground">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-between items-center"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-2">
             <Zap className="text-amber-500 fill-amber-500" />
             Workflow Automation
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-muted-foreground text-sm mt-1">
             Automate your business logic with event-driven rules.
           </p>
         </div>
 
         <Dialog open={isNewRuleOpen} onOpenChange={setIsNewRuleOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200 gap-2">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2">
               <Plus className="h-4 w-4" /> Create New Rule
             </Button>
           </DialogTrigger>
@@ -248,13 +256,13 @@ export default function AutomationHub() {
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <p className="text-xs font-semibold uppercase text-slate-500 mb-2">
+              <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
                   Condition Logic
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">IF</span>
-                  <Badge variant="outline" className="bg-white">
+                  <span className="text-sm text-foreground">IF</span>
+                  <Badge variant="outline" className="bg-background">
                     {newRule.condition_field}
                   </Badge>
                   <Select
@@ -310,145 +318,178 @@ export default function AutomationHub() {
               <Button variant="outline" onClick={() => setIsNewRuleOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateRule} className="bg-violet-600">
+              <Button onClick={handleCreateRule} className="bg-primary">
                 Save Workflow
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Rules List */}
-        <Card className="md:col-span-2 shadow-sm border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="h-5 w-5 text-slate-400" />
-              Active Automations
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50/50">
-                  <TableHead>Rule Name</TableHead>
-                  <TableHead>Trigger</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rules.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-10 text-slate-400"
-                    >
-                      No automation rules defined yet.
-                    </TableCell>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="md:col-span-2"
+        >
+          <Card className="shadow-lg border-border/40 bg-card/50 backdrop-blur-sm h-full">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                Active Automations
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50 border-b border-border/50">
+                    <TableHead>Rule Name</TableHead>
+                    <TableHead>Trigger</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
-                ) : (
-                  rules.map((rule) => (
-                    <TableRow
-                      key={rule.id}
-                      className="group hover:bg-slate-50 transition-colors"
-                    >
-                      <TableCell className="font-semibold">
-                        {rule.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="capitalize text-[10px]"
+                </TableHeader>
+                <TableBody>
+                  <AnimatePresence>
+                    {rules.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center py-10 text-muted-foreground"
                         >
-                          {rule.trigger_type.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-xs text-slate-600">
-                          {getActionIcon(rule.action_type)}
-                          <span className="capitalize">{rule.action_type}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          onClick={() => toggleRule(rule.id, rule.is_active)}
-                          className={`w-10 h-5 rounded-full transition-colors relative ${
-                            rule.is_active ? "bg-emerald-500" : "bg-slate-300"
-                          }`}
+                          No automation rules defined yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      rules.map((rule) => (
+                        <motion.tr
+                          key={rule.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="group hover:bg-muted/30 transition-colors border-b border-border/40"
                         >
-                          <div
-                            className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${
-                              rule.is_active ? "left-6" : "left-1"
-                            }`}
-                          />
-                        </button>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteRule(rule.id)}
-                          className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          <TableCell className="font-semibold">
+                            {rule.name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="secondary"
+                              className="capitalize text-[10px] bg-secondary/50"
+                            >
+                              {rule.trigger_type.replace("_", " ")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {getActionIcon(rule.action_type)}
+                              <span className="capitalize">
+                                {rule.action_type}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              onClick={() =>
+                                toggleRule(rule.id, rule.is_active)
+                              }
+                              className={cn(
+                                "w-9 h-5 rounded-full transition-colors relative",
+                                rule.is_active
+                                  ? "bg-emerald-500"
+                                  : "bg-muted-foreground/30"
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  "absolute top-1 w-3 h-3 bg-white rounded-full transition-transform shadow-sm",
+                                  rule.is_active ? "left-5" : "left-1"
+                                )}
+                              />
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteRule(rule.id)}
+                              className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </motion.tr>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Recent Execution Logs */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-emerald-500" />
-              Execution History
-            </CardTitle>
-            <CardDescription>Live feed of automated actions.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[400px]">
-              <div className="divide-y divide-slate-100">
-                {logs.length === 0 ? (
-                  <div className="p-10 text-center text-slate-400 text-sm">
-                    No recent activity.
-                  </div>
-                ) : (
-                  logs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors"
-                    >
-                      {log.status === "success" ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-500 mt-1 shrink-0" />
-                      )}
-                      <div>
-                        <p className="text-xs font-bold text-slate-900">
-                          {log.rule_name || "System Rule"}
-                        </p>
-                        <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">
-                          {log.details}
-                        </p>
-                        <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(log.executed_at), "MMM d, HH:mm:ss")}
-                        </p>
-                      </div>
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="shadow-lg border-border/40 bg-card/50 backdrop-blur-sm h-full">
+            <CardHeader className="pb-3 border-b border-border/40">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5 text-emerald-500" />
+                Execution History
+              </CardTitle>
+              <CardDescription>Live feed of automated actions.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[500px]">
+                <div className="divide-y divide-border/40">
+                  {logs.length === 0 ? (
+                    <div className="p-10 text-center text-muted-foreground text-sm">
+                      No recent activity.
                     </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                  ) : (
+                    logs.map((log, i) => (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        key={log.id}
+                        className="p-4 flex items-start gap-3 hover:bg-muted/20 transition-colors"
+                      >
+                        {log.status === "success" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive mt-1 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-0.5">
+                            <p className="text-xs font-bold text-foreground truncate max-w-[150px]">
+                              {log.rule_name || "System Rule"}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {format(
+                                new Date(log.executed_at),
+                                "MMM d, HH:mm"
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground line-clamp-2">
+                            {log.details}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

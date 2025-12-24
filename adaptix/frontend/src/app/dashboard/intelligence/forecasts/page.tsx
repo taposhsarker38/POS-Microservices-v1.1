@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain,
   TrendingUp,
@@ -37,6 +38,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useWebSockets } from "@/hooks/useWebSockets";
+import { cn } from "@/lib/utils";
 
 interface ForecastData {
   product_uuid: string;
@@ -156,14 +158,18 @@ export default function ForecastingDashboard() {
     .filter((p) => p.product_name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6 bg-background min-h-screen text-foreground">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-between items-center"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Brain className="text-violet-600" />
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+            <Brain className="text-violet-600 fill-violet-600/20" />
             Demand Forecasting
           </h1>
-          <p className="text-slate-500">
+          <p className="text-muted-foreground mt-1">
             AI-powered inventory predictions and stock-out prevention.
           </p>
         </div>
@@ -174,7 +180,7 @@ export default function ForecastingDashboard() {
           <Button
             onClick={syncData}
             disabled={syncing}
-            className="bg-violet-600 hover:bg-violet-700 gap-2"
+            className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shadow-lg shadow-violet-200"
           >
             <TrendingUp
               className={syncing ? "animate-spin h-4 w-4" : "h-4 w-4"}
@@ -182,85 +188,107 @@ export default function ForecastingDashboard() {
             {syncing ? "Generating..." : "Generate Forecasts"}
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Product List Sidebar */}
-        <Card className="md:col-span-1 shadow-sm border-slate-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Tracked Products</CardTitle>
-            <div className="relative mt-2">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[600px]">
-              {loading ? (
-                <div className="p-4 text-center text-slate-400">Loading...</div>
-              ) : filteredPredictions.length === 0 ? (
-                <div className="p-4 text-center text-slate-400">
-                  No data found
-                </div>
-              ) : (
-                filteredPredictions.map((p) => (
-                  <div
-                    key={p.product_uuid}
-                    onClick={() => setSelectedProduct(p.product_uuid)}
-                    className={cn(
-                      "p-4 border-b border-slate-100 cursor-pointer transition-colors flex items-center justify-between group",
-                      selectedProduct === p.product_uuid
-                        ? "bg-violet-50"
-                        : "hover:bg-slate-50"
-                    )}
-                  >
-                    <div>
-                      <p className="font-semibold text-sm line-clamp-1">
-                        {p.product_name}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          variant={
-                            p.confidence_score > 0.6 ? "secondary" : "outline"
-                          }
-                          className="text-[10px] px-1 h-4"
-                        >
-                          {Math.round(p.confidence_score * 100)}% Conf.
-                        </Badge>
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className={cn(
-                        "h-4 w-4 text-slate-300 group-hover:text-violet-500 transition-colors",
-                        selectedProduct === p.product_uuid &&
-                          "text-violet-600 translate-x-1"
-                      )}
-                    />
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="md:col-span-1"
+        >
+          <Card className="shadow-lg border-border/40 bg-card/50 backdrop-blur-sm h-full">
+            <CardHeader className="pb-3 border-b border-border/40">
+              <CardTitle className="text-lg">Tracked Products</CardTitle>
+              <div className="relative mt-2">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-8 bg-background/50"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[600px]">
+                {loading ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Loading...
                   </div>
-                ))
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                ) : filteredPredictions.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No data found
+                  </div>
+                ) : (
+                  filteredPredictions.map((p) => (
+                    <div
+                      key={p.product_uuid}
+                      onClick={() => setSelectedProduct(p.product_uuid)}
+                      className={cn(
+                        "p-4 border-b border-border/40 cursor-pointer transition-all flex items-center justify-between group",
+                        selectedProduct === p.product_uuid
+                          ? "bg-violet-500/10 border-l-4 border-l-violet-500"
+                          : "hover:bg-muted/30 border-l-4 border-l-transparent"
+                      )}
+                    >
+                      <div>
+                        <p
+                          className={cn(
+                            "font-semibold text-sm line-clamp-1",
+                            selectedProduct === p.product_uuid
+                              ? "text-violet-700 dark:text-violet-300"
+                              : "text-foreground"
+                          )}
+                        >
+                          {p.product_name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            variant={
+                              p.confidence_score > 0.6 ? "secondary" : "outline"
+                            }
+                            className="text-[10px] px-1 h-4"
+                          >
+                            {Math.round(p.confidence_score * 100)}% Conf.
+                          </Badge>
+                        </div>
+                      </div>
+                      <ChevronRight
+                        className={cn(
+                          "h-4 w-4 transition-all",
+                          selectedProduct === p.product_uuid
+                            ? "text-violet-600 translate-x-1"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                      />
+                    </div>
+                  ))
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Chart View */}
-        <div className="md:col-span-3 space-y-6">
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="md:col-span-3 space-y-6"
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white border-slate-200 shadow-sm">
+            <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 bg-violet-100 rounded-lg">
-                  <TrendingUp className="text-violet-600" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                  <TrendingUp className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     Predicted Demand (7d)
                   </p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {chartData
                       .filter((d) => d.type === "forecast")
                       .reduce((sum, d) => sum + d.forecast, 0)
@@ -270,33 +298,33 @@ export default function ForecastingDashboard() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 shadow-sm">
+            <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 bg-amber-100 rounded-lg">
-                  <AlertTriangle className="text-amber-600" />
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <AlertTriangle className="text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Risk Level</p>
-                  <Badge className="bg-amber-100 text-amber-700 border-none">
+                  <p className="text-sm text-muted-foreground">Risk Level</p>
+                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-none">
                     Medium
                   </Badge>
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border-slate-200 shadow-sm">
+            <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Package className="text-blue-600" />
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Package className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Current Stock</p>
-                  <p className="text-2xl font-bold">--</p>
+                  <p className="text-sm text-muted-foreground">Current Stock</p>
+                  <p className="text-2xl font-bold text-foreground">--</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="shadow-sm border-slate-200">
+          <Card className="shadow-lg border-border/40 bg-card/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Demand Trend Analysis</CardTitle>
               <CardDescription>
@@ -318,7 +346,7 @@ export default function ForecastingDashboard() {
                         <stop
                           offset="5%"
                           stopColor="#8b5cf6"
-                          stopOpacity={0.1}
+                          stopOpacity={0.3}
                         />
                         <stop
                           offset="95%"
@@ -336,7 +364,7 @@ export default function ForecastingDashboard() {
                         <stop
                           offset="5%"
                           stopColor="#ec4899"
-                          stopOpacity={0.1}
+                          stopOpacity={0.3}
                         />
                         <stop
                           offset="95%"
@@ -348,11 +376,12 @@ export default function ForecastingDashboard() {
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      stroke="#f1f5f9"
+                      stroke="var(--border)"
+                      strokeOpacity={0.5}
                     />
                     <XAxis
                       dataKey="date"
-                      stroke="#94a3b8"
+                      stroke="var(--muted-foreground)"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
@@ -364,7 +393,7 @@ export default function ForecastingDashboard() {
                       }
                     />
                     <YAxis
-                      stroke="#94a3b8"
+                      stroke="var(--muted-foreground)"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
@@ -372,10 +401,11 @@ export default function ForecastingDashboard() {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#fff",
+                        backgroundColor: "var(--card)",
                         borderRadius: "8px",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--border)",
                         boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        color: "var(--foreground)",
                       }}
                       labelFormatter={(label) =>
                         new Date(label).toLocaleDateString(undefined, {
@@ -408,12 +438,8 @@ export default function ForecastingDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(" ");
 }

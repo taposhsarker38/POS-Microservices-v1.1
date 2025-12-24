@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeClient } from "@/components/hrms/employee-client";
 import { DepartmentClient } from "@/components/hrms/department-client";
 import { PositionClient } from "@/components/hrms/position-client";
+import { ShiftClient } from "@/components/hrms/shift-client";
 
 export default function HRPage() {
   return (
@@ -17,6 +18,7 @@ export default function HRPage() {
           <TabsTrigger value="employees">Employees</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="positions">Positions</TabsTrigger>
+          <TabsTrigger value="shifts">Shifts</TabsTrigger>
         </TabsList>
         <TabsContent value="employees" className="space-y-4">
           <EmployeeClient />
@@ -26,6 +28,9 @@ export default function HRPage() {
         </TabsContent>
         <TabsContent value="positions" className="space-y-4">
           <PositionClient />
+        </TabsContent>
+        <TabsContent value="shifts" className="space-y-4">
+          <ShiftClient />
         </TabsContent>
       </Tabs>
     </div>

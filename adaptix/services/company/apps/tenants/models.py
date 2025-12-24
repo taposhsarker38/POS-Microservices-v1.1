@@ -11,6 +11,14 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=50)
     business_type = models.CharField(max_length=50, choices=BUSINESS_TYPE_CHOICES, default=FMCG)
+    
+    ENTITY_TYPE_CHOICES = (
+        ('GENERAL', 'General'),
+        ('FACTORY', 'Factory'),
+        ('STORE', 'Store'),
+        ('WAREHOUSE', 'Warehouse'),
+    )
+    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPE_CHOICES, default='GENERAL')
     tax_number = models.CharField(max_length=128, blank=True, null=True)
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     bin_number = models.CharField(max_length=128, blank=True, null=True)

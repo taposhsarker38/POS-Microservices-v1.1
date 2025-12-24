@@ -5,7 +5,7 @@ from apps.employees.serializers import EmployeeSerializer # Using the existing o
 class ShiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shift
-        fields = '__all__'
+        fields = ["id", "company_uuid", "name", "code", "branch_type", "start_time", "end_time", "grace_time_in", "grace_time_out", "is_overnight", "created_at"]
         read_only_fields = ['id', 'created_at']
 
 class EmployeeShiftSerializer(serializers.ModelSerializer):

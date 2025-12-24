@@ -9,6 +9,14 @@ class Shift(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)
     
+    BRANCH_TYPE_CHOICES = (
+        ('GENERAL', 'General'),
+        ('FACTORY', 'Factory'),
+        ('STORE', 'Store'),
+        ('WAREHOUSE', 'Warehouse'),
+    )
+    branch_type = models.CharField(max_length=20, choices=BRANCH_TYPE_CHOICES, default='GENERAL')
+    
     start_time = models.TimeField()
     end_time = models.TimeField()
     

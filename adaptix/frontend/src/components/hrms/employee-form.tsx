@@ -53,6 +53,7 @@ export function EmployeeForm({
   const [positions, setPositions] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [allShifts, setAllShifts] = useState<any[]>([]);
 
   useEffect(() => {
     // Fetch dependencies
@@ -67,7 +68,10 @@ export function EmployeeForm({
         setDepartments(deptRes.data.results || deptRes.data);
         setPositions(posRes.data.results || posRes.data);
         setBranches(compRes.data.results || compRes.data);
-        setShifts(shiftRes.data.results || shiftRes.data);
+
+        const shiftData = shiftRes.data.results || shiftRes.data;
+        setAllShifts(shiftData);
+        setShifts(shiftData); // Default to all
       } catch (e) {
         console.error(e);
       }
@@ -94,6 +98,29 @@ export function EmployeeForm({
       current_shift: initialData?.current_shift || "",
     },
   });
+
+  // Dynamic Shift Filtering
+  const selectedBranchId = form.watch("branch_uuid");
+  useEffect(() => {
+    if (!selectedBranchId || !allShifts.length) {
+      setShifts(allShifts);
+      return;
+    }
+    const branch = branches.find((b) => b.id === selectedBranchId);
+    if (branch) {
+      const filtered = allShifts.filter(
+        (s) =>
+          s.branch_type === branch.entity_type || s.branch_type === "GENERAL"
+      );
+      setShifts(filtered);
+
+      // Auto-reset shift if current one is not in filtered list
+      const currentShift = form.getValues("current_shift");
+      if (currentShift && !filtered.find((s) => s.id === currentShift)) {
+        form.setValue("current_shift", "");
+      }
+    }
+  }, [selectedBranchId, allShifts, branches, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {

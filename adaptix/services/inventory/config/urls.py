@@ -16,9 +16,13 @@ router.register(r'serials', StockSerialViewSet)
 router.register(r'bom', BillOfMaterialViewSet)
 
 from django_prometheus.exports import ExportToDjangoView
+from django.http import JsonResponse
+def health_check(request):
+    return JsonResponse({"status": "ok"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', health_check, name='health_check'),
     path('api/inventory/', include(router.urls)),
     path('metrics/', ExportToDjangoView, name='prometheus-metrics'),
 

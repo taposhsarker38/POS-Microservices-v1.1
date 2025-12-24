@@ -15,6 +15,7 @@ opentelemetry-instrumentation-django
 opentelemetry-instrumentation-psycopg2
 opentelemetry-instrumentation-requests
 opentelemetry-exporter-otlp
+django-prometheus
 
 # Testing
 pytest==8.0.0

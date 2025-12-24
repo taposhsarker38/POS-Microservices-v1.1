@@ -1,9 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { Link, usePathname } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   BarChart3,
   LayoutDashboard,
@@ -20,7 +26,7 @@ import {
   Lock,
   LogOut,
   Contact,
-  Ticket, // Add Ticket icon
+  Ticket,
   Monitor,
   Brain,
   ChartColumn,
@@ -51,114 +57,114 @@ interface SidebarRoute {
 
 const routes: SidebarRoute[] = [
   {
-    label: "Dashboard",
+    label: "dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
     permission: null,
   },
   {
-    label: "Operations",
+    label: "operations",
     icon: ShoppingBag,
     children: [
       {
-        label: "Customers",
+        label: "customers",
         href: "/dashboard/customers",
         permission: "view_customer",
       },
       {
-        label: "Inventory",
+        label: "inventory",
         href: "/dashboard/inventory",
         permission: "view_inventory",
       },
       {
-        label: "Point of Sale",
+        label: "pos",
         href: "/dashboard/pos",
         permission: "view_pos",
       },
       {
-        label: "Products",
+        label: "products",
         href: "/dashboard/products",
         permission: "view_product",
       },
       {
-        label: "Categories",
+        label: "categories",
         href: "/dashboard/categories",
         permission: "view_product",
       },
       {
-        label: "Brands",
+        label: "brands",
         href: "/dashboard/brands",
         permission: "view_product",
       },
-      { label: "Units", href: "/dashboard/units", permission: "view_product" },
+      { label: "units", href: "/dashboard/units", permission: "view_product" },
       {
-        label: "Purchase & Analytics",
+        label: "purchaseAnalytics",
         href: "/dashboard/purchase",
         permission: "view_purchase",
       },
       {
-        label: "Accounting",
+        label: "accounting",
         href: "/dashboard/accounting",
         permission: "view_accounting",
       },
       {
-        label: "Logistics",
+        label: "logistics",
         href: "/dashboard/logistics",
         permission: "view_logistics",
       },
-      { label: "Assets", href: "/dashboard/assets", permission: "view_asset" },
+      { label: "assets", href: "/dashboard/assets", permission: "view_asset" },
     ],
   },
   {
-    label: "Human Resources",
+    label: "humanResources",
     icon: Users,
     children: [
-      { label: "HR Portal", href: "/dashboard/hr", permission: "view_hr" },
-      { label: "Leaves", href: "/dashboard/hr/leaves", permission: "view_hr" },
+      { label: "hrPortal", href: "/dashboard/hr", permission: "view_hr" },
+      { label: "leaves", href: "/dashboard/hr/leaves", permission: "view_hr" },
       {
-        label: "Projects",
+        label: "projects",
         href: "/dashboard/projects",
         permission: "view_project",
       },
     ],
   },
   {
-    label: "Production & Quality",
+    label: "productionQuality",
     icon: Factory,
     children: [
       {
-        label: "Manufacturing",
+        label: "manufacturing",
         href: "/dashboard/manufacturing",
         permission: "view_manufacturing",
       },
       {
-        label: "Shop Floor",
+        label: "shopFloor",
         href: "/dashboard/manufacturing/shop-floor",
         permission: "view_manufacturing",
       },
       {
-        label: "Quality Control",
+        label: "qualityControl",
         href: "/dashboard/quality",
         permission: "view_quality",
       },
     ],
   },
   {
-    label: "Intelligence Hub",
+    label: "intelligenceHub",
     icon: Brain,
     children: [
       {
-        label: "Business AI",
+        label: "businessAI",
         href: "/dashboard/intelligence",
         permission: "view_forecast",
       },
       {
-        label: "Vision Hub",
+        label: "visionHub",
         href: "/dashboard/intelligence/vision-hub",
         permission: "view_forecast",
       },
       {
-        label: "General Analytics",
+        label: "generalAnalytics",
         href: "/dashboard/analytics",
         permission: "view_analytics",
       },
@@ -167,38 +173,38 @@ const routes: SidebarRoute[] = [
 ];
 
 const adminRouteGroup: SidebarRoute = {
-  label: "Administration",
+  label: "administration",
   icon: Shield,
   children: [
-    { label: "Users", href: "/dashboard/admin/users", permission: "view_user" },
+    { label: "users", href: "/dashboard/admin/users", permission: "view_user" },
     {
-      label: "Organization Hub",
+      label: "organizationHub",
       href: "/dashboard/organization",
       permission: "view_settings",
     },
-    { label: "Roles", href: "/dashboard/admin/roles", permission: "view_role" },
+    { label: "roles", href: "/dashboard/admin/roles", permission: "view_role" },
     {
-      label: "Permissions",
+      label: "permissions",
       href: "/dashboard/admin/permissions",
       permission: "view_permission",
     },
     {
-      label: "Audit Logs",
+      label: "auditLogs",
       href: "/dashboard/admin/audit",
       permission: "view_audit_log",
     },
     {
-      label: "Security Center",
+      label: "securityCenter",
       href: "/dashboard/security",
       permission: "view_audit_log",
     },
     {
-      label: "System Ops",
+      label: "systemOps",
       href: "/dashboard/ops",
       permission: "view_settings",
     },
     {
-      label: "Settings",
+      label: "settings",
       href: "/dashboard/settings",
       permission: "view_settings",
     },
@@ -227,6 +233,9 @@ export function Sidebar({ className }: SidebarProps) {
     );
   };
 
+  const t = useTranslations("Sidebar");
+  const locale = useLocale();
+
   const filterRoute = (route: SidebarRoute): SidebarRoute | null => {
     if (!isClient) return null;
     if (isSuper) return route;
@@ -243,7 +252,7 @@ export function Sidebar({ className }: SidebarProps) {
         return permissions.includes(child.permission);
       });
 
-      if (visibleChildren.length === 0 && !route.href) return null;
+      if (visibleChildren.length === 0) return null;
       return { ...route, children: visibleChildren };
     }
 
@@ -252,7 +261,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const visibleRoutes = routes
     .map(filterRoute)
-    .filter(Boolean) as SidebarRoute[];
+    .filter((route): route is SidebarRoute => route !== null);
   const visibleAdminRoute = filterRoute(adminRouteGroup);
 
   const renderRoute = (route: SidebarRoute) => {
@@ -275,7 +284,7 @@ export function Sidebar({ className }: SidebarProps) {
             )}
           >
             <route.icon className="h-5 w-5" />
-            <span>{route.label}</span>
+            <span>{t(route.label)}</span>
           </Link>
         ) : (
           <button
@@ -289,7 +298,7 @@ export function Sidebar({ className }: SidebarProps) {
           >
             <div className="flex items-center gap-3">
               <route.icon className="h-5 w-5" />
-              <span>{route.label}</span>
+              <span>{t(route.label)}</span>
             </div>
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 text-slate-500" />
@@ -312,7 +321,7 @@ export function Sidebar({ className }: SidebarProps) {
                     : "text-slate-500 hover:text-slate-300"
                 )}
               >
-                {child.label}
+                {t(child.label)}
               </Link>
             ))}
           </div>
@@ -339,7 +348,7 @@ export function Sidebar({ className }: SidebarProps) {
               Adaptix
             </h1>
             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-              Enterprise Suite
+              {t("enterpriseSuite")}
             </p>
           </div>
         </Link>
@@ -352,7 +361,7 @@ export function Sidebar({ className }: SidebarProps) {
         {visibleAdminRoute && (
           <div className="pt-4 border-t border-slate-800/50">
             <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-              System Management
+              {t("systemManagement")}
             </p>
             {renderRoute(visibleAdminRoute)}
           </div>
@@ -372,7 +381,7 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="p-2 rounded-lg bg-rose-500/10 group-hover:bg-rose-500/20 transition-colors">
             <LogOut className="h-4 w-4" />
           </div>
-          <span>Sign Out</span>
+          <span>{t("signOut")}</span>
         </button>
       </div>
     </div>

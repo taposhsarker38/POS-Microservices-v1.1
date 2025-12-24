@@ -85,6 +85,7 @@ class Order(SoftDeleteModel):
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    tax_zone_code = models.CharField(max_length=50, blank=True, null=True, help_text="Code of the tax zone for this order")
     
     # Meta
     company_uuid = models.UUIDField(editable=False) # Multi-tenant

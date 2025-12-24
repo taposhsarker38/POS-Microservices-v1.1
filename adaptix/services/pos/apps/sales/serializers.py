@@ -60,7 +60,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'currency',
             'subtotal', 'tax_total', 'discount_total', 'service_charge', 'grand_total', 
             'paid_amount', 'due_amount',
-            'status', 'payment_status',
+            'status', 'payment_status', 'tax_zone_code',
             'metadata', 'created_at', 'updated_at', 'items', 'payments', 'payment_data',
             'loyalty_action', 'redeemed_points', 'wing'
         ]
@@ -92,6 +92,8 @@ class OrderSerializer(serializers.ModelSerializer):
             calculated_tax = 0
             calculated_discount = 0
             
+            tax_zone_code = validated_data.get('tax_zone_code')
+            
             for item_data in items_data:
                 # Propagate company_uuid
                 item_data['company_uuid'] = company_uuid
@@ -101,6 +103,25 @@ class OrderSerializer(serializers.ModelSerializer):
                 disc = item_data.get('discount_amount', 0)
                 tax = item_data.get('tax_amount', 0)
                 
+                # Dynamic Tax Calculation if zone provided and no tax sent by client
+                if tax_zone_code and tax == 0:
+                    try:
+                        from adaptix_core.service_registry import ServiceRegistry
+                        url = f"{ServiceRegistry.get_api_url('accounting')}/tax/engine/calculate/"
+                        payload = {
+                            "amount": float(qty * price),
+                            "zone_code": tax_zone_code,
+                            "product_category_uuid": str(item_data.get('metadata', {}).get('category_uuid')) if item_data.get('metadata') else None
+                        }
+                        headers = {'X-Company-Id': str(company_uuid)}
+                        resp = requests.post(url, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            tax_data = resp.json()
+                            tax = Decimal(str(tax_data.get('total_tax', 0)))
+                            item_data['tax_amount'] = tax
+                    except Exception as e:
+                        print(f"Tax Engine Error: {e}")
+
                 # Simple server-side calc
                 item_subtotal = (qty * price) - disc + tax
                 item_data['subtotal'] = item_subtotal

@@ -94,8 +94,15 @@ export function ShiftClient() {
       setEditingShift(null);
       setFormData(initialForm);
       fetchShifts();
-    } catch (error) {
-      toast.error("Operation failed");
+    } catch (error: any) {
+      console.error("Shift operation failed", error.response?.data);
+      const errorData = error.response?.data;
+      const message = errorData
+        ? typeof errorData === "object"
+          ? JSON.stringify(errorData)
+          : errorData
+        : "Operation failed";
+      toast.error(message);
     }
   };
 

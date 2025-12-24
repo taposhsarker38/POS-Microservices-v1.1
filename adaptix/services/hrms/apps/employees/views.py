@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Employee, Department, Designation
-from .serializers import EmployeeSerializer
+from .models import Employee, Department, Designation, AttributeSet, Attribute
+from .serializers import EmployeeSerializer, AttributeSetSerializer, AttributeSerializer
 from config.base_views import BaseCompanyViewSet
 
 
@@ -36,4 +36,14 @@ class EmployeeViewSet(BaseCompanyViewSet):
     """Employee management with auto company filtering."""
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
+    required_permission = 'hrms.employee'
+
+class AttributeSetViewSet(BaseCompanyViewSet):
+    queryset = AttributeSet.objects.all()
+    serializer_class = AttributeSetSerializer
+    required_permission = 'hrms.employee'
+
+class AttributeViewSet(BaseCompanyViewSet):
+    queryset = Attribute.objects.all()
+    serializer_class = AttributeSerializer
     required_permission = 'hrms.employee'

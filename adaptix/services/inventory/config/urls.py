@@ -15,11 +15,13 @@ router.register(r'uom', UOMConversionViewSet)
 router.register(r'serials', StockSerialViewSet)
 router.register(r'bom', BillOfMaterialViewSet)
 
+from django_prometheus.exports import ExportToDjangoView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/inventory/', include(router.urls)),
+    path('metrics/', ExportToDjangoView, name='prometheus-metrics'),
 
-    
     # OpenAPI
     path('api/inventory/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/inventory/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

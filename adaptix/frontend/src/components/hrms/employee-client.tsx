@@ -23,16 +23,20 @@ export function EmployeeClient() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
+  const [attributeSets, setAttributeSets] = useState<any[]>([]);
 
   const [openAlert, setOpenAlert] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchEmployees = async () => {
     try {
-      const response = await api.get("/hrms/employees/list/", {
-        params: { search: searchTerm },
-      });
-      setEmployees(response.data.results || response.data);
+      setLoading(true);
+      const [empRes, attrRes] = await Promise.all([
+        api.get("/hrms/employees/list/", { params: { search: searchTerm } }),
+        api.get("/hrms/employees/attribute-sets/"),
+      ]);
+      setEmployees(empRes.data.results || empRes.data);
+      setAttributeSets(attrRes.data.results || attrRes.data);
     } catch (error) {
       console.error("Failed to fetch employees", error);
     } finally {
@@ -176,6 +180,7 @@ export function EmployeeClient() {
           </DialogHeader>
           <EmployeeForm
             initialData={editingEmployee}
+            attributeSets={attributeSets}
             onSuccess={handleSuccess}
             onCancel={() => setIsDialogOpen(false)}
           />

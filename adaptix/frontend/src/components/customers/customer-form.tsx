@@ -14,9 +14,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { DynamicAttributeRenderer } from "../shared/DynamicAttributeRenderer";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -24,6 +32,8 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   loyalty_points: z.coerce.number().min(0).default(0),
+  attribute_set: z.string().optional(),
+  attributes: z.record(z.any()).default({}),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -32,13 +42,15 @@ interface CustomerFormProps {
   initialData?: any | null;
   onSuccess: () => void;
   onCancel: () => void;
-  isAdmin?: boolean; // Prop to optionally show admin fields
+  attributeSets: any[];
+  isAdmin?: boolean;
 }
 
 export function CustomerForm({
   initialData,
   onSuccess,
   onCancel,
+  attributeSets,
 }: CustomerFormProps) {
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema) as any,
@@ -48,6 +60,8 @@ export function CustomerForm({
       email: "",
       address: "",
       loyalty_points: 0,
+      attribute_set: "",
+      attributes: {},
     },
   });
 
@@ -59,6 +73,8 @@ export function CustomerForm({
         email: initialData.email || "",
         address: initialData.address || "",
         loyalty_points: Number(initialData.loyalty_points || 0),
+        attribute_set: initialData.attribute_set || "",
+        attributes: initialData.attributes || {},
       });
     }
   }, [initialData, form]);
@@ -136,19 +152,43 @@ export function CustomerForm({
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
-          name="loyalty_points"
+          name="attribute_set"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Loyalty Points</FormLabel>
-              <FormControl>
-                <Input type="number" step="0.01" {...field} />
-              </FormControl>
+              <FormLabel>Attribute Set (Custom Fields)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Set" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {attributeSets.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {form.watch("attribute_set") &&
+          form.watch("attribute_set") !== "none" && (
+            <DynamicAttributeRenderer
+              form={form}
+              attributeSet={attributeSets.find(
+                (s) => String(s.id) === form.watch("attribute_set")
+              )}
+            />
+          )}
+
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

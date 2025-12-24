@@ -2,7 +2,13 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({'status': 'healthy'})
+
 urlpatterns = [
+    path('health/', health_check),
     path('admin/', admin.site.urls),
     # OpenAPI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

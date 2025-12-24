@@ -1,0 +1,21 @@
+{
+  "name": "Adaptix Multi-Service Portal",
+  "short_name": "Adaptix",
+  "description": "Enterprise Resource Planning with Offline Resilience",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

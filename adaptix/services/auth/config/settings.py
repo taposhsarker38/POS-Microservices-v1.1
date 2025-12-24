@@ -56,11 +56,13 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.utils",
     "apps.core",
+    "django_prometheus",
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # serve static
@@ -73,7 +75,7 @@ MIDDLEWARE = [
     'adaptix_core.middleware.CorrelationIDMiddleware',
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    # "apps.audit.middleware.AuditMiddleware",  # redundant, audit-consumer handles this
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

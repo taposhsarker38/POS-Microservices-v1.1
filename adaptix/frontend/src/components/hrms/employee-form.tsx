@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { DynamicAttributeRenderer } from "@/components/shared/DynamicAttributeRenderer";
 
 const formSchema = z.object({
   first_name: z.string().min(1, "First Name is required"),
@@ -36,16 +37,21 @@ const formSchema = z.object({
   joining_date: z.string().optional(),
   branch_uuid: z.string().optional(),
   current_shift: z.string().optional(),
+  attendance_policy: z.enum(["STRICT", "FLEXIBLE", "NONE"]).default("STRICT"),
+  attribute_set: z.string().optional(),
+  attributes: z.record(z.any()).optional(),
 });
 
 interface EmployeeFormProps {
   initialData?: any;
+  attributeSets?: any[];
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export function EmployeeForm({
   initialData,
+  attributeSets = [],
   onSuccess,
   onCancel,
 }: EmployeeFormProps) {
@@ -96,6 +102,9 @@ export function EmployeeForm({
         initialData?.joining_date || new Date().toISOString().split("T")[0],
       branch_uuid: initialData?.branch_uuid || "",
       current_shift: initialData?.current_shift || "",
+      attendance_policy: initialData?.attendance_policy || "STRICT",
+      attribute_set: initialData?.attribute_set || undefined,
+      attributes: initialData?.attributes || {},
     },
   });
 
@@ -337,7 +346,9 @@ export function EmployeeForm({
               </FormItem>
             )}
           />
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="current_shift"
@@ -364,6 +375,75 @@ export function EmployeeForm({
                 </Select>
                 <FormMessage />
               </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="attendance_policy"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Attendance Policy</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Policy" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="STRICT">Strict (Shift Based)</SelectItem>
+                    <SelectItem value="FLEXIBLE">
+                      Flexible (One Punch)
+                    </SelectItem>
+                    <SelectItem value="NONE">No Tracking</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-4 border-t pt-4 mt-4">
+          <h3 className="text-sm font-medium">Custom Fields</h3>
+          <FormField
+            control={form.control}
+            name="attribute_set"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Attribute Set</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Set" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {attributeSets.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <DynamicAttributeRenderer
+            form={form}
+            attributeSet={attributeSets.find(
+              (s) => s.id === form.watch("attribute_set")
             )}
           />
         </div>

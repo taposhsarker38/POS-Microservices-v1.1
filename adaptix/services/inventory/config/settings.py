@@ -25,11 +25,13 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.stocks',
+    'django_prometheus',
 ]
 
 
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -40,6 +42,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'adaptix_core.middleware.JWTCompanyMiddleware', 
     'adaptix_core.middleware.AuditMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

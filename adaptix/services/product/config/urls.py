@@ -4,7 +4,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from django.http import JsonResponse
+import os
+
+def health_check(request):
+    return JsonResponse({'status': 'healthy'})
+
 urlpatterns = [
+    path('health/', health_check),
     path('admin/', admin.site.urls),
     path('api/product/', include('apps.products.urls')), # Main app URLs
     

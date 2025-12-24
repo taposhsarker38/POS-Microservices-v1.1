@@ -25,6 +25,7 @@ export const ProductClient: React.FC = () => {
   const [categories, setCategories] = React.useState<any[]>([]);
   const [brands, setBrands] = React.useState<any[]>([]);
   const [units, setUnits] = React.useState<any[]>([]);
+  const [attributeSets, setAttributeSets] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<any>(null);
@@ -32,12 +33,14 @@ export const ProductClient: React.FC = () => {
   const fetchData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [productsRes, catsRes, brandsRes, unitsRes] = await Promise.all([
-        api.get("/product/products/"),
-        api.get("/product/categories/"),
-        api.get("/product/brands/"),
-        api.get("/product/units/"),
-      ]);
+      const [productsRes, catsRes, brandsRes, unitsRes, attributeSetsRes] =
+        await Promise.all([
+          api.get("/product/products/"),
+          api.get("/product/categories/"),
+          api.get("/product/brands/"),
+          api.get("/product/units/"),
+          api.get("/product/attribute-sets/"),
+        ]);
 
       const prods = Array.isArray(productsRes.data.data)
         ? productsRes.data.data
@@ -63,10 +66,17 @@ export const ProductClient: React.FC = () => {
         ? unitsRes.data
         : [];
 
+      const attrSets = Array.isArray(attributeSetsRes.data.results)
+        ? attributeSetsRes.data.results
+        : Array.isArray(attributeSetsRes.data)
+        ? attributeSetsRes.data
+        : [];
+
       setData(prods);
       setCategories(cats);
       setBrands(br);
       setUnits(un);
+      setAttributeSets(attrSets);
     } catch (error) {
       console.error("Failed to fetch product data", error);
       toast.error("Failed to load products");
@@ -195,6 +205,7 @@ export const ProductClient: React.FC = () => {
         categories={categories}
         brands={brands}
         units={units}
+        attributeSets={attributeSets}
         initialData={selectedProduct}
         isOpen={open}
         onClose={handleModalClose}

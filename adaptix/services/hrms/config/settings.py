@@ -32,9 +32,11 @@ INSTALLED_APPS = [
     'apps.shifts',
     'apps.performance',
     'apps.projects',
+    'django_prometheus',
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -46,6 +48,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'config.middleware.JWTCompanyMiddleware',  # JWT & company_uuid extraction
     'config.middleware.AuditMiddleware',  # Audit logging
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 # JWT Configuration

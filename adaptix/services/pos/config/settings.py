@@ -25,9 +25,11 @@ INSTALLED_APPS = [
     
     # Local
     'apps.sales',
+    'django_prometheus',
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -39,6 +41,7 @@ MIDDLEWARE = [
     'adaptix_core.middleware.JWTCompanyMiddleware', 
     'adaptix_core.middleware.AuditMiddleware',
     'adaptix_core.middleware.CorrelationIDMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

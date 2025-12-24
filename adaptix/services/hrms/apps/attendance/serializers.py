@@ -4,5 +4,9 @@ from .models import Attendance
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
-        fields = '__all__'
-        read_only_fields = ('id', 'created_at')
+        fields = [
+            'id', 'employee', 'date', 'check_in', 'check_out', 
+            'status', 'method', 'device_id', 'late_minutes', 
+            'early_out_minutes', 'is_flexible', 'notes', 'created_at'
+        ]
+        read_only_fields = ('id', 'created_at', 'late_minutes', 'early_out_minutes')

@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DynamicAttributeRenderer } from "../shared/DynamicAttributeRenderer";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -49,6 +50,8 @@ const formSchema = z.object({
   cost: z.coerce.number().min(0).default(0),
   sku: z.string().optional(),
   quantity: z.coerce.number().min(0).default(0),
+  attribute_set: z.string().optional(),
+  attributes: z.record(z.any()).default({}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,6 +61,7 @@ interface ProductFormProps {
   categories: any[];
   brands: any[];
   units: any[];
+  attributeSets: any[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -67,6 +71,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   categories,
   brands,
   units,
+  attributeSets,
   isOpen,
   onClose,
 }) => {
@@ -88,6 +93,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       cost: 0,
       sku: "",
       quantity: 0,
+      attribute_set: "",
+      attributes: {},
     },
   });
 
@@ -112,6 +119,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         cost: firstVariant.cost ? Number(firstVariant.cost) : 0,
         sku: firstVariant.sku || "",
         quantity: firstVariant.quantity ? Number(firstVariant.quantity) : 0,
+        attribute_set: initialData.attribute_set || "",
+        attributes: initialData.attributes || {},
       });
     } else {
       form.reset({
@@ -127,6 +136,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         cost: 0,
         sku: "",
         quantity: 0,
+        attribute_set: "",
+        attributes: {},
       });
     }
   }, [initialData, isOpen, form]);
@@ -145,6 +156,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         category: values.category || null,
         brand: values.brand || null,
         unit: values.unit || null,
+        attribute_set: values.attribute_set || null,
       };
 
       await method(url, payload);
@@ -413,24 +425,43 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
             <FormField
               control={form.control}
-              name="is_active"
+              name="attribute_set"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Active</FormLabel>
-                    <FormDescription>
-                      This product will appear in search results.
-                    </FormDescription>
-                  </div>
+                <FormItem>
+                  <FormLabel>Attribute Set (Custom Fields)</FormLabel>
+                  <Select
+                    disabled={loading}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Set" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {attributeSets.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />
+
+            {form.watch("attribute_set") &&
+              form.watch("attribute_set") !== "none" && (
+                <DynamicAttributeRenderer
+                  form={form}
+                  attributeSet={attributeSets.find(
+                    (s) => String(s.id) === form.watch("attribute_set")
+                  )}
+                />
+              )}
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button

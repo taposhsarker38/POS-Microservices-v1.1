@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   loki:
@@ -7,7 +7,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - adaptix-network
+      - backend
 
   promtail:
     image: grafana/promtail:latest
@@ -16,7 +16,32 @@ services:
       - ./monitoring/promtail/config.yaml:/etc/promtail/config.yaml
     command: -config.file=/etc/promtail/config.yaml
     networks:
-      - adaptix-network
+      - backend
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "9093:9093"
+    networks:
+      - backend
 
   grafana:
     image: grafana/grafana:latest
@@ -27,8 +52,9 @@ services:
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     networks:
-      - adaptix-network
+      - backend
 
 networks:
-  adaptix-network:
-    driver: bridge
+  backend:
+    external: true
+    name: adaptix_backend

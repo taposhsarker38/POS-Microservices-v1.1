@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoyaltySettings } from "./LoyaltySettings";
 import { GeneralSettings } from "./GeneralSettings";
 import { WingSettings } from "./WingSettings";
+import { CustomFieldsSettings } from "./CustomFieldsSettings";
 import {
   Card,
   CardContent,
@@ -27,6 +28,7 @@ export default function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branches">Branches</TabsTrigger>
           <TabsTrigger value="loyalty">Loyalty & Rewards</TabsTrigger>
+          <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
@@ -38,6 +40,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="loyalty" className="space-y-4">
           <LoyaltySettings />
+        </TabsContent>
+        <TabsContent value="custom-fields" className="space-y-4">
+          <CustomFieldsSettings />
         </TabsContent>
         <TabsContent value="notifications">
           <div className="text-sm text-slate-500 p-4">

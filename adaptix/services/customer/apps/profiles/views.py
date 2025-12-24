@@ -1,7 +1,7 @@
 from rest_framework import viewsets, filters
 from drf_spectacular.utils import extend_schema
-from .models import Customer
-from .serializers import CustomerSerializer
+from .models import Customer, AttributeSet, Attribute
+from .serializers import CustomerSerializer, AttributeSetSerializer, AttributeSerializer
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -81,3 +81,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
             # Let's simple sync for now.
         
         return Response(self.get_serializer(customer).data)
+
+class AttributeSetViewSet(viewsets.ModelViewSet):
+    queryset = AttributeSet.objects.all()
+    serializer_class = AttributeSetSerializer
+
+class AttributeViewSet(viewsets.ModelViewSet):
+    queryset = Attribute.objects.all()
+    serializer_class = AttributeSerializer

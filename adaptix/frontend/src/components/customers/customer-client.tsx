@@ -33,16 +33,19 @@ export function CustomerClient() {
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
   const [loyaltyCustomer, setLoyaltyCustomer] = useState<any | null>(null);
   const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
+  const [attributeSets, setAttributeSets] = useState<any[]>([]);
 
   const [openAlert, setOpenAlert] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
   const fetchCustomers = async () => {
     try {
-      const response = await api.get("/customer/customers/", {
-        params: { search: searchTerm },
-      });
-      setCustomers(response.data.results || response.data);
+      setLoading(true);
+      const [customersRes, attrSetsRes] = await Promise.all([
+        api.get("/customer/customers/", { params: { search: searchTerm } }),
+        api.get("/customer/attribute-sets/"),
+      ]);
+      setCustomers(customersRes.data.results || customersRes.data);
+      setAttributeSets(attrSetsRes.data.results || attrSetsRes.data);
     } catch (error) {
       console.error("Failed to fetch customers", error);
     } finally {
@@ -196,6 +199,7 @@ export function CustomerClient() {
           </DialogHeader>
           <CustomerForm
             initialData={editingCustomer}
+            attributeSets={attributeSets}
             onSuccess={handleSuccess}
             onCancel={() => setIsDialogOpen(false)}
           />

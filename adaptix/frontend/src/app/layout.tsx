@@ -7,11 +7,15 @@ import { ThemeProvider as CustomThemeProvider } from "@/contexts/ThemeContext"; 
 import { CommandMenu } from "@/components/ui/command-menu";
 import { Toaster } from "@/components/ui/sonner";
 
+import { SyncManager } from "@/components/providers/SyncManager";
+
 const inter = Inter({ subsets: ["latin"] });
+// ... (rest of the imports)
 
 export const metadata: Metadata = {
   title: "Adaptix Dashboard",
   description: "Enterprise Management System",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -30,6 +34,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <CustomThemeProvider>{children}</CustomThemeProvider>
+            <SyncManager />
             <CommandMenu />
             <Toaster />
           </ThemeProvider>

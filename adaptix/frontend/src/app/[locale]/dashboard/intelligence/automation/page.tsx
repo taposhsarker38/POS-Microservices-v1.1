@@ -21,7 +21,9 @@ import {
   Layers,
   Calendar,
   UserCheck,
+  Maximize2,
 } from "lucide-react";
+import { WorkflowBuilder } from "@/components/intelligence/automation/WorkflowBuilder";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -108,6 +110,7 @@ export default function AutomationHub() {
   const [loading, setLoading] = useState(true);
   const [isNewRuleOpen, setIsNewRuleOpen] = useState(false);
   const [isNewWorkflowOpen, setIsNewWorkflowOpen] = useState(false);
+  const [newWorkflowName, setNewWorkflowName] = useState("");
   const [activeTab, setActiveTab] = useState("rules");
 
   // New Rule Form State
@@ -200,6 +203,31 @@ export default function AutomationHub() {
     }
   };
 
+  const handleSaveWorkflow = async (flowData: any) => {
+    try {
+      if (!newWorkflowName) {
+        toast.error("Please provide a name for the workflow");
+        return;
+      }
+
+      const payload = {
+        name: newWorkflowName,
+        description: "Created via Visual Builder",
+        is_active: true,
+        flow_data: flowData,
+      };
+
+      await api.post("/intelligence/automation/workflows/", payload);
+      toast.success("Workflow saved successfully!");
+      setIsNewWorkflowOpen(false);
+      setNewWorkflowName("");
+      fetchData();
+    } catch (e) {
+      toast.error("Failed to save workflow");
+      console.error(e);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 bg-background min-h-screen text-foreground">
       {/* Header */}
@@ -208,6 +236,25 @@ export default function AutomationHub() {
         animate={{ opacity: 1, y: 0 }}
         className="flex justify-between items-center"
       >
+        <Dialog open={isNewWorkflowOpen} onOpenChange={setIsNewWorkflowOpen}>
+          <DialogContent className="!fixed !z-[100] !top-16 !left-0 sm:!left-64 !w-full sm:!w-[calc(100vw-16rem)] !h-[calc(100vh-4rem)] !max-w-none !translate-x-0 !translate-y-0 !rounded-none border-l shadow-2xl p-0 flex flex-col gap-0 duration-200 data-[state=open]:slide-in-from-right-1/2 data-[state=closed]:slide-out-to-right-1/2">
+            <DialogHeader className="p-4 border-b">
+              <div className="flex items-center justify-between mr-8">
+                <DialogTitle>Visual Workflow Builder</DialogTitle>
+                <Input
+                  placeholder="Workflow Name (e.g. High Value Order Approval)"
+                  className="max-w-md"
+                  value={newWorkflowName}
+                  onChange={(e) => setNewWorkflowName(e.target.value)}
+                />
+              </div>
+            </DialogHeader>
+            <div className="flex-1 bg-slate-50 relative">
+              <WorkflowBuilder onSave={handleSaveWorkflow} />
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-2">
             <Zap className="text-amber-500 fill-amber-500" />

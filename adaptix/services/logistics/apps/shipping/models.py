@@ -58,6 +58,13 @@ class Shipment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     route = models.ForeignKey(DeliveryRoute, on_delete=models.SET_NULL, null=True, blank=True, related_name='shipments')
     
+    # Last Mile Delivery Fields
+    proof_of_delivery = models.ImageField(upload_to='pod/', null=True, blank=True)
+    signature = models.ImageField(upload_to='signatures/', null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    delivery_notes = models.TextField(null=True, blank=True)
+    geo_location = models.JSONField(null=True, blank=True, help_text="{'lat': 0.0, 'lng': 0.0}")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

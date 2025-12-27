@@ -129,6 +129,11 @@ class Product(SoftDeleteModel):
     
     description = models.TextField(blank=True, null=True)
     thumbnail = models.ImageField(upload_to="products/", blank=True, null=True)
+    
+    # Return Policy
+    is_returnable = models.BooleanField(default=True)
+    return_window_days = models.IntegerField(default=30, help_text="Number of days eligible for return")
+    
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

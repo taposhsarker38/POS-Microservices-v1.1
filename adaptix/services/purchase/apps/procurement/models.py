@@ -2,6 +2,47 @@ from django.db import models
 from apps.utils.models import SoftDeleteModel
 from apps.vendors.models import Vendor
 
+class RFQ(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('converted', 'Converted to PO'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    product_uuid = models.UUIDField(db_index=True)
+    variant_uuid = models.UUIDField(db_index=True, blank=True, null=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    deadline = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    
+    # Selection
+    selected_quote = models.OneToOneField('VendorQuote', on_delete=models.SET_NULL, null=True, blank=True, related_name='selected_for_rfq')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"RFQ: {self.title} ({self.status})"
+
+class VendorQuote(SoftDeleteModel):
+    rfq = models.ForeignKey(RFQ, on_delete=models.CASCADE, related_name='quotes')
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='quotes')
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    delivery_lead_time_days = models.PositiveIntegerField(help_text="Days to deliver")
+    valid_until = models.DateTimeField()
+    notes = models.TextField(blank=True, null=True)
+    
+    is_winning_quote = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('rfq', 'vendor', 'company_uuid')
+
+    def __str__(self):
+        return f"Quote from {self.vendor.name} for {self.rfq.title}: {self.unit_price}"
+
 class PurchaseOrder(SoftDeleteModel):
     STATUS_CHOICES = (
         ('draft', 'Draft'),
@@ -17,6 +58,16 @@ class PurchaseOrder(SoftDeleteModel):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders')
     reference_number = models.CharField(max_length=100)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    
+    # Payment Tracking
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Fully Paid'),
+        ('overdue', 'Overdue'),
+    )
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     # Approval
     approval_status = models.CharField(max_length=20, default='pending', choices=(('pending','Pending'), ('approved','Approved'), ('rejected','Rejected')))

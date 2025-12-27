@@ -25,6 +25,7 @@ urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('api/inventory/health/', health_check),
     path('api/inventory/', include(router.urls)),
+    path('api/inventory/iot/', include('apps.iot.urls')),
     path('metrics/', ExportToDjangoView, name='prometheus-metrics'),
 
     # OpenAPI

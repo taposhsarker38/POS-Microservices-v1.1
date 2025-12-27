@@ -1,0 +1,190 @@
+services:
+  auth-service:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/auth:/app
+      - ./shared:/shared
+
+  company:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/company:/app
+      - ./shared:/shared
+
+  product:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/product:/app
+      - ./shared:/shared
+
+  pos:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/pos:/app
+      - ./shared:/shared
+
+  inventory:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/inventory:/app
+      - ./shared:/shared
+
+  inventory-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/inventory:/app
+      - ./shared:/shared
+
+  purchase:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/purchase:/app
+      - ./shared:/shared
+
+  hrms-service:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/hrms:/app
+      - ./shared:/shared
+
+  accounting:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/accounting:/app
+      - ./shared:/shared
+
+  customer:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/customer:/app
+      - ./shared:/shared
+
+  customer-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/customer:/app
+      - ./shared:/shared
+
+  asset:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/asset:/app
+      - ./shared:/shared
+
+  promotion:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/promotion:/app
+      - ./shared:/shared
+
+  payment:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/payment:/app
+      - ./shared:/shared
+
+  notification:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/notification:/app
+      - ./shared:/shared
+
+  reporting:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/reporting:/app
+      - ./shared:/shared
+
+  reporting-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/reporting:/app
+      - ./shared:/shared
+
+  logistics-service:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/logistics:/app
+      - ./shared:/shared
+
+  ai-service:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/intelligence:/app
+      - ./shared:/shared
+
+  ai-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/intelligence:/app
+      - ./shared:/shared
+
+  quality-service:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/quality:/app
+      - ./shared:/shared
+
+  quality-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/quality:/app
+      - ./shared:/shared
+
+  manufacturing:
+    environment:
+      - DEBUG=True
+      - ENABLE_TRACING=True
+    volumes:
+      - ./services/manufacturing:/app
+      - ./shared:/shared
+
+  manufacturing-worker:
+    environment:
+      - DEBUG=True
+    volumes:
+      - ./services/manufacturing:/app
+      - ./shared:/shared
+
+  frontend-app:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules

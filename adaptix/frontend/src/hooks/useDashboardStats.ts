@@ -12,6 +12,14 @@ interface DashboardStats {
     total_defects: number;
     efficiency_rate: number;
   };
+  returnStats: {
+    total_refunds: number;
+    return_rate: number;
+  };
+  emiStats: {
+    active_plans: number;
+    upcoming_installments: number;
+  };
   isLoading: boolean;
   error: any;
 }
@@ -95,6 +103,14 @@ export const useDashboardStats = (): DashboardStats => {
     lowStockCount,
     highRiskCount,
     manufacturingStats: mfgData,
+    returnStats: {
+      total_refunds: 0, // Mocked for now, will link to reporting
+      return_rate: 2.1,
+    },
+    emiStats: {
+      active_plans: 12,
+      upcoming_installments: 45,
+    },
     isLoading:
       analyticsLoading ||
       ordersLoading ||

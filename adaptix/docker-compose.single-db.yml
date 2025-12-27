@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:15
     container_name: adaptix-postgres
+    profiles: ["core"]
     environment:
       POSTGRES_DB: adaptix
       POSTGRES_USER: ${DB_USER:-adaptix}
@@ -26,10 +27,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   redis:
     image: redis:7-alpine
     container_name: adaptix-redis
+    profiles: ["core"]
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
     - 6679:6379
@@ -45,9 +52,19 @@ services:
       retries: 5
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: adaptix-rabbitmq
+    profiles: ["core"]
     environment:
       RABBITMQ_DEFAULT_USER: ${MQ_USER:-adaptix}
       RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-adaptix123}
@@ -68,9 +85,19 @@ services:
       retries: 5
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   kong:
     image: kong:3.0
     container_name: adaptix-kong
+    profiles: ["core"]
     environment:
       KONG_DATABASE: 'off'
       KONG_DECLARATIVE_CONFIG: /kong/kong.yml
@@ -87,6 +114,15 @@ services:
     - 8001:8001
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
     - auth-service
   auth-service:
@@ -94,6 +130,7 @@ services:
       context: .
       dockerfile: services/auth/Dockerfile
     container_name: adaptix-auth-service
+    profiles: ["core"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=auth
@@ -122,11 +159,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   company:
     build:
       context: .
       dockerfile: services/company/Dockerfile
     container_name: adaptix-company
+    profiles: ["core"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=company
@@ -146,11 +193,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   product:
     build:
       context: .
       dockerfile: services/product/Dockerfile
     container_name: adaptix-product
+    profiles: ["product", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=product
@@ -170,11 +227,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   pos:
     build:
       context: .
       dockerfile: services/pos/Dockerfile
     container_name: adaptix-pos
+    profiles: ["pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=pos
@@ -196,11 +263,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   inventory-worker:
     build:
       context: .
       dockerfile: services/inventory/Dockerfile
     container_name: adaptix-inventory-worker
+    profiles: ["inventory", "pos", "sales"]
     command: python manage.py run_inventory_consumer
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -218,11 +295,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   inventory:
     build:
       context: .
       dockerfile: services/inventory/Dockerfile
     container_name: adaptix-inventory
+    profiles: ["inventory", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=inventory
@@ -242,11 +329,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   purchase:
     build:
       context: .
       dockerfile: services/purchase/Dockerfile
     container_name: adaptix-purchase
+    profiles: ["purchase", "inventory"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=purchase
@@ -266,11 +363,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   hrms-service:
     build:
       context: .
       dockerfile: services/hrms/Dockerfile
     container_name: adaptix-hrms-service
+    profiles: ["hrms"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=hrms
@@ -290,11 +397,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   accounting:
     build:
       context: .
       dockerfile: services/accounting/Dockerfile
     container_name: adaptix-accounting
+    profiles: ["accounting"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=accounting
@@ -314,11 +431,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   customer:
     build:
       context: .
       dockerfile: services/customer/Dockerfile
     container_name: adaptix-customer
+    profiles: ["customer", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=customer
@@ -338,11 +465,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   customer-worker:
     build:
       context: .
       dockerfile: services/customer/Dockerfile
     container_name: adaptix-customer-worker
+    profiles: ["customer", "pos", "sales"]
     command: python manage.py run_loyalty_consumer
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -361,11 +498,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   asset:
     build:
       context: .
       dockerfile: services/asset/Dockerfile
     container_name: adaptix-asset
+    profiles: ["asset"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=asset
@@ -385,11 +532,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   promotion:
     build:
       context: .
       dockerfile: services/promotion/Dockerfile
     container_name: adaptix-promotion
+    profiles: ["promotion", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=promotion
@@ -409,11 +566,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   payment:
     build:
       context: .
       dockerfile: services/payment/Dockerfile
     container_name: adaptix-payment
+    profiles: ["payment", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=payment
@@ -433,11 +600,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   notification:
     build:
       context: .
       dockerfile: services/notification/Dockerfile
     container_name: adaptix-notification
+    profiles: ["notification"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=notification
@@ -459,11 +636,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   reporting:
     build:
       context: .
       dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting
+    profiles: ["reporting"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=reporting
@@ -486,11 +673,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   reporting-worker:
     build:
       context: .
       dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting-worker
+    profiles: ["reporting"]
     command: python manage.py run_consumer
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -516,11 +713,21 @@ services:
         condition: service_started
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   ai-service:
     build:
       context: .
       dockerfile: services/intelligence/Dockerfile
     container_name: adaptix-ai-service
+    profiles: ["intelligence"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=intelligence
@@ -544,11 +751,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   ws-gateway:
     build:
       context: .
       dockerfile: services/ws-gateway/Dockerfile
     container_name: adaptix-ws-gateway
+    profiles: ["core"]
     environment:
       - PORT=9001
       - AMQP_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
@@ -567,9 +784,19 @@ services:
       - redis
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   frontend-app:
     build: ./frontend
     container_name: adaptix-frontend-app
+    profiles: ["frontend"]
     environment:
     - NEXT_PUBLIC_API_URL=http://localhost:8101/api
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
@@ -581,6 +808,15 @@ services:
     - /app/node_modules
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
     - kong
   quality-service:
@@ -588,6 +824,7 @@ services:
       context: .
       dockerfile: services/quality/Dockerfile
     container_name: adaptix-quality-service
+    profiles: ["quality", "pos", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=quality_schema
@@ -603,6 +840,15 @@ services:
     - ./shared:/shared
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       postgres:
         condition: service_healthy
@@ -620,6 +866,7 @@ services:
       context: .
       dockerfile: services/logistics/Dockerfile
     container_name: adaptix-logistics
+    profiles: ["logistics", "sales"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=logistics
@@ -636,6 +883,15 @@ services:
     - ./shared:/shared
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       postgres:
         condition: service_healthy
@@ -651,6 +907,7 @@ services:
       context: .
       dockerfile: services/auth/Dockerfile
     container_name: adaptix-audit-consumer
+    profiles: ["auth", "core"]
     command: python manage.py consume_audit_logs
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -669,11 +926,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   ai-worker:
     build:
       context: .
       dockerfile: services/intelligence/Dockerfile
     container_name: adaptix-ai-worker
+    profiles: ["intelligence"]
     command: celery -A config.celery_app worker --loglevel=info
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -695,11 +962,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   manufacturing-worker:
     build:
       context: .
       dockerfile: services/manufacturing/Dockerfile
     container_name: adaptix-manufacturing-worker
+    profiles: ["manufacturing"]
     command: python manage.py run_mrp_consumer
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
@@ -717,11 +994,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   manufacturing:
     build:
       context: .
       dockerfile: services/manufacturing/Dockerfile
     container_name: adaptix-manufacturing
+    profiles: ["manufacturing"]
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
     - DB_SCHEMA=manufacturing
@@ -743,11 +1030,21 @@ services:
         condition: service_healthy
     networks:
     - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   quality-worker:
     build:
       context: .
       dockerfile: services/quality/Dockerfile
     container_name: adaptix-quality-worker
+    profiles: ["quality"]
     command: python manage.py run_quality_consumer
     environment:
     - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix

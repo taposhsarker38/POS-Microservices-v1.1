@@ -37,34 +37,38 @@ export function LiveFeed() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("forecast.completed", () => {
+    const handleForecast = () => {
       addEvent(
         "AI Demand Forecast completed successfully.",
         "Forecast",
         "success"
       );
-    });
+    };
 
-    socket.on("intelligence.alert", (data: any) => {
+    const handleAlert = (data: any) => {
       addEvent(
         `Critical anomaly detected: ${data.message || "Check alerts"}`,
         "Anomaly",
         "error"
       );
-    });
+    };
 
-    socket.on("automation.triggered", (data: any) => {
+    const handleAutomation = (data: any) => {
       addEvent(
         `Workflow Rule triggered: ${data.rule_name || "System Rule"}`,
         "Automation",
         "info"
       );
-    });
+    };
+
+    socket.on("forecast.completed", handleForecast);
+    socket.on("intelligence.alert", handleAlert);
+    socket.on("automation.triggered", handleAutomation);
 
     return () => {
-      socket.off("forecast.completed");
-      socket.off("intelligence.alert");
-      socket.off("automation.triggered");
+      socket.off("forecast.completed", handleForecast);
+      socket.off("intelligence.alert", handleAlert);
+      socket.off("automation.triggered", handleAutomation);
     };
   }, [socket]);
 

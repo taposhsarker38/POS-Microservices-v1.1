@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Order, Payment, POSSession
-from .serializers import OrderSerializer, PaymentSerializer, POSSessionSerializer
+from .models import Order, Payment, POSSession, POSSettings, OrderReturn
+from .serializers import OrderSerializer, PaymentSerializer, POSSessionSerializer, POSSettingsSerializer, OrderReturnSerializer
 from adaptix_core.permissions import HasPermission
 from .services import InventoryService
 
@@ -175,3 +175,69 @@ class PaymentViewSet(viewsets.ModelViewSet):
         # Ideally, use signals or service layer. For now, simple logic in save or signal.
         # I'll leave it basic CRUD for now.
 
+
+class POSSettingsViewSet(viewsets.ModelViewSet):
+    queryset = POSSettings.objects.all()
+    serializer_class = POSSettingsSerializer
+    permission_classes = [HasPermission]
+    required_permission = "sales.settings"
+    
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid)
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        uuid = getattr(self.request, "company_uuid", None)
+        # Ensure only one settings object per company
+        if POSSettings.objects.filter(company_uuid=uuid).exists():
+            raise serializers.ValidationError("Settings already exist for this company.")
+        serializer.save(company_uuid=uuid)
+
+class OrderReturnViewSet(viewsets.ModelViewSet):
+    queryset = OrderReturn.objects.all()
+    serializer_class = OrderReturnSerializer
+    permission_classes = [HasPermission]
+    required_permission = "sales.return"
+    
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid).prefetch_related('items')
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        uuid = getattr(self.request, "company_uuid", None)
+        claims = getattr(self.request, "user_claims", {})
+        user_id = claims.get("sub")
+        
+        order_return = serializer.save(company_uuid=uuid, created_by=user_id)
+        
+        # Publish Event for Reporting/Analytics
+        try:
+            from adaptix_core.messaging import publish_event
+            
+            event_payload = {
+                "event": "pos.return.created",
+                "return_id": str(order_return.id),
+                "order_id": str(order_return.order.id),
+                "order_number": order_return.order.order_number,
+                "company_uuid": str(order_return.company_uuid),
+                "refund_amount": str(order_return.refund_amount),
+                "created_at": order_return.created_at.isoformat(),
+                "items": [
+                    {
+                        "product_name": item.product_name,
+                        "quantity": str(item.quantity),
+                        "reason": item.reason,
+                        "condition": item.condition
+                    } for item in order_return.items.all()
+                ]
+            }
+            
+            publish_event("events", "pos.return.created", event_payload)
+            print(f"Published pos.return.created event for Order: {order_return.order.order_number}")
+            
+        except Exception as pub_error:
+            print(f"Failed to publish return event: {pub_error}")

@@ -1,11 +1,17 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Payment, POSSession
+from .models import Order, OrderItem, Payment, POSSession, POSSettings, OrderReturn, ReturnItem
 
 class POSSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = POSSession
         fields = '__all__'
         read_only_fields = ['company_uuid', 'status', 'opening_balance', 'closing_balance']
+
+class POSSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = POSSettings
+        fields = ['allow_partial_payment', 'allow_split_payment']
+        
 
 class OrderItemSerializer(serializers.ModelSerializer):
     subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -85,8 +91,38 @@ class OrderSerializer(serializers.ModelSerializer):
         if not company_uuid:
             raise serializers.ValidationError("Missing context: company_uuid")
 
+        # -- CONFIG CHECK --
+        settings = POSSettings.objects.filter(company_uuid=company_uuid).first()
+        # Default to TRUE if no settings found (to not break existing behavior)
+        allow_partial = settings.allow_partial_payment if settings else True
+        allow_split = settings.allow_split_payment if settings else True
+
+        if not allow_split and len(payments_data) > 1:
+            raise serializers.ValidationError({"payment_data": "Split payments are disabled for this company."})
+
+        # Calculate total provided in payment_data
+        total_payment_provided = sum(float(p.get('amount', 0)) for p in payments_data)
+        
+        # We need grand_total to check partial. But grand_total is calculated later. 
+        # So we do a pre-calc or post-check. Post-check is safer inside atomic block but we can't rollback easily for logic error.
+        # Let's do a quick pre-calc of grand_total
+        pre_calc_total = 0
+        pre_calc_tax = 0
+        pre_calc_discount = 0
+        
+        # NOTE: This duplicates some logic but is necessary for validation BEFORE creating order if we want to be strict.
+        # Or we can just let it create and then check.
+        # Let's check logic:
+        # If partial disabled, total_payment_provided MUST BE >= grand_total
+        
+        # ... logic continues inside transaction ...
+
+        # ... logic continues inside transaction ...
+
         with transaction.atomic():
             order = Order.objects.create(**validated_data)
+            
+            # Initial status is pending/draft. It will be updated at the end.
             
             calculated_subtotal = 0
             calculated_tax = 0
@@ -159,24 +195,76 @@ class OrderSerializer(serializers.ModelSerializer):
             order.grand_total = calculated_subtotal - calculated_discount + calculated_tax + service
             
             # Process Payments
-            total_paid = 0
             for p_data in payments_data:
                 p_data['company_uuid'] = company_uuid
                 p_data['created_by'] = created_by
                 Payment.objects.create(order=order, **p_data)
-                total_paid += float(p_data.get('amount', 0))
                 
-            order.paid_amount = total_paid
-            order.due_amount = float(order.grand_total) - total_paid
+            # Final Status Update (handled by signals but good to ensure grand_total consistency)
+            order.update_payment_status()
             
-            if order.due_amount <= 0:
-                order.payment_status = 'paid'
-            elif total_paid > 0:
-                order.payment_status = 'partial'
-            else:
-                order.payment_status = 'pending'
-                
-            order.save()
-            
+            # -- VALIDATION CHECK (POST-CALCULATION) --
+            if not allow_partial:
+                # Refresh to get latest status
+                if order.payment_status == 'partial':
+                     raise serializers.ValidationError({
+                         "payment_data": f"Partial payment is disabled. Total Due: {order.grand_total}, Paid: {order.paid_amount}"
+                     })
             
             return order
+
+class ReturnItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='order_item.product_name', read_only=True)
+    
+    class Meta:
+        model = OrderItem # Use wrapper logic if needed, but for creation we use ReturnItem
+        fields = ['id', 'quantity', 'condition', 'product_name'] # Simplification
+    
+    # Actually we need a serializer for ReturnItem model
+    
+class ReturnItemCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReturnItem
+        fields = ['order_item', 'quantity', 'condition']
+
+class OrderReturnSerializer(serializers.ModelSerializer):
+    items = ReturnItemCreateSerializer(many=True)
+    
+    class Meta:
+        model = OrderReturn
+        fields = ['id', 'return_number', 'order', 'status', 'refund_amount', 'reason', 'items', 'created_at']
+        read_only_fields = ['return_number', 'status', 'created_at', 'company_uuid', 'created_by']
+
+    def create(self, validated_data):
+        from django.db import transaction
+        
+        items_data = validated_data.pop('items')
+        
+        # Context
+        company_uuid = validated_data.get('company_uuid')
+        created_by = validated_data.get('created_by')
+
+        with transaction.atomic():
+            return_request = OrderReturn.objects.create(**validated_data)
+            
+            total_refund = 0
+            
+            for item_data in items_data:
+                order_item = item_data['order_item']
+                qty = item_data['quantity']
+                
+                # Check Order Link
+                if order_item.order_id != return_request.order_id:
+                     raise serializers.ValidationError(f"Item {order_item.product_name} does not belong to this order.")
+                
+                # Basic refund calc (Unit Price - Discount per unit + Tax per unit) 
+                # Handling "per unit" is tricky if discount was bulk. For MVP:
+                unit_refund = (order_item.subtotal / order_item.quantity) # Average
+                total_refund += (unit_refund * qty)
+                
+                ReturnItem.objects.create(return_request=return_request, **item_data)
+            
+            return_request.refund_amount = total_refund
+            return_request.save()
+            
+            return return_request

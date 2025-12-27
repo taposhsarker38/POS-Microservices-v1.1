@@ -1,0 +1,1003 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: adaptix-postgres
+    profiles: ["core"]
+    environment:
+      POSTGRES_DB: adaptix
+      POSTGRES_USER: ${DB_USER:-adaptix}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adaptix123}
+      RABBITMQ_URL: amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      SERVICE_NAME: postgres
+    ports:
+    - 5532:5432
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    - ./init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adaptix -d adaptix"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  redis:
+    image: redis:7-alpine
+    container_name: adaptix-redis
+    profiles: ["core"]
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+    - 6679:6379
+    volumes:
+    - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: adaptix-rabbitmq
+    profiles: ["core"]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${MQ_USER:-adaptix}
+      RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-adaptix123}
+      RABBITMQ_URL: amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      SERVICE_NAME: rabbitmq
+    ports:
+    - 5673:5672
+    - 15673:15672
+    volumes:
+    - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  kong:
+    image: kong:3.0
+    container_name: adaptix-kong
+    profiles: ["core"]
+    environment:
+      KONG_DATABASE: 'off'
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      RABBITMQ_URL: amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      KONG_DNS_RESOLVER: 127.0.0.11
+      SERVICE_NAME: kong
+    volumes:
+    - ./infra/kong/kong.yml:/kong/kong.yml:ro
+    - ./keys:/keys:ro
+    ports:
+    - 8101:8000
+    - 8001:8001
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+    - auth-service
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: adaptix-auth-service
+    profiles: ["core"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=auth
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - REDIS_URL=redis://redis:6379/0
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - PRIVATE_KEY_PATH=/keys/private.pem
+    - JWT_ISSUER=auth-service
+    - JWT_AUDIENCE=pos-system
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=auth
+    - PYTHONPATH=/app:/shared/adaptix_core
+    ports:
+    - 8100:8000
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  company:
+    build:
+      context: .
+      dockerfile: services/company/Dockerfile
+    container_name: adaptix-company
+    profiles: ["core"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=company
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=company
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  product:
+    build:
+      context: .
+      dockerfile: services/product/Dockerfile
+    container_name: adaptix-product
+    profiles: ["product", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=product
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=product
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  pos:
+    build:
+      context: .
+      dockerfile: services/pos/Dockerfile
+    container_name: adaptix-pos
+    profiles: ["pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=pos
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=pos
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    container_name: adaptix-inventory-worker
+    profiles: ["inventory", "pos", "sales"]
+    command: python manage.py run_inventory_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=inventory
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=inventory-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  inventory:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    container_name: adaptix-inventory
+    profiles: ["inventory", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=inventory
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=inventory
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  purchase:
+    build:
+      context: .
+      dockerfile: services/purchase/Dockerfile
+    container_name: adaptix-purchase
+    profiles: ["purchase", "inventory"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=purchase
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=purchase
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  hrms-service:
+    build:
+      context: .
+      dockerfile: services/hrms/Dockerfile
+    container_name: adaptix-hrms-service
+    profiles: ["hrms"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=hrms
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=hrms
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  accounting:
+    build:
+      context: .
+      dockerfile: services/accounting/Dockerfile
+    container_name: adaptix-accounting
+    profiles: ["accounting"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=accounting
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=accounting
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  customer:
+    build:
+      context: .
+      dockerfile: services/customer/Dockerfile
+    container_name: adaptix-customer
+    profiles: ["customer", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=customer
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=customer
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  customer-worker:
+    build:
+      context: .
+      dockerfile: services/customer/Dockerfile
+    container_name: adaptix-customer-worker
+    profiles: ["customer", "pos", "sales"]
+    command: python manage.py run_loyalty_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=customer
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=customer-worker
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  asset:
+    build:
+      context: .
+      dockerfile: services/asset/Dockerfile
+    container_name: adaptix-asset
+    profiles: ["asset"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=asset
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=asset
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  promotion:
+    build:
+      context: .
+      dockerfile: services/promotion/Dockerfile
+    container_name: adaptix-promotion
+    profiles: ["promotion", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=promotion
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=promotion
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  payment:
+    build:
+      context: .
+      dockerfile: services/payment/Dockerfile
+    container_name: adaptix-payment
+    profiles: ["payment", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=payment
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=payment
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  notification:
+    build:
+      context: .
+      dockerfile: services/notification/Dockerfile
+    container_name: adaptix-notification
+    profiles: ["notification"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=notification
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=notification
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  reporting:
+    build:
+      context: .
+      dockerfile: services/reporting/Dockerfile
+    container_name: adaptix-reporting
+    profiles: ["reporting"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=reporting
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=reporting
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  reporting-worker:
+    build:
+      context: .
+      dockerfile: services/reporting/Dockerfile
+    container_name: adaptix-reporting-worker
+    profiles: ["reporting"]
+    command: python manage.py run_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=reporting
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=reporting-worker
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      reporting:
+        condition: service_started
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/intelligence/Dockerfile
+    container_name: adaptix-ai-service
+    profiles: ["intelligence"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=intelligence
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - REDIS_URL=redis://redis:6379/0
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=ai
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  ws-gateway:
+    build:
+      context: .
+      dockerfile: services/ws-gateway/Dockerfile
+    container_name: adaptix-ws-gateway
+    profiles: ["core"]
+    environment:
+      - PORT=9001
+      - AMQP_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - AMQP_EXCHANGE=events
+      - REDIS_URL=redis://redis:6379/0
+      - PUBLIC_KEY_PATH=/keys/public.pem
+      - AUTH_ISSUER=auth-service
+      - ALLOW_ORIGIN=*
+      - SERVICE_NAME=ws-gateway
+    volumes:
+      - ./keys:/keys:ro
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  frontend-app:
+    build: ./frontend
+    container_name: adaptix-frontend-app
+    profiles: ["frontend"]
+    command: sh -c "npm run build && npm start"
+    environment:
+    - NEXT_PUBLIC_API_URL=http://localhost:8101/api
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=frontend-app
+    ports:
+    - 3000:3000
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+    - kong
+  quality-service:
+    build:
+      context: .
+      dockerfile: services/quality/Dockerfile
+    container_name: adaptix-quality-service
+    profiles: ["quality", "pos", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=quality_schema
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - JWT_AUDIENCE=pos-system
+    - JWT_ISSUER=auth-service
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=quality
+    volumes:
+    - ./keys:/keys:ro
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  logistics-service:
+    build:
+      context: .
+      dockerfile: services/logistics/Dockerfile
+    container_name: adaptix-logistics
+    profiles: ["logistics", "sales"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=logistics
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=logistics
+    volumes:
+    - ./keys:/keys:ro
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  audit-consumer:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: adaptix-audit-consumer
+    profiles: ["auth", "core"]
+    command: python manage.py consume_audit_logs
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=auth
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=audit-consumer
+    - PYTHONPATH=/app:/shared/adaptix_core
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  ai-worker:
+    build:
+      context: .
+      dockerfile: services/intelligence/Dockerfile
+    container_name: adaptix-ai-worker
+    profiles: ["intelligence"]
+    command: celery -A config.celery_app worker --loglevel=info
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=intelligence
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - REDIS_URL=redis://redis:6379/0
+    - SERVICE_NAME=ai-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  manufacturing-worker:
+    build:
+      context: .
+      dockerfile: services/manufacturing/Dockerfile
+    container_name: adaptix-manufacturing-worker
+    profiles: ["manufacturing"]
+    command: python manage.py run_mrp_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=manufacturing
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=manufacturing-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  manufacturing:
+    build:
+      context: .
+      dockerfile: services/manufacturing/Dockerfile
+    container_name: adaptix-manufacturing
+    profiles: ["manufacturing"]
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=manufacturing
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - DEBUG=False
+    - ENABLE_TRACING=False
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - JWT_ALGORITHM=RS256
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=manufacturing
+    volumes:
+    - ./keys:/keys:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  quality-worker:
+    build:
+      context: .
+      dockerfile: services/quality/Dockerfile
+    container_name: adaptix-quality-worker
+    profiles: ["quality"]
+    command: python manage.py run_quality_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=quality
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=quality-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+volumes:
+  postgres_data: null
+  redis_data: null
+  rabbitmq_data: null
+networks:
+  backend:
+    driver: bridge

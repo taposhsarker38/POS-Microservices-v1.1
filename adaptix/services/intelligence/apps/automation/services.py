@@ -1,7 +1,8 @@
 import requests
 import logging
 from django.utils import timezone
-from .models import AutomationRule, ActionLog
+from datetime import datetime
+from .models import AutomationRule, ActionLog, Workflow, WorkflowInstance
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ class ActionRunner:
             'email': ActionRunner._send_email,
             'webhook': ActionRunner._call_webhook,
             'log': ActionRunner._log_alert,
+            'trigger_rfq': ActionRunner._trigger_rfq,
         }
         
         handler = handlers.get(rule.action_type)
@@ -49,6 +51,47 @@ class ActionRunner:
         message = rule.action_config.get('message', 'Automation triggered')
         logger.warning(f"ALERT LOG [{rule.name}]: {message} - Context: {context}")
         return "Logged locally"
+
+    @staticmethod
+    def _trigger_rfq(rule, context):
+        """
+        Action that triggers an RFQ in the Purchase service.
+        """
+        from adaptix_core.service_registry import ServiceRegistry
+        
+        purchase_url = f"{ServiceRegistry.get_api_url('purchase')}/api/purchase/rfqs/"
+        
+        # Product info should be in context (from inventory stock event)
+        product_uuid = context.get('product_uuid')
+        quantity = rule.action_config.get('quantity', 100) # Default quantity to request
+        
+        if not product_uuid:
+             logger.error("trigger_rfq action failed: No product_uuid in context")
+             return "Failed: No product_uuid"
+
+        payload = {
+            "title": f"Auto RFQ for low stock item: {product_uuid}",
+            "description": "Triggered by automated low stock alert.",
+            "product_uuid": product_uuid,
+            "quantity": quantity,
+            "deadline": (timezone.now() + timezone.timedelta(days=7)).isoformat(), # 7 days deadline
+        }
+        
+        # In a real microservice we'd use a service-to-service token
+        # For now, we use a placeholder or system token if available
+        headers = {
+            "X-Company-Id": str(rule.company_uuid),
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.post(purchase_url, json=payload, headers=headers, timeout=10)
+            response.raise_for_status()
+            logger.info(f"RFQ triggered successfully for product {product_uuid}")
+            return "RFQ Triggered"
+        except Exception as e:
+            logger.error(f"Failed to trigger RFQ: {e}")
+            raise
 
 class WorkflowRunner:
     """
@@ -287,5 +330,34 @@ class SchedulerRunner:
             delta = now - last_run
             return delta.total_seconds() >= (interval * 60)
             
-        # TODO: Implement full cron parsing if needed
+        # Cron parsing using croniter
+        cron_expr = config.get('cron')
+        if cron_expr:
+            try:
+                from croniter import croniter
+                # croniter expects the *previous* run time to calculate the next one
+                # If never run, assume it should run if the current time matches the schedule window
+                # But a safer approach for periodic checks:
+                # Get the *previous* expected run time relative to NOW.
+                # If that previous time is > last_run, then we missed a run (or it's due).
+                
+                # Check if we should have run since the last execution
+                iter = croniter(cron_expr, now)
+                prev_scheduled = iter.get_prev(datetime) # get the previous scheduled time
+                
+                if not last_run:
+                    # If never run, and we are currently IN the minute of the schedule, run it?
+                    # Or simpler: just run immediately if it's a new rule. 
+                    # Let's say: run if create_at is older than prev_scheduled? 
+                    # For safety, let's just return True to initialize the cycle.
+                    return True
+                
+                # If the previous scheduled time is AFTER the last actual run, we are due.
+                # Example: Now is 17:01. Prev sched was 17:00. Last run was 16:00.
+                # 17:00 > 16:00 -> True.
+                return prev_scheduled > last_run
+            except Exception as e:
+                logger.error(f"Invalid cron expression for rule {rule.id}: {e}")
+                return False
+
         return False

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PurchaseOrder, PurchaseOrderItem
+from .models import PurchaseOrder, PurchaseOrderItem, RFQ, VendorQuote
 
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,3 +28,19 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             PurchaseOrderItem.objects.create(order=order, **item_data, company_uuid=order.company_uuid)
             
         return order
+
+class VendorQuoteSerializer(serializers.ModelSerializer):
+    vendor_name = serializers.CharField(source='vendor.name', read_only=True)
+    
+    class Meta:
+        model = VendorQuote
+        fields = '__all__'
+        read_only_fields = ('company_uuid', 'is_winning_quote')
+
+class RFQSerializer(serializers.ModelSerializer):
+    quotes = VendorQuoteSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = RFQ
+        fields = '__all__'
+        read_only_fields = ('company_uuid', 'status', 'selected_quote')

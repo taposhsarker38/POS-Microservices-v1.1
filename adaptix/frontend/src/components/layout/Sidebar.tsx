@@ -82,6 +82,11 @@ const routes: SidebarRoute[] = [
         permission: "view_pos",
       },
       {
+        label: "orders",
+        href: "/dashboard/orders",
+        permission: "view_pos",
+      },
+      {
         label: "products",
         href: "/dashboard/products",
         permission: "view_product",
@@ -103,6 +108,16 @@ const routes: SidebarRoute[] = [
         permission: "view_purchase",
       },
       {
+        label: "rfqManagement",
+        href: "/dashboard/purchase/rfqs",
+        permission: "view_purchase",
+      },
+      {
+        label: "vendorPortal",
+        href: "/dashboard/purchase/portal",
+        permission: "view_purchase",
+      },
+      {
         label: "accounting",
         href: "/dashboard/accounting",
         permission: "view_accounting",
@@ -110,6 +125,11 @@ const routes: SidebarRoute[] = [
       {
         label: "logistics",
         href: "/dashboard/logistics",
+        permission: "view_logistics",
+      },
+      {
+        label: "riderDashboard",
+        href: "/rider",
         permission: "view_logistics",
       },
       { label: "assets", href: "/dashboard/assets", permission: "view_asset" },
@@ -168,16 +188,6 @@ const routes: SidebarRoute[] = [
         href: "/dashboard/analytics",
         permission: "view_analytics",
       },
-      {
-        label: "automationHub",
-        href: "/dashboard/intelligence/automation",
-        permission: "view_forecast",
-      },
-      {
-        label: "demandForecasting",
-        href: "/dashboard/intelligence/forecasts",
-        permission: "view_forecast",
-      },
     ],
   },
 ];
@@ -216,11 +226,6 @@ const adminRouteGroup: SidebarRoute = {
     {
       label: "settings",
       href: "/dashboard/settings",
-      permission: "view_settings",
-    },
-    {
-      label: "taxes",
-      href: "/dashboard/settings/taxes",
       permission: "view_settings",
     },
   ],

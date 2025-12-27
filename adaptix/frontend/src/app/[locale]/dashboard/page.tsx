@@ -10,6 +10,8 @@ import {
   Activity,
   Brain,
   Factory,
+  RotateCcw,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +49,8 @@ export default function DashboardPage() {
     lowStockCount,
     highRiskCount,
     manufacturingStats,
+    returnStats,
+    emiStats,
     isLoading,
   } = useDashboardStats();
 
@@ -216,6 +220,26 @@ export default function DashboardPage() {
           description="yield rate (produced vs defects)"
           loading={isLoading}
           delay={0.6}
+        />
+        <StatsWidget
+          title="Return Rate"
+          value={`${returnStats?.return_rate || 0}%`}
+          icon={RotateCcw}
+          trend={`${returnStats?.total_refunds || 0} refunds`}
+          trendUp={(returnStats?.return_rate || 0) < 5}
+          description="of total sales volume"
+          loading={isLoading}
+          delay={0.7}
+        />
+        <StatsWidget
+          title="EMI Performance"
+          value={emiStats?.active_plans || 0}
+          icon={CreditCard}
+          trend={`${emiStats?.upcoming_installments || 0} due`}
+          trendUp={true}
+          description="active credit plans"
+          loading={isLoading}
+          delay={0.8}
         />
       </div>
       {/* Charts & Recent Orders */}

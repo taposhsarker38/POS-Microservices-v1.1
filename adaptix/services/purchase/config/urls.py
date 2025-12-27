@@ -3,11 +3,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from apps.vendors.views import VendorViewSet
-from apps.procurement.views import PurchaseOrderViewSet
+from apps.procurement.views import PurchaseOrderViewSet, RFQViewSet, VendorQuoteViewSet
 
 router = DefaultRouter()
 router.register(r'vendors', VendorViewSet, basename='vendor')
 router.register(r'orders', PurchaseOrderViewSet, basename='order')
+router.register(r'rfqs', RFQViewSet, basename='rfq')
+router.register(r'quotes', VendorQuoteViewSet, basename='quote')
 from django.http import JsonResponse
 from django_prometheus.exports import ExportToDjangoView
 

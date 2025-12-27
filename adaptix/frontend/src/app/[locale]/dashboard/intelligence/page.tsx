@@ -2,6 +2,7 @@
 
 import { AIClient } from "@/components/intelligence/ai-client";
 import { AnomalyAlert } from "@/components/intelligence/anomaly-alert";
+import { ChatAssistant } from "@/components/intelligence/chat-assistant";
 import { LiveFeed } from "@/components/intelligence/live-feed";
 import {
   Breadcrumb,
@@ -51,6 +52,9 @@ export default function IntelligenceHubPage() {
           <LiveFeed />
         </div>
       </div>
+
+      {/* Floating Assistant */}
+      <ChatAssistant />
     </div>
   );
 }

@@ -89,6 +89,38 @@ export interface paths {
         patch: operations["payments_partial_update"];
         trace?: never;
     };
+    "/api/pos/returns/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["returns_list"];
+        put?: never;
+        post: operations["returns_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pos/returns/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["returns_retrieve"];
+        put: operations["returns_update"];
+        post?: never;
+        delete: operations["returns_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["returns_partial_update"];
+        trace?: never;
+    };
     "/api/pos/sessions/": {
         parameters: {
             query?: never;
@@ -137,10 +169,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pos/settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["settings_list"];
+        put?: never;
+        post: operations["settings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pos/settings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["settings_retrieve"];
+        put: operations["settings_update"];
+        post?: never;
+        delete: operations["settings_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["settings_partial_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `good` - Good
+         *     * `damaged` - Damaged
+         *     * `defective` - Defective
+         * @enum {string}
+         */
+        ConditionEnum: "good" | "damaged" | "defective";
         /**
          * @description * `product` - Product
          *     * `service` - Service
@@ -164,9 +235,10 @@ export interface components {
          *     * `bank_transfer` - Bank Transfer
          *     * `cheque` - Cheque
          *     * `credit` - Store Credit
+         *     * `emi` - EMI
          * @enum {string}
          */
-        MethodEnum: "cash" | "card" | "mobile_banking" | "bank_transfer" | "cheque" | "credit";
+        MethodEnum: "cash" | "card" | "mobile_banking" | "bank_transfer" | "cheque" | "credit" | "emi";
         /**
          * @description * `retail` - Retail
          *     * `restaurant` - Restaurant
@@ -214,6 +286,8 @@ export interface components {
             readonly due_amount: string;
             status?: components["schemas"]["OrderStatusEnum"];
             payment_status?: components["schemas"]["PaymentStatusEnum"];
+            /** @description Code of the tax zone for this order */
+            tax_zone_code?: string | null;
             metadata?: unknown;
             /** Format: date-time */
             readonly created_at: string;
@@ -228,6 +302,8 @@ export interface components {
             loyalty_action: components["schemas"]["LoyaltyActionEnum"];
             /** Format: decimal */
             redeemed_points?: string;
+            /** Format: uuid */
+            wing?: string | null;
         };
         OrderItem: {
             /** Format: uuid */
@@ -256,6 +332,28 @@ export interface components {
             variant_attributes?: unknown;
             metadata?: unknown;
         };
+        OrderReturn: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly return_number: string;
+            /** Format: uuid */
+            order: string;
+            readonly status: components["schemas"]["OrderReturnStatusEnum"];
+            /** Format: decimal */
+            refund_amount?: string;
+            reason?: string | null;
+            items: components["schemas"]["ReturnItemCreate"][];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `requested` - Requested
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         *     * `completed` - Completed
+         * @enum {string}
+         */
+        OrderReturnStatusEnum: "requested" | "approved" | "rejected" | "completed";
         /**
          * @description * `draft` - Draft
          *     * `confirmed` - Confirmed
@@ -299,6 +397,10 @@ export interface components {
          * @enum {string}
          */
         POSSessionStatusEnum: "open" | "closed" | "reconciled";
+        POSSettings: {
+            allow_partial_payment?: boolean;
+            allow_split_payment?: boolean;
+        };
         PatchedOrder: {
             /** Format: uuid */
             readonly id?: string;
@@ -334,6 +436,8 @@ export interface components {
             readonly due_amount?: string;
             status?: components["schemas"]["OrderStatusEnum"];
             payment_status?: components["schemas"]["PaymentStatusEnum"];
+            /** @description Code of the tax zone for this order */
+            tax_zone_code?: string | null;
             metadata?: unknown;
             /** Format: date-time */
             readonly created_at?: string;
@@ -348,6 +452,22 @@ export interface components {
             loyalty_action: components["schemas"]["LoyaltyActionEnum"];
             /** Format: decimal */
             redeemed_points?: string;
+            /** Format: uuid */
+            wing?: string | null;
+        };
+        PatchedOrderReturn: {
+            /** Format: uuid */
+            readonly id?: string;
+            readonly return_number?: string;
+            /** Format: uuid */
+            order?: string;
+            readonly status?: components["schemas"]["OrderReturnStatusEnum"];
+            /** Format: decimal */
+            refund_amount?: string;
+            reason?: string | null;
+            items?: components["schemas"]["ReturnItemCreate"][];
+            /** Format: date-time */
+            readonly created_at?: string;
         };
         PatchedPOSSession: {
             /** Format: uuid */
@@ -374,6 +494,10 @@ export interface components {
             readonly status?: components["schemas"]["POSSessionStatusEnum"];
             note?: string | null;
         };
+        PatchedPOSSettings: {
+            allow_partial_payment?: boolean;
+            allow_split_payment?: boolean;
+        };
         PatchedPayment: {
             /** Format: uuid */
             readonly id?: string;
@@ -383,6 +507,8 @@ export interface components {
             readonly updated_at?: string;
             is_deleted?: boolean;
             method?: components["schemas"]["MethodEnum"];
+            /** @description Bank or Mobile Banking provider (e.g. Bkash, Nagad, Brac Bank) */
+            provider?: string | null;
             /** Format: decimal */
             amount?: string;
             transaction_id?: string | null;
@@ -402,6 +528,8 @@ export interface components {
             readonly updated_at: string;
             is_deleted?: boolean;
             method?: components["schemas"]["MethodEnum"];
+            /** @description Bank or Mobile Banking provider (e.g. Bkash, Nagad, Brac Bank) */
+            provider?: string | null;
             /** Format: decimal */
             amount: string;
             transaction_id?: string | null;
@@ -420,6 +548,13 @@ export interface components {
          * @enum {string}
          */
         PaymentStatusEnum: "pending" | "partial" | "paid" | "refunded";
+        ReturnItemCreate: {
+            /** Format: uuid */
+            order_item: string;
+            /** Format: decimal */
+            quantity: string;
+            condition?: components["schemas"]["ConditionEnum"];
+        };
     };
     responses: never;
     parameters: never;
@@ -740,6 +875,149 @@ export interface operations {
             };
         };
     };
+    returns_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReturn"][];
+                };
+            };
+        };
+    };
+    returns_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderReturn"];
+                "application/x-www-form-urlencoded": components["schemas"]["OrderReturn"];
+                "multipart/form-data": components["schemas"]["OrderReturn"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReturn"];
+                };
+            };
+        };
+    };
+    returns_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this order return. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReturn"];
+                };
+            };
+        };
+    };
+    returns_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this order return. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderReturn"];
+                "application/x-www-form-urlencoded": components["schemas"]["OrderReturn"];
+                "multipart/form-data": components["schemas"]["OrderReturn"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReturn"];
+                };
+            };
+        };
+    };
+    returns_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this order return. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    returns_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this order return. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOrderReturn"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedOrderReturn"];
+                "multipart/form-data": components["schemas"]["PatchedOrderReturn"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReturn"];
+                };
+            };
+        };
+    };
     sessions_list: {
         parameters: {
             query?: never;
@@ -907,6 +1185,149 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["POSSession"];
+                };
+            };
+        };
+    };
+    settings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["POSSettings"][];
+                };
+            };
+        };
+    };
+    settings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["POSSettings"];
+                "application/x-www-form-urlencoded": components["schemas"]["POSSettings"];
+                "multipart/form-data": components["schemas"]["POSSettings"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["POSSettings"];
+                };
+            };
+        };
+    };
+    settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this pos settings. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["POSSettings"];
+                };
+            };
+        };
+    };
+    settings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this pos settings. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["POSSettings"];
+                "application/x-www-form-urlencoded": components["schemas"]["POSSettings"];
+                "multipart/form-data": components["schemas"]["POSSettings"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["POSSettings"];
+                };
+            };
+        };
+    };
+    settings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this pos settings. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this pos settings. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPOSSettings"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPOSSettings"];
+                "multipart/form-data": components["schemas"]["PatchedPOSSettings"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["POSSettings"];
                 };
             };
         };

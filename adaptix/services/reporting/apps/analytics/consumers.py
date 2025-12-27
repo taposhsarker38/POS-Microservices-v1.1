@@ -32,6 +32,8 @@ class ReportingEventConsumer:
                 self.handle_output_created(data)
             elif event_type == "quality.inspection.completed":
                 self.handle_inspection_completed(data)
+            elif event_type == "pos.return.created":
+                self.handle_return_created(data)
             
             message.ack()
         except Exception as e:
@@ -95,6 +97,28 @@ class ReportingEventConsumer:
             daily.total_defects = F('total_defects') + 1
             daily.save()
             print(f"Logged Quality Defect")
+
+    def handle_return_created(self, data):
+        # Triggered when a Return is submitted
+        refund_amount = float(data.get("refund_amount", 0))
+        created_at_iso = data.get("created_at")
+        try:
+            date_obj = parse(created_at_iso).date()
+        except:
+            date_obj = date.today()
+
+        # Update Daily Sales (Deduct Refund/Return Amount)
+        daily, _ = DailySales.objects.get_or_create(date=date_obj)
+        # Use F objects for atomic increments
+        daily.total_revenue = F('total_revenue') - refund_amount
+        daily.save()
+
+        # Log Transaction for Audit
+        Transaction.objects.create(
+            event_type="pos.return.created",
+            data=data
+        )
+        print(f"Processed Return: -{refund_amount} for Order {data.get('order_number')}")
 
     def run(self):
         print("Starting Reporting Event Consumer (All Events)...")

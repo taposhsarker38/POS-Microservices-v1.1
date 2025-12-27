@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Pencil, ArrowUpDown, FileText } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  ArrowUpDown,
+  FileText,
+  DollarSign,
+  Wallet,
+} from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -10,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-order-form";
 import { ReceiveOrderDialog } from "@/components/purchase/receive-order-dialog";
+import { VendorPaymentDialog } from "@/components/purchase/vendor-payment-dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -33,6 +41,9 @@ export const PurchaseOrderClient: React.FC = () => {
   const [receiveOrderId, setReceiveOrderId] = React.useState<string | null>(
     null
   );
+
+  const [openPayment, setOpenPayment] = React.useState(false);
+  const [paymentOrderId, setPaymentOrderId] = React.useState<any>(null);
 
   const fetchData = React.useCallback(async () => {
     try {
@@ -96,6 +107,15 @@ export const PurchaseOrderClient: React.FC = () => {
     setOpenReceive(true);
   };
 
+  const onPay = (order: any) => {
+    setPaymentOrderId(order);
+    setOpenPayment(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    fetchData(); // Refresh list to update paid amount/status
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
@@ -106,6 +126,12 @@ export const PurchaseOrderClient: React.FC = () => {
         return "bg-purple-100 text-purple-800 hover:bg-purple-200";
       case "rejected":
         return "bg-red-100 text-red-800 hover:bg-red-200";
+      case "paid":
+        return "bg-emerald-100 text-emerald-800 hover:bg-emerald-200";
+      case "partial":
+        return "bg-amber-100 text-amber-800 hover:bg-amber-200";
+      case "overdue":
+        return "bg-rose-100 text-rose-800 hover:bg-rose-200";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     }
@@ -150,6 +176,28 @@ export const PurchaseOrderClient: React.FC = () => {
       },
     },
     {
+      accessorKey: "payment_status",
+      header: "Payment",
+      cell: ({ row }) => {
+        const status = row.original.payment_status || "pending";
+        const paid = parseFloat(row.original.paid_amount || 0);
+        const total = parseFloat(row.original.total_amount || 0);
+
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge className={getStatusColor(status)} variant="outline">
+              {status.toUpperCase()}
+            </Badge>
+            {status !== "paid" && status !== "pending" && (
+              <span className="text-xs text-muted-foreground">
+                Pd: {paid.toFixed(0)}/{total.toFixed(0)}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
@@ -186,6 +234,14 @@ export const PurchaseOrderClient: React.FC = () => {
                   className="cursor-pointer text-blue-600"
                 >
                   <ArrowUpDown className="mr-2 h-4 w-4" /> Receive Order
+                </DropdownMenuItem>
+              )}
+              {row.original.payment_status !== "paid" && (
+                <DropdownMenuItem
+                  onClick={() => onPay(row.original)}
+                  className="cursor-pointer text-green-600"
+                >
+                  <Wallet className="mr-2 h-4 w-4" /> Record Payment
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -225,6 +281,12 @@ export const PurchaseOrderClient: React.FC = () => {
         isOpen={openReceive}
         onClose={() => setOpenReceive(false)}
         onSuccess={handleModalClose}
+      />
+      <VendorPaymentDialog
+        order={paymentOrderId}
+        isOpen={openPayment}
+        onClose={() => setOpenPayment(false)}
+        onSuccess={handlePaymentSuccess}
       />
     </>
   );

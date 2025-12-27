@@ -3,6 +3,14 @@ from django.db import models
 from django.utils import timezone
 from apps.utils.models import SoftDeleteModel
 
+class POSSettings(SoftDeleteModel):
+    allow_partial_payment = models.BooleanField(default=True)
+    allow_split_payment = models.BooleanField(default=True)
+    company_uuid = models.UUIDField(editable=False) # Simplified specific settings per company
+
+    def __str__(self):
+        return f"Settings for {self.company_uuid}"
+
 class POSSession(SoftDeleteModel):
     STATUS_CHOICES = (
         ('open', 'Open'),
@@ -98,6 +106,23 @@ class Order(SoftDeleteModel):
             self.order_number = f"INV-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
+    def update_payment_status(self):
+        """Recalculate paid_amount, due_amount and update payment_status"""
+        payments = self.payments.all()
+        total_paid = sum(p.amount for p in payments)
+        
+        self.paid_amount = total_paid
+        self.due_amount = self.grand_total - total_paid
+        
+        if self.due_amount <= 0:
+            self.payment_status = 'paid'
+        elif total_paid > 0:
+            self.payment_status = 'partial'
+        else:
+            self.payment_status = 'pending'
+            
+        self.save(update_fields=['paid_amount', 'due_amount', 'payment_status'])
+
     def __str__(self):
         return f"{self.order_number} ({self.customer_name})"
 
@@ -150,13 +175,59 @@ class Payment(SoftDeleteModel):
         ('bank_transfer', 'Bank Transfer'),
         ('cheque', 'Cheque'),
         ('credit', 'Store Credit'),
+        ('emi', 'EMI'),
     )
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
     method = models.CharField(max_length=50, choices=METHOD_CHOICES, default='cash')
+    provider = models.CharField(max_length=100, blank=True, null=True, help_text="Bank or Mobile Banking provider (e.g. Bkash, Nagad, Brac Bank)")
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     note = models.TextField(blank=True, null=True)
     
     company_uuid = models.UUIDField(editable=False)
     created_by = models.CharField(max_length=100, blank=True, null=True)
+
+class OrderReturn(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('requested', 'Requested'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+    
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='returns')
+    return_number = models.CharField(max_length=50, unique=True, editable=False)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
+    reason = models.TextField(blank=True, null=True)
+    
+    refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    company_uuid = models.UUIDField(editable=False)
+    created_by = models.UUIDField(editable=False)
+    approved_by = models.UUIDField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.return_number:
+            self.return_number = f"RET-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.return_number} for {self.order.order_number}"
+
+class ReturnItem(SoftDeleteModel):
+    CONDITION_CHOICES = (
+        ('good', 'Good'),
+        ('damaged', 'Damaged'),
+        ('defective', 'Defective'),
+    )
+
+    return_request = models.ForeignKey(OrderReturn, on_delete=models.CASCADE, related_name='items')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE)
+    
+    quantity = models.DecimalField(max_digits=10, decimal_places=3)
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='good')
+    
+    def __str__(self):
+        return f"{self.quantity} x {self.order_item.product_name}"

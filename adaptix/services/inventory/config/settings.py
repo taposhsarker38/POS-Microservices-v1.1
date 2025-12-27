@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.stocks',
+    'apps.iot',
     'django_prometheus',
 ]
 

@@ -90,19 +90,22 @@ export default function ForecastingDashboard() {
   }, [selectedProduct]);
 
   useEffect(() => {
-    if (socket) {
-      socket.on("forecast.completed", () => {
-        toast.success("Forecast generation completed. Refreshing data...");
-        fetchData();
-        if (selectedProduct) {
-          loadChartData(selectedProduct);
-        }
-      });
-    }
-    return () => {
-      if (socket) socket.off("forecast.completed");
+    if (!socket) return;
+
+    const handleForecastCompleted = () => {
+      toast.success("Forecast generation completed. Refreshing data...");
+      fetchData();
+      if (selectedProduct) {
+        loadChartData(selectedProduct);
+      }
     };
-  }, [socket, selectedProduct]);
+
+    socket.on("forecast.completed", handleForecastCompleted);
+
+    return () => {
+      socket.off("forecast.completed", handleForecastCompleted);
+    };
+  }, [socket, selectedProduct]); // Note: fetchData and loadChartData are stable enough or ignored for now to match original logic
 
   const loadChartData = async (productId: string) => {
     try {

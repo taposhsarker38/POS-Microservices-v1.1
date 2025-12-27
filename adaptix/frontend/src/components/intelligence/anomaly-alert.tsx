@@ -38,13 +38,16 @@ export function AnomalyAlert() {
   }, []);
 
   useEffect(() => {
-    if (socket) {
-      socket.on("intelligence.alert", (newAnomaly: Anomaly) => {
-        setAnomalies((prev) => [newAnomaly, ...prev]);
-      });
-    }
+    if (!socket) return;
+
+    const handleAlert = (newAnomaly: Anomaly) => {
+      setAnomalies((prev) => [newAnomaly, ...prev]);
+    };
+
+    socket.on("intelligence.alert", handleAlert);
+
     return () => {
-      if (socket) socket.off("intelligence.alert");
+      socket.off("intelligence.alert", handleAlert);
     };
   }, [socket]);
 

@@ -21,3 +21,4 @@ pytest-mock==3.12.0
 drf-spectacular
 whitenoise
 django-filter>=23.2
+django-prometheus

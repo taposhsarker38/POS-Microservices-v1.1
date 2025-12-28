@@ -31,6 +31,6 @@ def publish_event(exchange, routing_key, payload):
             )
         )
         connection.close()
-        # print(f"[Core] Published event: {routing_key}")
+        print(f"[Core] Published event: {routing_key}")
     except Exception as e:
         print(f"[Core] Failed to publish event {routing_key}: {e}")

@@ -103,6 +103,20 @@ interface PresenceResponse {
   logs: PresenceLog[];
 }
 
+interface CartItem {
+  id: string;
+  name: string;
+  sales_price: number;
+  quantity: number;
+  sku: string;
+}
+
+interface CartResponse {
+  session_id: string;
+  items: CartItem[];
+  updated_at: string;
+}
+
 interface MovementSession {
   person_id: string;
   out_time: string;
@@ -121,6 +135,7 @@ export default function VisionHubPage() {
   const [traffic, setTraffic] = useState<TrafficPoint[]>([]);
   const [logs, setLogs] = useState<PresenceLog[]>([]);
   const [movements, setMovements] = useState<MovementSession[]>([]);
+  const [liveCartItems, setLiveCartItems] = useState<CartItem[]>([]);
   const [envType, setEnvType] = useState<string>("OFFICE");
   const [isLoading, setIsLoading] = useState(true);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -166,24 +181,35 @@ export default function VisionHubPage() {
     const trafficUrl = `/api/intelligence/vision/traffic/?branch_uuid=${selectedBranch}&date=${formattedDate}`;
     const logsUrl = `/api/intelligence/vision/presence-analytics/?branch_uuid=${selectedBranch}`;
     const movementsUrl = `/api/intelligence/vision/movement-tracking/?branch_uuid=${selectedBranch}`;
+    // Using hardcoded terminal ID for demo sync
+    const cartUrl = `/api/intelligence/vision/cart-sync/?terminal_id=TERM_001`;
 
     Promise.all([
       fetch(statsUrl).then((r) => r.json()),
       fetch(trafficUrl).then((r) => r.json()),
       fetch(logsUrl).then((r) => r.json()),
       fetch(movementsUrl).then((r) => r.json()),
+      fetch(cartUrl).then((r) => r.json()),
     ])
       .then(
-        ([statsData, trafficData, logsResponse, movementsData]: [
+        ([statsData, trafficData, logsResponse, movementsData, cartData]: [
           VisionStats,
           TrafficPoint[],
           PresenceResponse,
-          MovementSession[]
+          MovementSession[],
+          CartResponse
         ]) => {
           setStats(statsData);
           setTraffic(trafficData);
           setLogs(logsResponse.logs);
           setMovements(movementsData);
+
+          if (cartData && cartData.items) {
+            setLiveCartItems(cartData.items);
+          } else {
+            setLiveCartItems([]);
+          }
+
           setEnvType(statsData.env_type || logsResponse.env_type || "OFFICE");
           setIsLoading(false);
         }
@@ -690,28 +716,90 @@ export default function VisionHubPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="divide-y divide-border/50">
-                    <div className="p-4 bg-blue-500/5 border-l-4 border-blue-500 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-background rounded-xl border border-border/50 shadow-sm flex items-center justify-center font-bold text-blue-500 text-xs">
-                          LIVE
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="font-bold text-foreground">
-                              Waiting for Detections
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] h-4 text-muted-foreground border-border"
-                            >
-                              API Connected
-                            </Badge>
+                    <div className="p-4 bg-blue-500/5 border-l-4 border-blue-500 flex flex-col gap-4">
+                      {liveCartItems.length > 0 ? (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="h-12 w-12 bg-background rounded-xl border border-border/50 shadow-sm flex items-center justify-center font-bold text-blue-500 text-xs animate-pulse">
+                                LIVE
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <p className="font-bold text-foreground">
+                                    Active Session Detected
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] h-4 text-muted-foreground border-border bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  >
+                                    {liveCartItems.length} Items Found
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Processing visual stream from Term_001...
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Scan barcode/QR or wait for CCTV automated cart...
-                          </p>
+
+                          <div className="space-y-2">
+                            {liveCartItems.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center bg-background/50 p-2 rounded-lg border border-border/50"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-center">
+                                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">
+                                      {item.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.sku}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-bold">
+                                    ${item.sales_price}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Qty: {item.quantity}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 bg-background rounded-xl border border-border/50 shadow-sm flex items-center justify-center font-bold text-blue-500 text-xs">
+                              LIVE
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="font-bold text-foreground">
+                                  Waiting for Detections
+                                </p>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-4 text-muted-foreground border-border"
+                                >
+                                  API Connected
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Scan barcode/QR or wait for CCTV automated
+                                cart...
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

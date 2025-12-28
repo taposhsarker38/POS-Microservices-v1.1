@@ -625,6 +625,14 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=notification
+    - DEFAULT_FROM_EMAIL=MyApp <info@expotechglobal.com>
+    - EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+    - EMAIL_HOST=sg2plzcpnl476824.prod.sin2.secureserver.net
+    - EMAIL_PORT=465
+    - EMAIL_HOST_USER=info@expotechglobal.com
+    - EMAIL_HOST_PASSWORD='Ca[_TcR^!O$$$$]'
+    - EMAIL_USE_TLS=False
+    - EMAIL_USE_SSL=True
     volumes:
     - ./keys:/keys:ro
     - ./services/notification:/app
@@ -640,6 +648,47 @@ services:
       resources:
         limits:
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-worker:
+    build:
+      context: .
+      dockerfile: services/notification/Dockerfile
+    container_name: adaptix-notification-worker
+    profiles: ["notification"]
+    command: python manage.py run_notification_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=notification
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=notification-worker
+    - DEFAULT_FROM_EMAIL=MyApp <info@expotechglobal.com>
+    - EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+    - EMAIL_HOST=sg2plzcpnl476824.prod.sin2.secureserver.net
+    - EMAIL_PORT=465
+    - EMAIL_HOST_USER=info@expotechglobal.com
+    - EMAIL_HOST_PASSWORD='Ca[_TcR^!O$$$$]'
+    - EMAIL_USE_TLS=False
+    - EMAIL_USE_SSL=True
+    volumes:
+    - ./services/notification:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     logging:
       driver: "json-file"
       options:

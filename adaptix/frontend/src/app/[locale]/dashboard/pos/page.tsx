@@ -80,6 +80,9 @@ export default function POSPage() {
           onCheckoutSuccess={() => setCartItems([])}
           checkoutOpen={checkoutOpen}
           onCheckoutOpenChange={setCheckoutOpen}
+          onLoadAICart={(newItems) => {
+            setCartItems((prev) => [...prev, ...newItems]);
+          }}
         />
       </div>
     </div>

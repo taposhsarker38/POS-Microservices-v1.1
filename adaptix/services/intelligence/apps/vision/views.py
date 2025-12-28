@@ -118,20 +118,55 @@ class VisualCartSync(APIView):
 
         if session_id:
             try:
-                cart = VisualCart.objects.get(session_id=session_id, is_converted=False)
+                cart = VisualCart.objects.get(session_id=session_id)
+                # Allow retrieving already converted carts for review
             except VisualCart.DoesNotExist:
-                return Response({"error": "Cart not found or already converted"}, status=404)
+                return Response({"error": "Cart not found"}, status=404)
         elif terminal_id:
             # Fetch latest unconverted cart for this terminal
             cart = VisualCart.objects.filter(pos_terminal_id=terminal_id, is_converted=False).order_by('-updated_at').first()
             if not cart:
-                return Response({"error": "No pending visual cart for this terminal"}, status=404)
+                # Create a specific mock cart for demo if none exists
+                cart = VisualCart.objects.create(
+                     session_id=f"demo-{uuid.uuid4()}",
+                     pos_terminal_id=terminal_id,
+                     detected_items=["smart-water-500ml", "lays-classic-small"]
+                )
         else:
             return Response({"error": "Terminal or Session ID required"}, status=400)
 
+        # Enrich items (Mocking Product Service lookup for Demo)
+        enriched_items = []
+        for item_id in cart.detected_items:
+            # In production, call Product Service via gRPC/HTTP
+            if "water" in item_id:
+                 enriched_items.append({
+                     "id": "prod-uuid-water-123",
+                     "name": "Smart Water 500ml",
+                     "sku": "SW-500",
+                     "sales_price": 1.50,
+                     "quantity": 1
+                 })
+            elif "lays" in item_id:
+                 enriched_items.append({
+                     "id": "prod-uuid-lays-456",
+                     "name": "Lays Classic Small",
+                     "sku": "LAY-S",
+                     "sales_price": 0.80,
+                     "quantity": 2 # AI detected 2 bags
+                 })
+            else:
+                 enriched_items.append({
+                     "id": f"prod-{uuid.uuid4()}",
+                     "name": "Unknown Item",
+                     "sku": "UNKNOWN",
+                     "sales_price": 5.00,
+                     "quantity": 1
+                 })
+
         return Response({
             "session_id": cart.session_id,
-            "detected_items": cart.detected_items, # IDs of products
+            "items": enriched_items, 
             "updated_at": cart.updated_at
         })
 

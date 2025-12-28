@@ -62,54 +62,71 @@ export const DynamicAttributeRenderer: React.FC<
                 )}
               </FormLabel>
               <FormControl>
-                {attr.type === "text" && (
-                  <Input
-                    placeholder={attr.name}
-                    {...field}
-                    value={field.value || ""}
-                  />
-                )}
-                {attr.type === "number" && (
-                  <Input
-                    type="number"
-                    placeholder={attr.name}
-                    {...field}
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                )}
-                {attr.type === "date" && (
-                  <Input type="date" {...field} value={field.value || ""} />
-                )}
-                {attr.type === "boolean" && (
-                  <div className="flex items-center space-x-2 pt-2">
-                    <Checkbox
-                      checked={!!field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                    <span className="text-sm text-muted-foreground italic">
-                      Yes
-                    </span>
-                  </div>
-                )}
-                {attr.type === "select" && (
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Select ${attr.name}`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {attr.options?.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                {(() => {
+                  switch (attr.type) {
+                    case "text":
+                      return (
+                        <Input
+                          placeholder={attr.name}
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      );
+                    case "number":
+                      return (
+                        <Input
+                          type="number"
+                          placeholder={attr.name}
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) =>
+                            field.onChange(parseFloat(e.target.value))
+                          }
+                        />
+                      );
+                    case "date":
+                      return (
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      );
+                    case "boolean":
+                      return (
+                        <Checkbox
+                          checked={!!field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      );
+                    case "select":
+                      return (
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${attr.name}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {attr.options?.map((opt) => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    default:
+                      return <Input {...field} />;
+                  }
+                })()}
               </FormControl>
+              {attr.type === "boolean" && (
+                <div className="text-sm text-muted-foreground italic mt-1 pb-2">
+                  Check for Yes
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )}

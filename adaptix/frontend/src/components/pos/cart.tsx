@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Trash2, ShoppingCart, Minus, Plus, Keyboard } from "lucide-react";
+import {
+  Trash2,
+  ShoppingCart,
+  Minus,
+  Plus,
+  Keyboard,
+  Wand2,
+} from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +26,7 @@ interface CartProps {
   onCheckoutSuccess: () => void;
   checkoutOpen: boolean;
   onCheckoutOpenChange: (open: boolean) => void;
+  onLoadAICart: (items: any[]) => void;
 }
 
 export const Cart: React.FC<CartProps> = ({
@@ -26,7 +36,27 @@ export const Cart: React.FC<CartProps> = ({
   onCheckoutSuccess,
   checkoutOpen,
   onCheckoutOpenChange,
+  onLoadAICart,
 }) => {
+  const [loadingAI, setLoadingAI] = React.useState(false);
+
+  const handleSmartLoad = async () => {
+    setLoadingAI(true);
+    try {
+      // Hardcoded terminal ID for demo
+      const res = await api.get(
+        "/intelligence/vision/cart-sync/?terminal_id=TERM_001"
+      );
+      if (res.data?.items) {
+        onLoadAICart(res.data.items);
+        toast.success("AI Visual Cart Loaded!");
+      }
+    } catch (e) {
+      toast.error("No visual cart found for this terminal.");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
   const [selectedCustomer, setSelectedCustomer] = React.useState<any>(null);
 
   const subtotal = items.reduce(
@@ -55,6 +85,19 @@ export const Cart: React.FC<CartProps> = ({
             <span className="ml-2 text-[10px] font-bold border rounded px-1 hidden lg:inline">
               ALT+C
             </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSmartLoad}
+            disabled={loadingAI}
+            className="text-violet-600 border-violet-200 bg-violet-50 hover:bg-violet-100"
+            title="Load AI Smart Cart"
+          >
+            <Wand2
+              className={cn("h-4 w-4 mr-2", loadingAI && "animate-spin")}
+            />
+            AI Cart
           </Button>
         </div>
         <CustomerSelector

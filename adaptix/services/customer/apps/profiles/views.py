@@ -82,6 +82,73 @@ class CustomerViewSet(viewsets.ModelViewSet):
         
         return Response(self.get_serializer(customer).data)
 
+    @action(detail=True, methods=['post'], url_path='send-verification')
+    def send_verification(self, request, pk=None):
+        customer = self.get_object()
+        type = request.data.get('type') # 'email' or 'phone'
+
+        import random
+        from adaptix_core.messaging import publish_event
+        otp = str(random.randint(100000, 999999))
+
+        if type == 'email' and customer.email:
+            customer.email_otp = otp
+            customer.save()
+            publish_event('events', 'customer.verify_email', {
+                'type': 'customer.verify_email',
+                'email': customer.email,
+                'otp': otp,
+                'customer_name': customer.name,
+                'company_uuid': str(customer.company_uuid) if customer.company_uuid else None
+            })
+            return Response({"message": f"OTP sent to {customer.email}", "mock_otp": otp}) 
+        elif type == 'phone' and customer.phone:
+            customer.phone_otp = otp
+            customer.save()
+             # In real app: send_sms(customer.phone, otp)
+            return Response({"message": f"OTP sent to {customer.phone}", "mock_otp": otp})
+        
+        return Response({"error": "Invalid type or missing info"}, status=400)
+
+    @action(detail=True, methods=['post'], url_path='verify-otp')
+    def verify_otp(self, request, pk=None):
+        customer = self.get_object()
+        type = request.data.get('type')
+        otp = request.data.get('otp')
+
+        if type == 'email':
+            if customer.email_otp == otp:
+                customer.is_email_verified = True
+                customer.email_otp = None
+                customer.save()
+                return Response({"status": "verified"})
+        elif type == 'phone':
+             if customer.phone_otp == otp:
+                customer.is_phone_verified = True
+                customer.phone_otp = None
+                customer.save()
+                return Response({"status": "verified"})
+
+        return Response({"error": "Invalid OTP"}, status=400)
+
+    def perform_create(self, serializer):
+        # Auto-detect Branch/Wing ID
+        branch_id = self.request.data.get('branch_id')
+        
+        # If not in body, check headers (e.g. from Kong or Client)
+        if not branch_id:
+             branch_id = self.request.headers.get('X-Branch-ID') or self.request.headers.get('X-Wing-ID')
+             
+        # If not in headers, check Token Claims (if Auth service puts it there)
+        if not branch_id and hasattr(self.request, 'user_claims'):
+             branch_id = self.request.user_claims.get('branch_id') or self.request.user_claims.get('wing_id')
+
+        save_kwargs = {}
+        if branch_id:
+            save_kwargs['branch_id'] = branch_id
+
+        serializer.save(**save_kwargs)
+
 class AttributeSetViewSet(viewsets.ModelViewSet):
     queryset = AttributeSet.objects.all()
     serializer_class = AttributeSetSerializer

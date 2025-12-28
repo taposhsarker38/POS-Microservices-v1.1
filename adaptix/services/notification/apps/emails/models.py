@@ -41,7 +41,7 @@ class SMTPSettings(models.Model):
     password = models.CharField(max_length=255, blank=True)
     use_tls = models.BooleanField(default=True)
     use_ssl = models.BooleanField(default=False)
-    default_from_email = models.EmailField()
+    default_from_email = models.CharField(max_length=255)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

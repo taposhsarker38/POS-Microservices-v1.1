@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Zap,
+  Eye,
+  Video,
 } from "lucide-react";
 import { useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ComposedChart,
+  Bar,
 } from "recharts";
 import {
   Table,
@@ -59,6 +63,7 @@ export function AIClient() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [inventoryRisk, setInventoryRisk] = useState<any[]>([]);
+  const [visionData, setVisionData] = useState<any>(null);
 
   const fetchForecast = async () => {
     try {
@@ -73,6 +78,19 @@ export function AIClient() {
     try {
       const res = await api.get("/intelligence/inventory/opt/");
       setInventoryRisk(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchVisionStats = async () => {
+    try {
+      // Hardcoding branch_uuid for demo or fetch from context
+      const branchUuid = "b9090176-5080-4948-be8e-15f5cc24a806";
+      const res = await api.get(
+        `/intelligence/vision/stats/?branch_uuid=${branchUuid}`
+      );
+      setVisionData(res.data);
     } catch (e) {
       console.error(e);
     }
@@ -110,6 +128,8 @@ export function AIClient() {
       fetchForecast();
     } else if (module === "inventory-opt") {
       fetchInventoryOpt();
+    } else if (module === "vision-analytics") {
+      fetchVisionStats();
     }
   }, [module]);
 
@@ -403,6 +423,149 @@ export function AIClient() {
             </Card>
           </div>
         );
+      case "vision-analytics":
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-950/20 p-6 rounded-xl border border-blue-100 dark:border-blue-900/50 shadow-sm">
+              <div className="flex gap-4">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg h-fit text-blue-600 dark:text-blue-400">
+                  <Eye className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">
+                    Visitor Traffic Vision
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Computer Vision analysis of store traffic, conversion rates,
+                    and shopper behavior.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+              >
+                Configure Cameras
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium">
+                    Total Visitors (Today)
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {visionData?.active_cameras > 0 ? "184" : "0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    +12% from yesterday
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium">
+                    Conversion Rate
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {visionData?.conversion_rate || "0"}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">Target: 25%</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium">
+                    Currently On-Site
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {visionData?.on_site_now || "0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Occupancy Load: 15%
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium">
+                    Active Cameras
+                  </CardTitle>
+                  <Video className="h-4 w-4 text-slate-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {visionData?.active_cameras || "0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    All Systems Operational
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>Hourly Footfall vs. Sales</CardTitle>
+                <CardDescription>
+                  Traffic peaks (bars) vs Number of Transactions (line)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={[
+                      { time: "10am", visitors: 40, sales: 12 },
+                      { time: "11am", visitors: 65, sales: 20 },
+                      { time: "12pm", visitors: 85, sales: 35 },
+                      { time: "1pm", visitors: 90, sales: 25 },
+                      { time: "2pm", visitors: 55, sales: 18 },
+                      { time: "3pm", visitors: 70, sales: 22 },
+                      { time: "4pm", visitors: 110, sales: 45 },
+                      { time: "5pm", visitors: 140, sales: 55 },
+                      { time: "6pm", visitors: 120, sales: 40 },
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="time" axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left" axisLine={false} tickLine={false} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="visitors"
+                      fill="#3b82f6"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={40}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="sales"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        );
       case "demand-planning":
         return (
           <div className="flex flex-col items-center justify-center h-96 text-center space-y-4 bg-violet-50 dark:bg-violet-900/10 rounded-2xl border-2 border-dashed border-violet-200">
@@ -487,6 +650,9 @@ export function AIClient() {
                 </SelectItem>
                 <SelectItem value="inventory-opt">
                   Inventory Optimization
+                </SelectItem>
+                <SelectItem value="vision-analytics">
+                  Visitor Vision (CCTV)
                 </SelectItem>
                 <SelectItem value="demand-planning">
                   Demand Planning (Phase 1.2)

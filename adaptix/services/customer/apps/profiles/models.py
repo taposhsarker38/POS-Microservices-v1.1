@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.db.models import Q
 
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
@@ -8,6 +9,7 @@ class SoftDeleteManager(models.Manager):
 class SoftDeleteModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company_uuid = models.UUIDField(db_index=True, null=True, blank=True) 
+    branch_id = models.UUIDField(null=True, blank=True, db_index=True) # Creation Branch
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
@@ -61,7 +63,7 @@ class Customer(SoftDeleteModel):
         ELITE = 'ELITE', 'Elite'
 
     name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=50, unique=True)
+    phone = models.CharField(max_length=50) # Unique constraint handled in Meta
     email = models.EmailField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     loyalty_points = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -71,9 +73,24 @@ class Customer(SoftDeleteModel):
         default=Tier.SILVER
     )
     
+    # Verification
+    is_email_verified = models.BooleanField(default=False, null=True)
+    is_phone_verified = models.BooleanField(default=False, null=True)
+    email_otp = models.CharField(max_length=6, blank=True, null=True)
+    phone_otp = models.CharField(max_length=6, blank=True, null=True)
+    
     # Dynamic Attributes
     attribute_set = models.ForeignKey(AttributeSet, on_delete=models.SET_NULL, null=True, blank=True)
     attributes = models.JSONField(default=dict, blank=True) 
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['phone'], 
+                name='unique_active_customer_phone', 
+                condition=Q(is_deleted=False)
+            )
+        ] 
 
     def calculate_tier(self):
         """Update tier based on points"""

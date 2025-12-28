@@ -101,8 +101,15 @@ CORS_ALLOW_ALL_ORIGINS = True
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://adaptix:adaptix123@rabbitmq:5672//")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/5")
 
-# Email Backend (Console for now, or SMTP via env)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' 
+# Email Backend
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 1025))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'webmaster@localhost') 
 
 # Tracing
 try:

@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FileEdit, Trash2, Award } from "lucide-react";
+import {
+  Plus,
+  Search,
+  FileEdit,
+  Trash2,
+  Award,
+  ShieldCheck,
+  ShieldAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -128,6 +136,29 @@ export function CustomerClient() {
           ELITE: "bg-purple-600 hover:bg-purple-700",
         };
         return <Badge className={colors[tier] || colors.SILVER}>{tier}</Badge>;
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const isVerified =
+          row.original.is_email_verified || row.original.is_phone_verified;
+        return isVerified ? (
+          <Badge
+            variant="outline"
+            className="text-emerald-600 bg-emerald-50 border-emerald-200 gap-1 pr-2"
+          >
+            <ShieldCheck className="h-3 w-3" /> Verified
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="text-slate-500 bg-slate-50 border-slate-200 gap-1 pr-2"
+          >
+            <ShieldAlert className="h-3 w-3" /> Unverified
+          </Badge>
+        );
       },
     },
     {

@@ -3,11 +3,11 @@ djangorestframework
 djangorestframework-simplejwt
 psycopg2-binary
 gunicorn
-python-jose[cryptography]
+cryptography>=39.0.0
 requests
 django-cors-headers
 dj-database-url
-PyJWT>=2.8.0
+pyjwt[crypto]>=2.8.0
 celery
 opentelemetry-api
 opentelemetry-sdk

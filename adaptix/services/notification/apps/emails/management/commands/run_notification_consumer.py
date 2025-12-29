@@ -33,6 +33,8 @@ class Command(BaseCommand):
                 self.handle_user_registered(body)
             elif event_type == 'customer.verify_email':
                 self.handle_verification_otp(body)
+            elif event_type == 'customer.verify_phone':
+                self.handle_verification_sms(body)
 
             message.ack()
         except Exception as e:
@@ -54,28 +56,34 @@ class Command(BaseCommand):
         body = f"Hello {data.get('customer_name', 'Customer')},\n\nYour verification code is: {otp}\n\nPlease enter this code to verify your account."
         
         try:
-           # Check for tenant-specific SMTP (Copy logic or refactor, copying for safety now)
+            # Check for tenant-specific SMTP (Copy logic or refactor, copying for safety now)
             company_uuid = data.get('company_uuid')
             smtp_conn = None
             from_email = settings.DEFAULT_FROM_EMAIL
-            
+            tenant_smtp = None
+
             if company_uuid:
                 tenant_smtp = SMTPSettings.objects.filter(company_uuid=company_uuid).first()
-                if tenant_smtp:
-                    self.stdout.write(f"Using Tenant SMTP for {company_uuid}: {tenant_smtp.host} as {tenant_smtp.username}")
-                    smtp_conn = get_connection(
-                        host=tenant_smtp.host,
-                        port=tenant_smtp.port,
-                        username=tenant_smtp.username,
-                        password=tenant_smtp.password,
-                        use_tls=tenant_smtp.use_tls,
-                        use_ssl=tenant_smtp.use_ssl,
-                    )
-                    from_email = tenant_smtp.default_from_email
-                else:
-                    self.stdout.write(f"No Tenant SMTP found for {company_uuid}, falling back to global.")
             else:
-                 self.stdout.write("No company_uuid in event, using global SMTP.")
+                # Fallback to default tenant (for dev/single-tenant setup)
+                default_uuid = "00000000-0000-0000-0000-000000000000"
+                tenant_smtp = SMTPSettings.objects.filter(company_uuid=default_uuid).first()
+                if tenant_smtp:
+                    self.stdout.write(f"Using Default Tenant SMTP for {default_uuid}")
+            
+            if tenant_smtp:
+                self.stdout.write(f"Using Tenant SMTP for {tenant_smtp.company_uuid}: {tenant_smtp.host} as {tenant_smtp.username}")
+                smtp_conn = get_connection(
+                    host=tenant_smtp.host,
+                    port=tenant_smtp.port,
+                    username=tenant_smtp.username,
+                    password=tenant_smtp.password,
+                    use_tls=tenant_smtp.use_tls,
+                    use_ssl=tenant_smtp.use_ssl,
+                )
+                from_email = tenant_smtp.default_from_email
+            else:
+                 self.stdout.write("No Tenant SMTP found, falling back to global.")
             
             send_mail(subject, body, from_email, [email], fail_silently=False, connection=smtp_conn)
             
@@ -109,20 +117,28 @@ class Command(BaseCommand):
             company_uuid = data.get('company_uuid')
             smtp_conn = None
             from_email = settings.DEFAULT_FROM_EMAIL
+            tenant_smtp = None
             
             if company_uuid:
                 tenant_smtp = SMTPSettings.objects.filter(company_uuid=company_uuid).first()
+            else:
+                # Fallback to default tenant (for dev/single-tenant setup)
+                default_uuid = "00000000-0000-0000-0000-000000000000"
+                tenant_smtp = SMTPSettings.objects.filter(company_uuid=default_uuid).first()
                 if tenant_smtp:
-                    smtp_conn = get_connection(
-                        host=tenant_smtp.host,
-                        port=tenant_smtp.port,
-                        username=tenant_smtp.username,
-                        password=tenant_smtp.password,
-                        use_tls=tenant_smtp.use_tls,
-                        use_ssl=tenant_smtp.use_ssl,
-                    )
-                    from_email = tenant_smtp.default_from_email
-                    self.stdout.write(f"Using Tenant SMTP for {company_uuid}")
+                    self.stdout.write(f"Using Default Tenant SMTP for {default_uuid}")
+
+            if tenant_smtp:
+                smtp_conn = get_connection(
+                    host=tenant_smtp.host,
+                    port=tenant_smtp.port,
+                    username=tenant_smtp.username,
+                    password=tenant_smtp.password,
+                    use_tls=tenant_smtp.use_tls,
+                    use_ssl=tenant_smtp.use_ssl,
+                )
+                from_email = tenant_smtp.default_from_email
+                self.stdout.write(f"Using Tenant SMTP for {tenant_smtp.company_uuid}")
 
             send_mail(
                 subject,
@@ -150,3 +166,18 @@ class Command(BaseCommand):
                 error_message=str(e)
             )
             self.stdout.write(self.style.ERROR(f"Failed to send email to {email}: {e}"))
+
+    def handle_verification_sms(self, data):
+        phone = data.get('phone')
+        otp = data.get('otp')
+        if not phone or not otp:
+            return
+
+        # Explicitly log OTP for development/debug
+        self.stdout.write(self.style.WARNING(f"--------------------------------------------------"))
+        self.stdout.write(self.style.WARNING(f" [MOCK SMS] SENT OTP to {phone}: {otp} "))
+        self.stdout.write(self.style.WARNING(f"--------------------------------------------------"))
+        
+        # Here we would integrate Twilio / SNS / Other SMS Gateway
+        # For now, we just log it as successful delivery mock
+        self.stdout.write(self.style.SUCCESS(f"Mock SMS sent to {phone}"))

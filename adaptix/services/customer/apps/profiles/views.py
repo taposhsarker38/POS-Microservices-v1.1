@@ -7,12 +7,27 @@ from rest_framework.response import Response
 from rest_framework import status
 from decimal import Decimal
 
+from adaptix_core.permissions import HasPermission
+
 @extend_schema(tags=['customers'])
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-created_at')
     serializer_class = CustomerSerializer
+    permission_classes = [HasPermission]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'phone', 'email']
+
+    @property
+    def required_permission(self):
+        if self.action in ['list', 'retrieve']:
+            return 'view_customer'
+        elif self.action == 'create':
+            return 'create_customer'
+        elif self.action in ['update', 'partial_update']:
+            return 'update_customer'
+        elif self.action == 'destroy':
+            return 'delete_customer'
+        return None
 
     def get_queryset(self):
         queryset = self.queryset
@@ -117,7 +132,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
         elif type == 'phone' and customer.phone:
             customer.phone_otp = otp
             customer.save()
-             # In real app: send_sms(customer.phone, otp)
+            
+            publish_event('events', 'customer.verify_phone', {
+                'type': 'customer.verify_phone',
+                'phone': customer.phone,
+                'otp': otp,
+                'customer_name': customer.name,
+                'company_uuid': str(customer.company_uuid) if customer.company_uuid else None
+            })
+            
             return Response({"message": f"OTP sent to {customer.phone}", "mock_otp": otp})
         
         return Response({"error": "Invalid type or missing info"}, status=400)
@@ -145,13 +168,21 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Auto-detect Branch/Wing ID
-        branch_id = self.request.data.get('branch_id')
+        branch_id = None
         
-        # If not in body, check headers (e.g. from Kong or Client)
+        # 1. Force Branch if user is restricted (Security)
+        if hasattr(self.request, 'user_claims') and self.request.user_claims.get('branch_uuid'):
+             branch_id = self.request.user_claims.get('branch_uuid')
+        
+        # 2. If not forced, check payload
+        if not branch_id:
+             branch_id = self.request.data.get('branch_id')
+        
+        # 3. If not in body, check headers
         if not branch_id:
              branch_id = self.request.headers.get('X-Branch-ID') or self.request.headers.get('X-Wing-ID')
              
-        # If not in headers, check Token Claims (if Auth service puts it there)
+        # 4. Fallback to older claim keys
         if not branch_id and hasattr(self.request, 'user_claims'):
              branch_id = self.request.user_claims.get('branch_id') or self.request.user_claims.get('wing_id')
 

@@ -28,10 +28,10 @@ services:
         limits:
           memory: 1G
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   redis:
     image: redis:7-alpine
     container_name: adaptix-redis
@@ -55,10 +55,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: adaptix-rabbitmq
@@ -87,10 +87,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   kong:
     image: kong:3.0
     container_name: adaptix-kong
@@ -108,6 +108,7 @@ services:
     ports:
     - 8101:8000
     - 8001:8001
+    restart: unless-stopped
     networks:
     - backend
     deploy:
@@ -115,10 +116,10 @@ services:
         limits:
           memory: 384M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
     depends_on:
     - auth-service
   auth-service:
@@ -141,6 +142,7 @@ services:
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=auth
     - PYTHONPATH=/app:/shared/adaptix_core
+    restart: unless-stopped
     ports:
     - 8100:8000
     volumes:
@@ -159,10 +161,11 @@ services:
         limits:
           memory: 256M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   company:
     build:
       context: .
@@ -192,15 +195,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   product:
     build:
       context: .
@@ -230,15 +236,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   pos:
     build:
       context: .
@@ -270,15 +279,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   inventory-worker:
     build:
       context: .
@@ -306,10 +318,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   inventory:
     build:
       context: .
@@ -339,15 +351,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   purchase:
     build:
       context: .
@@ -377,15 +392,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   hrms-service:
     build:
       context: .
@@ -415,15 +433,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   accounting:
     build:
       context: .
@@ -453,15 +474,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   customer:
     build:
       context: .
@@ -491,15 +515,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   customer-worker:
     build:
       context: .
@@ -528,10 +555,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   asset:
     build:
       context: .
@@ -561,15 +588,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   promotion:
     build:
       context: .
@@ -599,15 +629,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   payment:
     build:
       context: .
@@ -637,15 +670,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   notification:
     build:
       context: .
@@ -685,16 +721,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
-
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   notification-worker:
     build:
       context: .
@@ -730,10 +768,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   reporting:
     build:
       context: .
@@ -764,17 +802,20 @@ services:
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   reporting-worker:
     build:
       context: .
@@ -810,10 +851,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   ai-service:
     build:
       context: .
@@ -845,44 +886,45 @@ services:
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 512M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   ws-gateway:
     build:
       context: .
       dockerfile: services/ws-gateway/Dockerfile
     container_name: adaptix-ws-gateway
     environment:
-      - PORT=9001
-      - AMQP_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
-      - AMQP_EXCHANGE=events
-      - REDIS_URL=redis://redis:6379/0
-      - PUBLIC_KEY_PATH=/keys/public.pem
-      - AUTH_ISSUER=auth-service
-      - ALLOW_ORIGIN=*
-      - SERVICE_NAME=ws-gateway
+    - PORT=9001
+    - AMQP_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - AMQP_EXCHANGE=events
+    - REDIS_URL=redis://redis:6379/0
+    - PUBLIC_KEY_PATH=/keys/public.pem
+    - AUTH_ISSUER=auth-service
+    - ALLOW_ORIGIN=*
+    - SERVICE_NAME=ws-gateway
     volumes:
-      - ./keys:/keys:ro
-      - ./services/ws-gateway:/app
-      - /app/node_modules
+    - ./keys:/keys:ro
+    - ./services/ws-gateway:/app
+    - /app/node_modules
     depends_on:
-      - rabbitmq
-      - redis
+    - rabbitmq
+    - redis
     networks:
-      - backend
+    - backend
     deploy:
       resources:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   frontend-app:
     build: ./frontend
     container_name: adaptix-frontend-app
@@ -890,8 +932,10 @@ services:
     - NEXT_PUBLIC_API_URL=http://localhost:8101/api
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=frontend-app
+    - NODE_OPTIONS=--max-old-space-size=1536
     ports:
     - 3000:3000
+    restart: unless-stopped
     volumes:
     - ./frontend:/app
     - /app/node_modules
@@ -900,12 +944,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 2G
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
     depends_on:
     - kong
   quality-service:
@@ -933,10 +977,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
     depends_on:
       postgres:
         condition: service_healthy
@@ -949,6 +993,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    command: python manage.py runserver 0.0.0.0:8000
   logistics-service:
     build:
       context: .
@@ -975,10 +1020,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
     depends_on:
       postgres:
         condition: service_healthy
@@ -989,6 +1034,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    command: python manage.py runserver 0.0.0.0:8000
   audit-consumer:
     build:
       context: .
@@ -1017,10 +1063,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   ai-worker:
     build:
       context: .
@@ -1052,10 +1098,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   manufacturing-worker:
     build:
       context: .
@@ -1083,10 +1129,10 @@ services:
         limits:
           memory: 192M
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
   manufacturing:
     build:
       context: .
@@ -1118,15 +1164,18 @@ services:
         limits:
           memory: 192M
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      test:
+      - CMD-SHELL
+      - python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health/")'
       interval: 30s
       timeout: 10s
       retries: 3
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: 10m
+        max-file: '3'
+    command: python manage.py runserver 0.0.0.0:8000
   quality-worker:
     build:
       context: .
@@ -1156,5 +1205,3 @@ volumes:
 networks:
   backend:
     driver: bridge
-
-# Fixed quality-worker deploy block manually if missing

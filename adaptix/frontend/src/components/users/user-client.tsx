@@ -22,6 +22,7 @@ export const UserClient: React.FC = () => {
   const [data, setData] = React.useState<any[]>([]);
   const [roles, setRoles] = React.useState<any[]>([]);
   const [permissions, setPermissions] = React.useState<any[]>([]);
+  const [branches, setBranches] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<any>(null);
@@ -29,16 +30,18 @@ export const UserClient: React.FC = () => {
   const fetchData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [usersRes, rolesRes, permsRes] = await Promise.all([
+      const [usersRes, rolesRes, permsRes, branchesRes] = await Promise.all([
         api.get("/auth/users/"),
         api.get("/auth/roles/"),
         api.get("/auth/permissions/"),
+        api.get("/company/wings/"),
       ]);
       setData(Array.isArray(usersRes.data.data) ? usersRes.data.data : []);
       setRoles(Array.isArray(rolesRes.data.data) ? rolesRes.data.data : []);
       setPermissions(
         Array.isArray(permsRes.data.data) ? permsRes.data.data : []
       );
+      setBranches(branchesRes.data.results || branchesRes.data || []);
     } catch (error) {
       console.error("Failed to fetch data", error);
       toast.error("Failed to load users");
@@ -195,6 +198,7 @@ export const UserClient: React.FC = () => {
       <UserForm
         roles={roles}
         permissions={permissions}
+        branches={branches}
         initialData={selectedUser}
         isOpen={open}
         onClose={handleModalClose}

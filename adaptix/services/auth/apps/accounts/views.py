@@ -146,8 +146,9 @@ class UserViewSet(viewsets.ModelViewSet):
             # send verification email
             try:
                 send_verification_email(user, request)
-            except Exception:
-                logger.exception("send_verification_email failed")
+            except Exception as e:
+                import traceback
+                logger.error(f"send_verification_email failed: {e}\n{traceback.format_exc()}")
 
             log_audit(
                 request.user if request.user.is_authenticated else None,
@@ -289,6 +290,7 @@ class PermissionViewSet(viewsets.ModelViewSet):
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def list(self, request, *args, **kwargs):
         try:
@@ -508,6 +510,10 @@ def login_view(request):
             access["company_uuid"] = str(root_comp.uuid) if root_comp else None
         else:
             access["company_uuid"] = str(user.company.uuid) if user.company else None
+        
+        # Add branch_uuid
+        access["branch_uuid"] = str(user.branch_uuid) if user.branch_uuid else None
+
         # Add RBAC to token
         access["roles"] = roles_list
         access["permissions"] = permissions_list
@@ -521,6 +527,7 @@ def login_view(request):
                 "username": user.username,
                 "email": user.email,
                 "company_uuid": str(user.company.uuid) if user.company else None,
+                "branch_uuid": str(user.branch_uuid) if user.branch_uuid else None,
                 "roles": roles_list,
                 "permissions": permissions_list,
                 "is_superuser": user.is_superuser,
@@ -574,6 +581,7 @@ def verify_view(request):
             "username": user.username,
             "email": user.email,
             "is_active": user.is_active,
+            "branch_uuid": str(user.branch_uuid) if user.branch_uuid else None,
             "roles": roles,
             "permissions": permissions,
             "is_superuser": user.is_superuser,

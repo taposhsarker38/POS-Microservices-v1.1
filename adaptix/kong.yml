@@ -12,6 +12,17 @@ services:
       - auth-service
     url: http://adaptix-auth-service:8000
     routes:
+      # Public Health Check
+      - id: 5543c6e8-07b9-4a0b-96d5-1f92c3d5a999
+        name: auth-health-route
+        paths:
+          - /api/auth/health
+          - /api/auth/health/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
       # public endpoints (no JWT)
       - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
         name: auth-login-route
@@ -313,6 +324,14 @@ services:
   - name: quality-service
     url: http://quality-service:8000
     routes:
+      - id: 885767ba-4dc4-4c97-b9ff-76eccee23999
+        name: quality-health-route
+        paths:
+          - /api/quality/health
+        strip_path: false
+        protocols:
+          - http
+          - https
       - name: quality-route
         paths:
           - /api/quality
@@ -330,6 +349,14 @@ services:
   - name: logistics-service
     url: http://logistics-service:8000
     routes:
+      - id: bba41a5a-8fe4-4c97-b9ff-76eccee23999
+        name: logistics-health-route
+        paths:
+          - /api/logistics/health
+        strip_path: false
+        protocols:
+          - http
+          - https
       - name: logistics-route
         paths:
           - /api/logistics
@@ -347,6 +374,14 @@ services:
   - name: intelligence-service
     url: http://intelligence-service:8000
     routes:
+      - id: d6ddc7b4-ae94-4c97-b9ff-76eccee23999
+        name: intelligence-health-route
+        paths:
+          - /api/intelligence/health
+        strip_path: false
+        protocols:
+          - http
+          - https
       - name: intelligence-route
         paths:
           - /api/intelligence
@@ -367,6 +402,33 @@ services:
               headers:
                 ["Authorization", "Content-Type", "Accept", "X-Company-Id"]
               credentials: true
+
+  - id: 4ea043bc-c724-4c97-b9ff-76eccee23999
+    name: manufacturing-service
+    url: http://manufacturing:8000
+    routes:
+      - id: 4ea043bc-c724-4c97-b9ff-76eccee23888
+        name: manufacturing-health-route
+        paths:
+          - /api/manufacturing/health
+        strip_path: false
+        protocols:
+          - http
+          - https
+      - id: 4ea043bc-c724-4c97-b9ff-76eccee23777
+        name: manufacturing-route
+        paths:
+          - /api/manufacturing
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
 jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3

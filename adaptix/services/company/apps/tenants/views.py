@@ -235,11 +235,18 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         company = get_company_from_request(self.request)
-        if not company:
-            raise ValidationError({"detail": "User not associated with a company."})
         
-        # All subsidiaries share the same root auth_company_uuid for this tenant
-        serializer.save(auth_company_uuid=company.auth_company_uuid)
+        if not company:
+            # Case 1: New Setup - User creating their first Root Company / Organization
+            # We allow this and generate a new Tenant UUID
+            import uuid
+            new_tenant_uuid = uuid.uuid4()
+            serializer.save(auth_company_uuid=new_tenant_uuid, parent=None, is_group=True)
+            print(f"DEBUG: Created new Root Company with auth_uuid={new_tenant_uuid}")
+        else:
+            # Case 2: Existing Tenant - Adding a Subsidiary or Branch
+            # Must inherit the tenant context (auth_company_uuid)
+            serializer.save(auth_company_uuid=company.auth_company_uuid)
 
 
 # --------------------------------------------------------

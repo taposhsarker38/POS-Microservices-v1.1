@@ -2,71 +2,75 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const [errorInfo, setErrorInfo] = useState<string | null>(null);
 
-  const redirectToLogin = () => {
-    setAuthorized(false);
-    const returnUrl = encodeURIComponent(pathname);
-    router.push(`/login?returnUrl=${returnUrl}`);
+  const redirectToLogin = (reason: string) => {
+    console.warn("AuthGuard Redirect:", reason);
+    // DEBUG MODE: Uncomment next line to see error on screen instead of redirect
+    // setErrorInfo(reason); return;
+
+    // For now, let's show the error for 5 seconds then redirect
+    setErrorInfo(reason);
+    setTimeout(() => {
+      setAuthorized(false);
+      const returnUrl = encodeURIComponent(window.location.pathname);
+      router.push(`/login?returnUrl=${returnUrl}`);
+    }, 5000);
   };
 
-  const clearAuth = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-  };
-
-  const isTokenExpired = (token: string): boolean => {
+  const isTokenExpired = (token: string): string | null => {
     try {
-      const payloadBase64 = token.split(".")[1];
-      if (!payloadBase64) return true;
+      if (!token) return "Token missing";
+      const decoded: any = jwtDecode(token);
+      const exp = decoded.exp;
 
-      const decodedJson = JSON.parse(atob(payloadBase64));
-      const exp = decodedJson.exp;
+      if (!exp) return "Token missing 'exp' claim";
 
-      // Check if expired (exp is in seconds, Date.now() is ms)
-      if (exp && Date.now() >= exp * 1000) {
-        return true;
+      if (Date.now() >= exp * 1000) {
+        return `Token expired at ${new Date(exp * 1000).toLocaleString()}`;
       }
-      return false;
-    } catch (e) {
-      console.error("AuthGuard: Failed to parse token", e);
-      return true;
+      return null; // Valid
+    } catch (e: any) {
+      return `Token parse failed: ${e.message}`;
     }
   };
 
   useEffect(() => {
-    // 1. Cleanup Legacy Keys (Self-Healing)
-    if (localStorage.getItem("accessToken")) {
-      console.log("AuthGuard: Cleaning up legacy 'accessToken'");
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-    }
-
-    // 2. Get Current Token
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      console.log("AuthGuard: No token found. Redirecting to login...");
-      redirectToLogin();
+      redirectToLogin("No token found in localStorage");
       return;
     }
 
-    // 3. Check Token Expiry
-    if (isTokenExpired(token)) {
-      console.log("AuthGuard: Token expired. Requesting re-login...");
-      clearAuth();
-      redirectToLogin();
+    const expiryError = isTokenExpired(token);
+    if (expiryError) {
+      localStorage.removeItem("access_token");
+      redirectToLogin(expiryError);
       return;
     }
 
-    // 4. Authorized
     setAuthorized(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, pathname]);
+  }, []);
+
+  if (errorInfo) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-red-50 p-4">
+        <h2 className="text-xl font-bold text-red-600 mb-2">Session Error</h2>
+        <p className="text-red-800 bg-red-100 p-4 rounded border border-red-200">
+          {errorInfo}
+        </p>
+        <p className="text-sm text-gray-500 mt-4">
+          Redirecting to login in 5 seconds...
+        </p>
+      </div>
+    );
+  }
 
   if (!authorized) {
     return (

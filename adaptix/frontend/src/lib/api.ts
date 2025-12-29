@@ -11,6 +11,22 @@ const api = axios.create({
   },
 });
 
+// Mutex for Refresh Token
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
 // Request Interceptor
 api.interceptors.request.use(
   async (config) => {
@@ -97,9 +113,25 @@ api.interceptors.response.use(
       }
     }
 
-    // Refresh token logic...
+    // Refresh token logic with Mutex/Lock to prevent Race Conditions
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers["Authorization"] = "Bearer " + token;
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         const refreshToken = localStorage.getItem("refresh_token");
         if (!refreshToken) throw new Error("No refresh token");
@@ -109,13 +141,33 @@ api.interceptors.response.use(
         });
 
         localStorage.setItem("access_token", data.access);
+        api.defaults.headers.common["Authorization"] = "Bearer " + data.access;
+
+        // Process queued requests
+        processQueue(null, data.access);
+
+        // Return original request
         originalRequest.headers.Authorization = `Bearer ${data.access}`;
         return api(originalRequest);
       } catch (refreshError) {
+        processQueue(refreshError, null);
+
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        if (typeof window !== "undefined") window.location.href = "/login";
+        console.error("RefreshToken Failed:", refreshError);
+
+        // Avoid infinite loops by only alerting once or redirecting safely
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.includes("/login")
+        ) {
+          // Optional: User feedback or redirect
+          // window.location.href = "/login";
+          console.warn("Session expired. Please login again.");
+        }
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);

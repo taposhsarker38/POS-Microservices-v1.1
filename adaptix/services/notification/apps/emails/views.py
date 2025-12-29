@@ -12,9 +12,13 @@ class SMTPSettingsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Filter by company from context (middleware)
-        if hasattr(self.request, 'company_uuid'):
-             return self.queryset.filter(company_uuid=self.request.company_uuid)
-        return self.queryset
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        
+        if not company_uuid:
+             # Match the fallback used in create()
+             company_uuid = "00000000-0000-0000-0000-000000000000"
+             
+        return self.queryset.filter(company_uuid=company_uuid)
 
     def create(self, request, *args, **kwargs):
         # Ensure company_uuid is set (simulate one if missing for now or use middleware)

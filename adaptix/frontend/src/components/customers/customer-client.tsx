@@ -32,6 +32,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { AlertModal } from "@/components/modals/alert-modal";
 import { Badge } from "@/components/ui/badge";
+import { jwtDecode } from "jwt-decode";
 
 export function CustomerClient() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -46,6 +47,47 @@ export function CustomerClient() {
 
   const [openAlert, setOpenAlert] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Permission Logic
+  const [canCreateCustomer, setCanCreateCustomer] = useState(false);
+  const [canDeleteCustomer, setCanDeleteCustomer] = useState(false);
+  const [userBranchUuid, setUserBranchUuid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
+        const perms = decoded.permissions || [];
+        const isSuper = decoded.is_superuser;
+
+        // Create: Check superuser OR explicit permission OR branch admin (legacy fallback)
+        if (
+          isSuper ||
+          perms.includes("create_customer") ||
+          decoded.branch_uuid
+        ) {
+          setCanCreateCustomer(true);
+        } else {
+          setCanCreateCustomer(false);
+        }
+
+        // Delete: Check superuser OR explicit permission
+        if (isSuper || perms.includes("delete_customer")) {
+          setCanDeleteCustomer(true);
+        } else {
+          setCanDeleteCustomer(false);
+        }
+
+        if (decoded.branch_uuid) {
+          setUserBranchUuid(decoded.branch_uuid);
+        }
+      } catch (e) {
+        console.error("Token decode failed", e);
+      }
+    }
+  }, []);
+
   const fetchCustomers = async () => {
     try {
       setLoading(true);
@@ -62,10 +104,12 @@ export function CustomerClient() {
       const getItems = (res: any) => res.data?.results || res.data || [];
       const mergingCompanies = getItems(companiesRes).map((c: any) => ({
         ...c,
+        uuid: c.uuid || c.id,
         type: "Unit",
       }));
       const mergingWings = getItems(wingsRes).map((w: any) => ({
         ...w,
+        uuid: w.uuid || w.id,
         type: "Branch",
       }));
 
@@ -209,14 +253,16 @@ export function CustomerClient() {
           >
             <Award className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-red-500"
-            onClick={() => onDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canDeleteCustomer && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-500"
+              onClick={() => onDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -232,9 +278,11 @@ export function CustomerClient() {
       />
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Customers</h2>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Add Customer
-        </Button>
+        {canCreateCustomer && (
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Add Customer
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border bg-white dark:bg-slate-950">
@@ -255,9 +303,11 @@ export function CustomerClient() {
             </DialogTitle>
           </DialogHeader>
           <CustomerForm
+            key={editingCustomer?.id || "new-customer"}
             initialData={editingCustomer}
             attributeSets={attributeSets}
             branches={branches}
+            userBranchUuid={userBranchUuid}
             onSuccess={handleSuccess}
             onCancel={() => setIsDialogOpen(false)}
           />

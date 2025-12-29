@@ -31,6 +31,7 @@ class Role(models.Model):
         return self.name
 class User(AbstractUser):
     company = models.ForeignKey(Company, null=True, blank=True, on_delete=models.CASCADE)
+    branch_uuid = models.UUIDField(null=True, blank=True, db_index=True, help_text="Link to Company Service Wing UUID (Branch)")
     is_terminal = models.BooleanField(default=False)
     roles = models.ManyToManyField(Role, blank=True, related_name="users")
     # Allow assigning permissions directly to a user, overriding/augmenting roles

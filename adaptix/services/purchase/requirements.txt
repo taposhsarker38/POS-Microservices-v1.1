@@ -6,7 +6,7 @@ python-dotenv
 drf-spectacular
 django-cors-headers
 dj-database-url
-PyJWT>=2.8.0
+pyjwt[crypto]>=2.8.0
 requests
 celery
 opentelemetry-api

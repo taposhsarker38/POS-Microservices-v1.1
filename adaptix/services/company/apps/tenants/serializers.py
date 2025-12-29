@@ -7,16 +7,18 @@ from .models import (
 
 
 class CompanySerializer(serializers.ModelSerializer):
+    uuid = serializers.UUIDField(source='id', read_only=True)
     class Meta:
         model = Company
-        fields = ["id", "name", "code", "timezone", "parent", "is_group", "entity_type", "custom_domain"]
+        fields = ["id", "uuid", "name", "code", "timezone", "parent", "is_group", "entity_type", "custom_domain"]
         read_only_fields = ["id"]
 
 
 class WingSerializer(serializers.ModelSerializer):
+    uuid = serializers.UUIDField(source='id', read_only=True)
     class Meta:
         model = Wing
-        fields = ["id", "name", "code", "metadata", "company"]
+        fields = ["id", "uuid", "name", "code", "metadata", "company"]
 
 
 class OrganizationTreeSerializer(serializers.ModelSerializer):

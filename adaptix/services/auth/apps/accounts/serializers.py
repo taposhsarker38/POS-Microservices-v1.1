@@ -48,10 +48,12 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     confirm_password = serializers.CharField(write_only=True, required=False)
     is_terminal = serializers.BooleanField(default=False)
+    
+    company_uuid = serializers.UUIDField(source='company.uuid', read_only=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "first_name", "last_name", "is_active", "company", "company_id", "company_uuid", "is_terminal", "roles", "role_ids", "direct_permissions", "direct_permission_ids", "password","confirm_password"]
+        fields = ["id", "username", "email", "first_name", "last_name", "is_active", "email_verified", "company", "company_id", "company_uuid", "branch_uuid", "is_terminal", "roles", "role_ids", "direct_permissions", "direct_permission_ids", "password","confirm_password"]
         read_only_fields = ["id", "roles", "direct_permissions", "company", "company_uuid"]
 
     def validate(self, attrs):

@@ -56,6 +56,7 @@ interface CustomerFormProps {
   attributeSets: any[];
   branches: any[];
   isAdmin?: boolean;
+  userBranchUuid?: string | null;
 }
 
 export function CustomerForm({
@@ -64,18 +65,35 @@ export function CustomerForm({
   onCancel,
   attributeSets,
   branches,
+  userBranchUuid,
 }: CustomerFormProps) {
+  // Resolve userBranchUuid (which is likely a UUID) to the internal branch ID (integer) used in options
+  const userBranchId = userBranchUuid
+    ? String(
+        branches.find(
+          (b) =>
+            b.uuid === userBranchUuid || String(b.id) === String(userBranchUuid)
+        )?.id || ""
+      )
+    : null;
+
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema) as any,
     defaultValues: {
-      name: "",
-      phone: "",
-      email: "",
-      address: "",
-      loyalty_points: 0,
-      branch_id: null,
-      attribute_set: "",
-      attributes: {},
+      name: initialData?.name || "",
+      phone: initialData?.phone || "",
+      email: initialData?.email || "",
+      address: initialData?.address || "",
+      loyalty_points: initialData?.loyalty_points
+        ? Number(initialData.loyalty_points)
+        : 0,
+      branch_id: initialData?.branch_id
+        ? String(initialData.branch_id)
+        : userBranchId || null,
+      attribute_set: initialData?.attribute_set
+        ? String(initialData.attribute_set)
+        : "",
+      attributes: initialData?.attributes || {},
     },
   });
 
@@ -100,6 +118,13 @@ export function CustomerForm({
       });
     }
   }, [initialData]);
+
+  // Force update branch_id when userBranchId is resolved (handles async branch loading)
+  useEffect(() => {
+    if (userBranchId && !form.getValues("branch_id")) {
+      form.setValue("branch_id", userBranchId);
+    }
+  }, [userBranchId, form]);
 
   const handleSendOtp = async (type: "email" | "phone") => {
     if (!initialData?.id) return;
@@ -142,20 +167,7 @@ export function CustomerForm({
     }
   };
 
-  useEffect(() => {
-    if (initialData) {
-      form.reset({
-        name: initialData.name,
-        phone: initialData.phone,
-        email: initialData.email || "",
-        address: initialData.address || "",
-        loyalty_points: Number(initialData.loyalty_points || 0),
-        branch_id: initialData.branch_id || null,
-        attribute_set: initialData.attribute_set || "",
-        attributes: initialData.attributes || {},
-      });
-    }
-  }, [initialData, form]);
+  // Removed debug/reset useEffect as we now use key-based remounting with correct defaultValues
 
   const onSubmit = async (values: CustomerFormValues) => {
     try {
@@ -302,6 +314,7 @@ export function CustomerForm({
                   field.onChange(val === "none" ? null : val)
                 }
                 value={field.value || "none"}
+                disabled={!!userBranchUuid}
               >
                 <FormControl>
                   <SelectTrigger>

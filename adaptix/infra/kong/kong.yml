@@ -8,14 +8,37 @@ consumers:
 services:
   - id: 2915b562-3d36-4b29-82ed-c49aaeb45c4b
     name: auth-service
-    url: http://auth-service:8000
+    tags:
+      - auth-service
+    url: http://adaptix-auth-service:8000
     routes:
+      # Public Health Check
+      - id: 5543c6e8-07b9-4a0b-96d5-1f92c3d5a999
+        name: auth-health-route
+        paths:
+          - /api/auth/health
+          - /api/auth/health/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
       # public endpoints (no JWT)
       - id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
         name: auth-login-route
         paths:
           - /api/auth/login
           - /api/auth/login/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+      - id: 5543c6e8-07b9-4a0b-96d5-1f92c3d5a415
+        name: auth-register-route
+        paths:
+          - /api/auth/register
+          - /api/auth/register/
         strip_path: false
         protocols:
           - http
@@ -101,6 +124,14 @@ services:
           - http
           - https
 
+      - name: company-websocket
+        paths:
+          - /api/ws/
+        strip_path: false
+        protocols:
+          - http
+          - https
+
       - name: company-schema
         paths:
           - /api/company/schema
@@ -111,7 +142,7 @@ services:
           - https
 
   - name: asset-service
-    url: http://adaptix-asset:8000
+    url: http://asset:8000
     routes:
       - name: asset-route
         paths:
@@ -182,6 +213,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: hrms-service
     url: http://hrms-service:8000
@@ -193,6 +230,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: accounting-service
     url: http://accounting:8000
@@ -204,6 +247,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: notification-service
     url: http://notification:8000
@@ -215,6 +264,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: reporting-service
     url: http://reporting:8000
@@ -226,6 +281,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: promotion-service
     url: http://promotion:8000
@@ -237,6 +298,12 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: payment-service
     url: http://payment:8000
@@ -246,12 +313,75 @@ services:
           - /api/payment
         strip_path: false
         protocols:
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
+
+  - name: quality-service
+    url: http://quality-service:8000
+    routes:
+      - id: 885767ba-4dc4-4c97-b9ff-76eccee23999
+        name: quality-health-route
+        paths:
+          - /api/quality/health
+        strip_path: false
+        protocols:
           - http
           - https
+      - name: quality-route
+        paths:
+          - /api/quality
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
+
+  - name: logistics-service
+    url: http://logistics-service:8000
+    routes:
+      - id: bba41a5a-8fe4-4c97-b9ff-76eccee23999
+        name: logistics-health-route
+        paths:
+          - /api/logistics/health
+        strip_path: false
+        protocols:
+          - http
+          - https
+      - name: logistics-route
+        paths:
+          - /api/logistics
+        strip_path: false
+        protocols:
+          - http
+          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
   - name: intelligence-service
-    url: http://ai-service:8000
+    url: http://intelligence-service:8000
     routes:
+      - id: d6ddc7b4-ae94-4c97-b9ff-76eccee23999
+        name: intelligence-health-route
+        paths:
+          - /api/intelligence/health
+        strip_path: false
+        protocols:
+          - http
+          - https
       - name: intelligence-route
         paths:
           - /api/intelligence
@@ -259,65 +389,124 @@ services:
         protocols:
           - http
           - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
+          - name: cors
+            config:
+              origins: ["*"]
+              methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
+              headers:
+                ["Authorization", "Content-Type", "Accept", "X-Company-Id"]
+              credentials: true
 
-  - name: manufacturing-service
+  - id: 4ea043bc-c724-4c97-b9ff-76eccee23999
+    name: manufacturing-service
     url: http://manufacturing:8000
     routes:
-      - name: manufacturing-route
+      - id: 4ea043bc-c724-4c97-b9ff-76eccee23888
+        name: manufacturing-health-route
+        paths:
+          - /api/manufacturing/health
+        strip_path: false
+        protocols:
+          - http
+          - https
+      - id: 4ea043bc-c724-4c97-b9ff-76eccee23777
+        name: manufacturing-route
         paths:
           - /api/manufacturing
         strip_path: false
         protocols:
           - http
           - https
-
-  - name: ws-service
-    url: http://ws-gateway:9001
-    routes:
-      - name: ws-route
-        paths:
-          - /api/ws
-        strip_path: true
-        protocols:
-          - http
-          - https
+        plugins:
+          - name: jwt
+            config:
+              claims_to_verify: ["exp"]
+              key_claim_name: iss
+              run_on_preflight: false
 
 jwt_secrets:
   - id: 4ba55d53-8acb-403e-a089-edf75b355cc3
     consumer:
       id: 53a46fb7-0d86-4691-a3ab-6f963182211a
-    key: prod-client-kid
+    key: auth-service
     algorithm: RS256
     rsa_public_key: |
       -----BEGIN PUBLIC KEY-----
-      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvI0PgQikrEgektcb0Ebv
-      Xtv9X2O3hyP5EwzEqNx6y7UkfaofRZL5k8EZ72AsmR+vrkBh6CGwx5emF10d5pGm
-      wmZ2dJWrMbUFEYl4Dg32fCy1gXOIXJ/qn+WKrIHueGPHi/CKSzKPStppsgE1du3q
-      8BCD5LO9ts+oa8xVo8EKJ2j70E5Z9WHlDeE7PyUttnXdW5JFKMbavxAqLo9v4qp5
-      5tvhY9mVQGn/0A8JY2oON0PPz0dQBwGaJ0bpKFnry4sIUsOxBYhF5lbW5Y6LTbl+
-      swROaPwd7BezGjHtHW7vK6e/tG3Zsoe+7WXw0U+qJrazSny49/j2Ucu5RREt81hR
-      +wIDAQAB
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAueWCVPzwfjT/q4rt24OG
+      N+3LQQexELzgWeXP6CKn9LmN4eaiHhwb91/aEg9c4x8jSGvyCVCXJc8bHje6c2HB
+      0gW2/lSSw5oUbWEFBm7WtIPDxKpaOalGVk4DaDLswJmxhk1N16uEA3ussXyHLXdl
+      EHWlewZzh88/Y7faKTvmO9pPuwJWm3b2gw2TfMIV072Ypklfre0LeoabN3eEoN09
+      x1+riOtDBoJaOi1xDFRzweSXBwuxVoZqa8Xjx2DVAhm4J37Gq/Jadxlv986bs/R/
+      NXS2chUIboUkprynxMgBuOLPFX+KUaDediZxk8QIBuOAXJgmvXtiMD5Eos5Af33W
+      LwIDAQAB
       -----END PUBLIC KEY-----
 
 plugins:
-  # Global CORS
+  # CORS applied to the auth service (keeps browser swagger working)
   - name: cors
     config:
-      origins: ["http://localhost:3000"]
+      origins: ["*"]
       methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
-      headers: ["Authorization", "Content-Type", "Accept"]
+      headers: ["Authorization", "Content-Type", "Accept", "X-Company-Id"]
       credentials: true
 
-  # JWT plugin applied ONLY to the protected route
+  # ============================================
+  # 🔐 JWT AUTHENTICATION (Applied to all protected APIs)
+  # ============================================
   - name: jwt
     route:
-      id: f6b4c3d2-0e55-4bbb-9c4d-6e7f8a9b0c12
-      protocols:
-        - http
-        - https
+      id: f6b4c3d2-0e55-4bbb-9c4d-6e7f8a9b0c12 # auth-protected
     config:
       claims_to_verify: ["exp"]
       key_claim_name: iss
-      uri_param_names: []
+      run_on_preflight: false
 
-      cookie_names: []
+  # ============================================
+  # 🔒 SECURITY PLUGINS
+  # ============================================
+
+  # Global Rate Limiting - Prevents DDoS and brute force
+  - name: rate-limiting
+    config:
+      minute: 5000 # 5000 requests per minute per IP
+      hour: 10000 # 10000 requests per hour per IP
+      policy: local # Use 'redis' in production for distributed limiting
+      fault_tolerant: true # Continue if rate limiting fails
+      hide_client_headers: false
+
+  # Stricter rate limiting for login endpoint
+  - name: rate-limiting
+    route:
+      id: b3f1c9a2-9e84-4f2c-8e6a-1f2b3c4d5e6f
+    config:
+      minute: 1000 # Only 1000 login attempts per minute
+      hour: 5000 # Only 5000 per hour
+      policy: local
+
+  # Request Size Limiting - Prevents large payload attacks
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10 # 10 MB max request size
+
+  # Response Rate Limiting (Bot Protection)
+  - name: response-ratelimiting
+    config:
+      limits:
+        limit_name:
+          minute: 200
+
+  # Bot Detection - Block common bad bots
+  - name: bot-detection
+    config:
+      deny:
+        - "wget"
+        - "python-requests"
+      allow:
+        - "PostmanRuntime"
+        - "insomnia"

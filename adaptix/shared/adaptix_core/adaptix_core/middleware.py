@@ -105,6 +105,8 @@ class JWTCompanyMiddleware:
     
     def _is_exempt(self, path):
         """Check if path is exempt from authentication."""
+        if '/health/' in path:
+            return True
         return any(path.startswith(exempt) for exempt in self.EXEMPT_PATHS)
 
 

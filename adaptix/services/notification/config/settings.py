@@ -114,7 +114,7 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'webmaster@localhost')
 # Tracing
 try:
     from config.tracing import setup_tracing
-    if os.environ.get("ENABLE_TRACING", "True") == "True":
+    if os.environ.get("ENABLE_TRACING", "False") == "True":
         setup_tracing("notification-service")
 except Exception as e:
     pass # print(f"Skipping tracing setup: {e}")

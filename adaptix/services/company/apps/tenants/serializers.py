@@ -67,12 +67,6 @@ class CompanySettingSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'company', 'feature_flags')
 
 
-class WingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Wing
-        fields = "__all__"
-        read_only_fields = ("id", "company")
-
 
 class CurrencySerializer(serializers.ModelSerializer):
     class Meta:

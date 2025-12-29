@@ -99,7 +99,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Tracing
 try:
     from config.tracing import setup_tracing
-    if os.environ.get("ENABLE_TRACING", "True") == "True":
+    if os.environ.get("ENABLE_TRACING", "False") == "True":
         setup_tracing("promotion-service")
 except Exception as e:
     pass # print(f"Skipping tracing setup: {e}")

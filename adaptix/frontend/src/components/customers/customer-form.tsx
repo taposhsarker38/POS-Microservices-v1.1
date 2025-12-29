@@ -42,6 +42,7 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   loyalty_points: z.coerce.number().min(0).default(0),
+  branch_id: z.string().optional().nullable(),
   attribute_set: z.string().optional(),
   attributes: z.record(z.string(), z.any()).default({}),
 });
@@ -53,6 +54,7 @@ interface CustomerFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   attributeSets: any[];
+  branches: any[];
   isAdmin?: boolean;
 }
 
@@ -61,6 +63,7 @@ export function CustomerForm({
   onSuccess,
   onCancel,
   attributeSets,
+  branches,
 }: CustomerFormProps) {
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema) as any,
@@ -70,6 +73,7 @@ export function CustomerForm({
       email: "",
       address: "",
       loyalty_points: 0,
+      branch_id: null,
       attribute_set: "",
       attributes: {},
     },
@@ -146,6 +150,7 @@ export function CustomerForm({
         email: initialData.email || "",
         address: initialData.address || "",
         loyalty_points: Number(initialData.loyalty_points || 0),
+        branch_id: initialData.branch_id || null,
         attribute_set: initialData.attribute_set || "",
         attributes: initialData.attributes || {},
       });
@@ -288,6 +293,37 @@ export function CustomerForm({
 
         <FormField
           control={form.control}
+          name="branch_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Branch / Unit</FormLabel>
+              <Select
+                onValueChange={(val) =>
+                  field.onChange(val === "none" ? null : val)
+                }
+                value={field.value || "none"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Branch (defaults to General)" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">General / No Branch</SelectItem>
+                  {branches.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}>
+                      {b.name} ({b.type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="attribute_set"
           render={({ field }) => (
             <FormItem>
@@ -336,7 +372,7 @@ export function CustomerForm({
         open={!!verifyingField}
         onOpenChange={() => setVerifyingField(null)}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-blue-600" />

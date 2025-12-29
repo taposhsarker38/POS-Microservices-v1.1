@@ -62,6 +62,7 @@ class Command(BaseCommand):
             if company_uuid:
                 tenant_smtp = SMTPSettings.objects.filter(company_uuid=company_uuid).first()
                 if tenant_smtp:
+                    self.stdout.write(f"Using Tenant SMTP for {company_uuid}: {tenant_smtp.host} as {tenant_smtp.username}")
                     smtp_conn = get_connection(
                         host=tenant_smtp.host,
                         port=tenant_smtp.port,
@@ -71,6 +72,10 @@ class Command(BaseCommand):
                         use_ssl=tenant_smtp.use_ssl,
                     )
                     from_email = tenant_smtp.default_from_email
+                else:
+                    self.stdout.write(f"No Tenant SMTP found for {company_uuid}, falling back to global.")
+            else:
+                 self.stdout.write("No company_uuid in event, using global SMTP.")
             
             send_mail(subject, body, from_email, [email], fail_silently=False, connection=smtp_conn)
             

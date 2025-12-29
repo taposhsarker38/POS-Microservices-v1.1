@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
   experimental: {
     // This silences the error about custom webpack config while using Turbopack
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://127.0.0.1:8101/api/:path*",
+      },
+    ];
+  },
+  trailingSlash: true,
 };
 
 export default withNextIntl(withSerwist(nextConfig));

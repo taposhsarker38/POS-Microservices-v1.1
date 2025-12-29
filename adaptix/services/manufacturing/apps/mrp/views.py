@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from .models import WorkCenter, BillOfMaterial, ProductionOrder
 from .serializers import WorkCenterSerializer, BillOfMaterialSerializer, ProductionOrderSerializer
 from adaptix_core.permissions import HasPermission
@@ -164,7 +165,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"Failed to publish Consumption event: {e}")
 
-    @viewsets.decorators.action(detail=False, methods=['post'], url_path='check-availability')
+    @action(detail=False, methods=['post'], url_path='check-availability')
     def check_availability(self, request):
         """
         Check if we have enough raw materials for an order (or simulated order).

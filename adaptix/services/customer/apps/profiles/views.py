@@ -14,6 +14,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'phone', 'email']
 
+    def get_queryset(self):
+        queryset = self.queryset
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        if company_uuid:
+            queryset = queryset.filter(company_uuid=company_uuid)
+        
+        branch_id = self.request.query_params.get('branch_id')
+        if branch_id:
+            queryset = queryset.filter(branch_id=branch_id)
+            
+        return queryset
+
     @action(detail=True, methods=['post'])
     def adjust_points(self, request, pk=None):
         customer = self.get_object()
@@ -146,6 +158,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
         save_kwargs = {}
         if branch_id:
             save_kwargs['branch_id'] = branch_id
+        
+        # Multi-tenancy support
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        if company_uuid:
+            save_kwargs['company_uuid'] = company_uuid
 
         serializer.save(**save_kwargs)
 

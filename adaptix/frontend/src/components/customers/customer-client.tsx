@@ -42,18 +42,35 @@ export function CustomerClient() {
   const [loyaltyCustomer, setLoyaltyCustomer] = useState<any | null>(null);
   const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
   const [attributeSets, setAttributeSets] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
 
   const [openAlert, setOpenAlert] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const [customersRes, attrSetsRes] = await Promise.all([
-        api.get("/customer/customers/", { params: { search: searchTerm } }),
-        api.get("/customer/attribute-sets/"),
-      ]);
+      const [customersRes, attrSetsRes, companiesRes, wingsRes] =
+        await Promise.all([
+          api.get("/customer/customers/", { params: { search: searchTerm } }),
+          api.get("/customer/attribute-sets/"),
+          api.get("/company/companies/"),
+          api.get("/company/wings/"),
+        ]);
       setCustomers(customersRes.data.results || customersRes.data);
       setAttributeSets(attrSetsRes.data.results || attrSetsRes.data);
+
+      const getItems = (res: any) => res.data?.results || res.data || [];
+      const mergingCompanies = getItems(companiesRes).map((c: any) => ({
+        ...c,
+        type: "Unit",
+      }));
+      const mergingWings = getItems(wingsRes).map((w: any) => ({
+        ...w,
+        type: "Branch",
+      }));
+
+      const mergedBranches = [...mergingCompanies, ...mergingWings];
+      setBranches(mergedBranches);
     } catch (error) {
       console.error("Failed to fetch customers", error);
     } finally {
@@ -137,6 +154,15 @@ export function CustomerClient() {
         };
         return <Badge className={colors[tier] || colors.SILVER}>{tier}</Badge>;
       },
+    },
+    {
+      accessorKey: "branch_name",
+      header: "Branch",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-normal capitalize">
+          {row.original.branch_name || "General"}
+        </Badge>
+      ),
     },
     {
       accessorKey: "status",
@@ -231,6 +257,7 @@ export function CustomerClient() {
           <CustomerForm
             initialData={editingCustomer}
             attributeSets={attributeSets}
+            branches={branches}
             onSuccess={handleSuccess}
             onCancel={() => setIsDialogOpen(false)}
           />

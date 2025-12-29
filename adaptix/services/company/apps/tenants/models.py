@@ -17,6 +17,7 @@ class Company(models.Model):
         ('FACTORY', 'Factory'),
         ('STORE', 'Store'),
         ('WAREHOUSE', 'Warehouse'),
+        ('ECOMMERCE', 'Ecommerce'),
     )
     entity_type = models.CharField(max_length=20, choices=ENTITY_TYPE_CHOICES, default='GENERAL')
     tax_number = models.CharField(max_length=128, blank=True, null=True)

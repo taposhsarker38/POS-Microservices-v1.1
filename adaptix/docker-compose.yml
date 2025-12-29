@@ -11,6 +11,7 @@ services:
   postgres:
     image: postgres:15
     container_name: adaptix-postgres
+    profiles: ["core"]
     environment:
       POSTGRES_DB: adaptix
       POSTGRES_USER: ${DB_USER:-adaptix}
@@ -22,16 +23,16 @@ services:
       - ./init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U adaptix -d adaptix"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 2G
 
   # ============================================
   # REDIS (Caching & Sessions)
@@ -39,6 +40,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: adaptix-redis
+    profiles: ["core"]
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6679:6379"
@@ -46,11 +48,15 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      interval: 20s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ============================================
   # RABBITMQ (Message Queue)
@@ -58,6 +64,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: adaptix-rabbitmq
+    profiles: ["core"]
     environment:
       RABBITMQ_DEFAULT_USER: ${MQ_USER:-adaptix}
       RABBITMQ_DEFAULT_PASS: ${MQ_PASSWORD:-adaptix123}
@@ -68,11 +75,15 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
-      interval: 10s
+      interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   # ============================================
   # API GATEWAY (Kong)
@@ -80,6 +91,7 @@ services:
   kong:
     image: kong:3.0
     container_name: adaptix-kong
+    profiles: ["core"]
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/kong.yml
@@ -93,6 +105,10 @@ services:
       - "8001:8001"
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     depends_on:
       - auth-service
 
@@ -102,6 +118,7 @@ services:
       context: .
       dockerfile: services/quality/Dockerfile
     container_name: adaptix-quality-service
+    profiles: ["quality", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=quality_schema
@@ -109,12 +126,17 @@ services:
       - JWT_ALGORITHM=RS256
       - JWT_AUDIENCE=pos-system
       - JWT_ISSUER=auth-service
+      - ENABLE_TRACING=False
     volumes:
       - ./services/quality:/app
       - ./keys:/keys:ro
       - ./shared:/shared
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,9 +144,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
   # ============================================
 
   auth-service:
@@ -132,6 +154,7 @@ services:
       context: .
       dockerfile: services/auth/Dockerfile
     container_name: adaptix-auth-service
+    profiles: ["core"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=auth
@@ -152,6 +175,7 @@ services:
       - PRIVATE_KEY_PATH=/keys/private.pem
       - JWT_ALGORITHM=RS256
       - JWT_ISSUER=auth-service
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -166,17 +190,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   company:
     build:
       context: .
       dockerfile: services/company/Dockerfile
     container_name: adaptix-company
+    profiles: ["core"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=company
@@ -184,6 +213,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./keys:/keys:ro
@@ -194,17 +224,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   ws-bridge:
     build:
       context: .
       dockerfile: services/company/Dockerfile
     container_name: adaptix-ws-bridge
+    profiles: ["core"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=company
@@ -213,6 +248,7 @@ services:
       - PUBLIC_KEY_PATH=/keys/public.pem
       - REDIS_URL=redis://redis:6379/1
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: python manage.py run_websocket_bridge
     volumes:
       - ./keys:/keys:ro
@@ -227,12 +263,17 @@ services:
         condition: service_healthy
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   product:
     build:
       context: .
       dockerfile: services/product/Dockerfile
     container_name: adaptix-product
+    profiles: ["product", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=product
@@ -240,6 +281,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -250,17 +292,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   pos:
     build:
       context: .
       dockerfile: services/pos/Dockerfile
     container_name: adaptix-pos
+    profiles: ["pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=pos
@@ -268,6 +315,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -278,14 +326,24 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   inventory:
     build:
       context: .
       dockerfile: services/inventory/Dockerfile
     container_name: adaptix-inventory
+    profiles: ["inventory", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=inventory
@@ -293,6 +351,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -303,17 +362,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   purchase:
     build:
       context: .
       dockerfile: services/purchase/Dockerfile
     container_name: adaptix-purchase
+    profiles: ["purchase", "inventory"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=purchase
@@ -321,6 +385,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -331,17 +396,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   hrms-service:
     build:
       context: .
       dockerfile: services/hrms/Dockerfile
     container_name: adaptix-hrms-service
+    profiles: ["hrms"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=hrms
@@ -349,6 +419,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -359,17 +430,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   accounting:
     build:
       context: .
       dockerfile: services/accounting/Dockerfile
     container_name: adaptix-accounting
+    profiles: ["accounting"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=accounting
@@ -377,6 +453,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -387,17 +464,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   customer:
     build:
       context: .
       dockerfile: services/customer/Dockerfile
     container_name: adaptix-customer
+    profiles: ["customer", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=customer
@@ -405,6 +487,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -415,17 +498,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   asset:
     build:
       context: .
       dockerfile: services/asset/Dockerfile
     container_name: adaptix-asset
+    profiles: ["asset"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=asset
@@ -433,6 +521,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -443,17 +532,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   promotion:
     build:
       context: .
       dockerfile: services/promotion/Dockerfile
     container_name: adaptix-promotion
+    profiles: ["promotion", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=promotion
@@ -461,6 +555,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -471,17 +566,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   payment:
     build:
       context: .
       dockerfile: services/payment/Dockerfile
     container_name: adaptix-payment
+    profiles: ["payment", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=payment
@@ -489,6 +589,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -499,17 +600,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   notification:
     build:
       context: .
       dockerfile: services/notification/Dockerfile
     container_name: adaptix-notification
+    profiles: ["notification"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=notification
@@ -521,6 +627,7 @@ services:
       - EMAIL_PORT=587
       - EMAIL_HOST_USER=test@gmail.com
       - EMAIL_HOST_PASSWORD=test
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -533,17 +640,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   reporting:
     build:
       context: .
       dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting
+    profiles: ["reporting"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=reporting
@@ -551,6 +663,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -561,15 +674,20 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   frontend-app:
     build: ./frontend
     container_name: adaptix-frontend-app
+    profiles: ["frontend"]
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8101/api
     ports:
@@ -579,6 +697,10 @@ services:
       - /app/node_modules
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       - kong
 
@@ -587,6 +709,7 @@ services:
       context: .
       dockerfile: services/logistics/Dockerfile
     container_name: adaptix-logistics
+    profiles: ["logistics", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=logistics
@@ -594,6 +717,7 @@ services:
       - DEBUG=True
       - PUBLIC_KEY_PATH=/keys/public.pem
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./keys:/keys:ro
@@ -602,20 +726,31 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   intelligence-service:
     build:
       context: .
       dockerfile: services/intelligence/Dockerfile
     container_name: adaptix-intelligence
+    profiles: ["intelligence"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=intelligence
       - DEBUG=True
       - SECRET_KEY=${SECRET_KEY:-your-secret-key}
       - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - ENABLE_TRACING=False
     volumes:
       - ./keys:/keys:ro
       - ./services/intelligence:/app
@@ -625,8 +760,17 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health/\")'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
 volumes:
   postgres_data:

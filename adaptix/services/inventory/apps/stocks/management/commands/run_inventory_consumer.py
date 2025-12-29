@@ -8,7 +8,9 @@ class Command(BaseCommand):
     help = 'Runs the Inventory Event Consumer'
 
     def handle(self, *args, **options):
-        broker_url = getattr(settings, "CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
+        import os
+        broker_url = os.environ.get("RABBITMQ_URL", "amqp://adaptix:adaptix123@rabbitmq:5672/")
+
         exchange = Exchange("events", type="topic", durable=True)
         queue = Queue("inventory_updates", exchange=exchange, routing_key="stock.update")
         

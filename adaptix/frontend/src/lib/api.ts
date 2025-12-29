@@ -24,7 +24,10 @@ api.interceptors.request.use(
           const decoded: any = jwtDecode(token);
           if (decoded.company_uuid) {
             config.headers["X-Company-Id"] = decoded.company_uuid;
-            console.log("Injecting X-Company-Id:", decoded.company_uuid);
+            console.log(
+              "Header Check - JWT company_uuid:",
+              decoded.company_uuid
+            );
           } else {
             console.warn("No company_uuid found in token payload");
           }

@@ -22,17 +22,19 @@ from adaptix_core.permissions import HasPermission
 # Helper: validate company UUID from JWT middleware
 # --------------------------------------------------------
 def get_company_from_request(request):
+    """
+    Returns the Root company or any company associated with the tenant UUID.
+    Searches by both PK and auth_company_uuid to handle diverse client scenarios.
+    """
     company_uuid = getattr(request, "company_uuid", None)
     
-    # Try finding the Root Group for this tenant
     if company_uuid:
-        try:
-            return Company.objects.get(auth_company_uuid=company_uuid, parent__isnull=True)
-        except Company.DoesNotExist:
-            # If not found, maybe lookup just by UUID if it's the only one
-            return Company.objects.filter(auth_company_uuid=company_uuid).first()
-        except Company.MultipleObjectsReturned:
-            return Company.objects.filter(auth_company_uuid=company_uuid, parent__isnull=True).first()
+        from django.db.models import Q
+        # Try finding by PK or by Tenant UUID. 
+        # We prefer a root (parent__isnull=True) but any will do to get the auth_company_uuid context.
+        return Company.objects.filter(
+            Q(id=company_uuid) | Q(auth_company_uuid=company_uuid)
+        ).order_by('parent_id').first()
 
     # Fallback for Superuser (Checking user_claims from JWTCompanyMiddleware)
     claims = getattr(request, "user_claims", {})
@@ -88,8 +90,21 @@ class WingViewSet(viewsets.ModelViewSet):
     serializer_class = WingSerializer
 
     def get_queryset(self):
-        company = get_company_from_request(self.request)
-        return Wing.objects.filter(company=company)
+        # Get tenant context from request
+        company_uuid = getattr(self.request, "company_uuid", None)
+        
+        # Try to find company by ID or auth_company_uuid
+        root = get_company_from_request(self.request)
+        
+        if root and root.auth_company_uuid:
+            # Filter by tenant - return all wings belonging to companies in this tenant
+            return Wing.objects.filter(company__auth_company_uuid=root.auth_company_uuid)
+        elif company_uuid:
+            # Fallback filter
+            return Wing.objects.filter(company__auth_company_uuid=company_uuid)
+        else:
+            # No auth context - return empty for security
+            return Wing.objects.none()
 
     def perform_create(self, serializer):
         # Default to request company, but allow override for hierarchy
@@ -191,14 +206,15 @@ class CompanyInfoViewSet(viewsets.ViewSet):
         Returns full organizational hierarchy
         """
         company = get_company_from_request(request)
+        
         if not company:
-            return Response({"detail": "Root company not found"}, status=404)
+            return Response({"detail": "Company not found"}, status=404)
 
         # Get the top-most parent (Root Group)
         root = company
         while root.parent:
             root = root.parent
-
+            
         serializer = OrganizationTreeSerializer(root)
         return Response(serializer.data)
 
@@ -210,13 +226,12 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
 
     def get_queryset(self):
-        # Allow seeing siblings/children
+        # Allow seeing all companies in the same tenant tree
         company = get_company_from_request(self.request)
         if not company:
             return Company.objects.none()
         
-        # Get root to see entire tree if superuser, or just descendants
-        return Company.objects.all()
+        return Company.objects.filter(auth_company_uuid=company.auth_company_uuid)
 
     def perform_create(self, serializer):
         company = get_company_from_request(self.request)

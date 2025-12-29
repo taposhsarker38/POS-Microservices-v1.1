@@ -77,8 +77,8 @@ class JWTCompanyMiddleware:
             # Inject into request
             token_company = payload.get('company_uuid') or payload.get('company')
             # Allow header override if token has no company (e.g. Superuser)
-            # This enables Admin to act on behalf of any company
-            header_company = request.headers.get("X-Company-UUID")
+            # Standardize on X-Company-Id to match frontend and gateway
+            header_company = request.headers.get("X-Company-Id") or request.headers.get("X-Company-UUID")
             
             request.company_uuid = token_company or header_company
             request.user_claims = payload

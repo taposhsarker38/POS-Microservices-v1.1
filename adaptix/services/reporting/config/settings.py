@@ -103,7 +103,7 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6
 # Tracing
 try:
     from config.tracing import setup_tracing
-    if os.environ.get("ENABLE_TRACING", "True") == "True":
+    if os.environ.get("ENABLE_TRACING", "False") == "True":
         setup_tracing("reporting-service")
 except Exception as e:
     pass # print(f"Skipping tracing setup: {e}")

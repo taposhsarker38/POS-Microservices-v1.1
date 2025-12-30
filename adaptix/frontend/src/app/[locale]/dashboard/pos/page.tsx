@@ -11,6 +11,14 @@ export default function POSPage() {
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [quickPayAmount, setQuickPayAmount] = React.useState<number | null>(
+    null
+  );
+
+  const handleQuickCheckout = (amount: number) => {
+    setQuickPayAmount(amount);
+    setCheckoutOpen(true);
+  };
 
   const addToCart = (product: any) => {
     setCartItems((prev) => {
@@ -77,12 +85,17 @@ export default function POSPage() {
           items={cartItems}
           onUpdateQuantity={updateQuantity}
           onClear={clearCart}
-          onCheckoutSuccess={() => setCartItems([])}
+          onCheckoutSuccess={() => {
+            setCartItems([]);
+            setQuickPayAmount(null);
+          }}
           checkoutOpen={checkoutOpen}
           onCheckoutOpenChange={setCheckoutOpen}
           onLoadAICart={(newItems) => {
             setCartItems((prev) => [...prev, ...newItems]);
           }}
+          onQuickCheckout={handleQuickCheckout}
+          quickPayAmount={quickPayAmount}
         />
       </div>
     </div>

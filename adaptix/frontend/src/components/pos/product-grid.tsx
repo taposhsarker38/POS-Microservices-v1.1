@@ -37,8 +37,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart }) => {
     try {
       setLoading(true);
       const [prodRes, catRes] = await Promise.all([
-        api.get("/product/products/"),
-        api.get("/product/categories/"),
+        api.get("product/products/"),
+        api.get("product/categories/"),
       ]);
 
       const prods = Array.isArray(prodRes.data.data)

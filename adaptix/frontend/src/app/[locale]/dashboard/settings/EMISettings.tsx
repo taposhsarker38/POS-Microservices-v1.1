@@ -10,6 +10,7 @@ import {
   Clock,
   Percent,
   Banknote,
+  Pencil,
 } from "lucide-react";
 import {
   Card,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { AlertModal } from "@/components/modals/alert-modal";
 
 interface EMIPlan {
   id: string;
@@ -64,6 +66,10 @@ export function EMISettings() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<EMIPlan | null>(null);
+
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -92,21 +98,30 @@ export function EMISettings() {
     fetchData();
   }, []);
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.tenure_months) {
       toast.error("Please fill required fields");
       return;
     }
     setSubmitting(true);
     try {
-      await api.post("payment/emi-plans/", {
+      const payload = {
         ...form,
         tenure_months: parseInt(form.tenure_months),
         interest_rate: parseFloat(form.interest_rate),
         min_amount: parseFloat(form.min_amount),
-      });
-      toast.success("EMI Plan created successfully");
+      };
+
+      if (editingPlan) {
+        await api.put(`payment/emi-plans/${editingPlan.id}/`, payload);
+        toast.success("EMI Plan updated successfully");
+      } else {
+        await api.post("payment/emi-plans/", payload);
+        toast.success("EMI Plan created successfully");
+      }
+
       setIsModalOpen(false);
+      setEditingPlan(null);
       setForm({
         name: "",
         provider: "Store",
@@ -117,7 +132,9 @@ export function EMISettings() {
       fetchData();
     } catch (error: any) {
       const data = error.response?.data;
-      let message = "Failed to create plan";
+      let message = editingPlan
+        ? "Failed to update plan"
+        : "Failed to create plan";
       if (data) {
         if (typeof data === "string") message = data;
         else if (data.detail) message = data.detail;
@@ -129,15 +146,37 @@ export function EMISettings() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this plan?")) return;
+  const handleEdit = (plan: EMIPlan) => {
+    setEditingPlan(plan);
+    setForm({
+      name: plan.name,
+      provider: plan.provider,
+      tenure_months: plan.tenure_months.toString(),
+      interest_rate: plan.interest_rate,
+      min_amount: plan.min_amount,
+    });
+    setIsModalOpen(true);
+  };
+
+  const onDeleteConfirm = async () => {
+    if (!deletingId) return;
+    setSubmitting(true);
     try {
-      await api.delete(`payment/emi-plans/${id}/`);
+      await api.delete(`payment/emi-plans/${deletingId}/`);
       toast.success("Plan deleted");
       fetchData();
     } catch (error) {
       toast.error("Failed to delete plan");
+    } finally {
+      setSubmitting(false);
+      setIsAlertOpen(false);
+      setDeletingId(null);
     }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id);
+    setIsAlertOpen(true);
   };
 
   if (loading) {
@@ -163,7 +202,22 @@ export function EMISettings() {
             <RefreshCcw className="h-4 w-4" />
           </Button>
 
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <Dialog
+            open={isModalOpen}
+            onOpenChange={(open) => {
+              setIsModalOpen(open);
+              if (!open) {
+                setEditingPlan(null);
+                setForm({
+                  name: "",
+                  provider: "Store",
+                  tenure_months: "6",
+                  interest_rate: "0",
+                  min_amount: "1000",
+                });
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="gap-2 shadow-lg shadow-primary/20">
                 <Plus className="h-4 w-4" /> Add Plan
@@ -171,9 +225,13 @@ export function EMISettings() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Add New EMI Plan</DialogTitle>
+                <DialogTitle>
+                  {editingPlan ? "Edit EMI Plan" : "Add New EMI Plan"}
+                </DialogTitle>
                 <DialogDescription>
-                  Define the parameters for this installment plan.
+                  {editingPlan
+                    ? "Update the parameters for this installment plan."
+                    : "Define the parameters for this installment plan."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -256,14 +314,14 @@ export function EMISettings() {
               </div>
               <DialogFooter>
                 <Button
-                  onClick={handleCreate}
+                  onClick={handleSubmit}
                   disabled={submitting}
                   className="w-full"
                 >
                   {submitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Save EMI Plan
+                  {editingPlan ? "Update EMI Plan" : "Save EMI Plan"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -315,14 +373,24 @@ export function EMISettings() {
                     ${parseFloat(plan.min_amount).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right pr-6">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(plan.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary"
+                        onClick={() => handleEdit(plan)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteClick(plan.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -340,6 +408,13 @@ export function EMISettings() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertModal
+        isOpen={isAlertOpen}
+        onClose={() => setIsAlertOpen(false)}
+        onConfirm={onDeleteConfirm}
+        loading={submitting}
+      />
     </div>
   );
 }

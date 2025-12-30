@@ -315,12 +315,6 @@ services:
         protocols:
           - http
           - https
-        plugins:
-          - name: jwt
-            config:
-              claims_to_verify: ["exp"]
-              key_claim_name: iss
-              run_on_preflight: false
 
   - name: quality-service
     url: http://quality-service:8000

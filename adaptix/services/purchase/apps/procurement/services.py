@@ -65,9 +65,13 @@ class RFQService:
                 rfq.save()
                 
                 # Generate PO
+                import uuid
+                ref = f"PO-{str(uuid.uuid4())[:8].upper()}"
+                
                 po = PurchaseOrder.objects.create(
                     company_uuid=rfq.company_uuid,
                     vendor=winner.vendor,
+                    reference_number=ref,
                     status='draft',
                     total_amount=winner.unit_price * rfq.quantity,
                     notes=f"Automatically generated from RFQ: {rfq.title}"

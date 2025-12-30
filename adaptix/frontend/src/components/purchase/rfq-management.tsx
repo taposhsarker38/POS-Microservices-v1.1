@@ -12,6 +12,7 @@ import {
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { RFQForm } from "./rfq-form";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -39,6 +40,7 @@ export const RFQManagement: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
   const [selectedRfq, setSelectedRfq] = React.useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
   const fetchRfqs = React.useCallback(async () => {
     try {
@@ -126,6 +128,9 @@ export const RFQManagement: React.FC = () => {
             Manage Requests for Quotes and select best offers.
           </p>
         </div>
+        <Button onClick={() => setIsCreateOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Create RFQ
+        </Button>
       </div>
 
       <DataTable columns={columns} data={rfqs} searchKey="title" />
@@ -205,6 +210,12 @@ export const RFQManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RFQForm
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={fetchRfqs}
+      />
     </div>
   );
 };

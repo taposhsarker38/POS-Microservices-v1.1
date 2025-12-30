@@ -8,6 +8,7 @@ import {
   Plus,
   Keyboard,
   Wand2,
+  Banknote,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -27,6 +28,8 @@ interface CartProps {
   checkoutOpen: boolean;
   onCheckoutOpenChange: (open: boolean) => void;
   onLoadAICart: (items: any[]) => void;
+  onQuickCheckout: (amount: number) => void;
+  quickPayAmount?: number | null;
 }
 
 export const Cart: React.FC<CartProps> = ({
@@ -37,6 +40,8 @@ export const Cart: React.FC<CartProps> = ({
   checkoutOpen,
   onCheckoutOpenChange,
   onLoadAICart,
+  onQuickCheckout,
+  quickPayAmount,
 }) => {
   const [loadingAI, setLoadingAI] = React.useState(false);
 
@@ -45,7 +50,7 @@ export const Cart: React.FC<CartProps> = ({
     try {
       // Hardcoded terminal ID for demo
       const res = await api.get(
-        "/intelligence/vision/cart-sync/?terminal_id=TERM_001"
+        "intelligence/vision/cart-sync/?terminal_id=TERM_001"
       );
       if (res.data?.items) {
         onLoadAICart(res.data.items);
@@ -63,7 +68,10 @@ export const Cart: React.FC<CartProps> = ({
     (acc, item) => acc + (item.sales_price || 0) * item.quantity,
     0
   );
-  const tax = subtotal * 0.1;
+  const tax = items.reduce((acc, item) => {
+    if (item.is_tax_exempt) return acc;
+    return acc + (item.sales_price || 0) * item.quantity * 0;
+  }, 0);
   const total = subtotal + tax;
 
   return (
@@ -129,6 +137,14 @@ export const Cart: React.FC<CartProps> = ({
                   <p className="text-[10px] text-muted-foreground font-mono">
                     ${Number(item.sales_price || 0).toFixed(2)} / unit
                   </p>
+                  {item.is_tax_exempt && (
+                    <Badge
+                      variant="outline"
+                      className="h-3 px-1 text-[8px] bg-emerald-50 text-emerald-600 border-emerald-200 mt-1"
+                    >
+                      TAX FREE
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-0.5 border">
@@ -171,7 +187,7 @@ export const Cart: React.FC<CartProps> = ({
             </span>
           </div>
           <div className="flex justify-between">
-            <span>Tax (10%)</span>
+            <span>Tax</span>
             <span className="text-slate-800 dark:text-slate-200">
               ${tax.toFixed(2)}
             </span>
@@ -183,6 +199,20 @@ export const Cart: React.FC<CartProps> = ({
               ${total.toFixed(2)}
             </span>
           </div>
+        </div>
+        <div className="pt-2 flex gap-2">
+          {[50, 100, 500, 1000].map((amt) => (
+            <Button
+              key={amt}
+              variant="outline"
+              size="sm"
+              className="flex-1 h-10 font-bold border-emerald-100 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200"
+              onClick={() => onQuickCheckout(amt)}
+              disabled={items.length === 0}
+            >
+              <Banknote className="h-3 w-3 mr-1" /> {amt}
+            </Button>
+          ))}
         </div>
 
         <Button
@@ -210,6 +240,7 @@ export const Cart: React.FC<CartProps> = ({
           setSelectedCustomer(null);
         }}
         customer={selectedCustomer}
+        quickPayAmount={quickPayAmount}
       />
     </div>
   );

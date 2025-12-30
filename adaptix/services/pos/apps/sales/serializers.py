@@ -11,7 +11,7 @@ class POSSessionSerializer(serializers.ModelSerializer):
 class POSSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = POSSettings
-        fields = ['allow_partial_payment', 'allow_split_payment']
+        fields = ['allow_partial_payment', 'allow_split_payment', 'default_tax_zone_code']
         
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -103,6 +103,14 @@ class OrderSerializer(serializers.ModelSerializer):
 
         if not allow_split and len(payments_data) > 1:
             raise serializers.ValidationError({"payment_data": "Split payments are disabled for this company."})
+
+        # -- GUEST CUSTOMER CHECK --
+        customer_uuid = validated_data.get('customer_uuid')
+        is_guest = customer_uuid is None
+        
+        has_emi = any(p.get('method') == 'emi' for p in payments_data)
+        if is_guest and has_emi:
+            raise serializers.ValidationError({"payment_data": "Guest customers are not eligible for EMI sales. Please register/select a customer."})
 
         # Calculate total provided in payment_data
         total_payment_provided = sum(float(p.get('amount', 0)) for p in payments_data)

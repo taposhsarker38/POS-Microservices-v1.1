@@ -6,6 +6,7 @@ from apps.utils.models import SoftDeleteModel
 class POSSettings(SoftDeleteModel):
     allow_partial_payment = models.BooleanField(default=True)
     allow_split_payment = models.BooleanField(default=True)
+    default_tax_zone_code = models.CharField(max_length=50, blank=True, null=True)
     company_uuid = models.UUIDField(editable=False) # Simplified specific settings per company
 
     def __str__(self):
@@ -50,6 +51,7 @@ class Order(SoftDeleteModel):
         ('pending', 'Pending'),
         ('partial', 'Partial'),
         ('paid', 'Paid'),
+        ('on_emi', 'On EMI'),
         ('refunded', 'Refunded'),
     )
     MODULE_TYPE_CHOICES = (
@@ -108,20 +110,34 @@ class Order(SoftDeleteModel):
 
     def update_payment_status(self):
         """Recalculate paid_amount, due_amount and update payment_status"""
-        payments = self.payments.all()
-        total_paid = sum(p.amount for p in payments)
+        all_payments = self.payments.all()
         
-        self.paid_amount = total_paid
-        self.due_amount = self.grand_total - total_paid
+        # Immediate payments: Cash, Card, Mobile, Bank, Cheque
+        immediate_payment_methods = ['cash', 'card', 'mobile_banking', 'bank_transfer', 'cheque']
+        total_immediate_paid = sum(p.amount for p in all_payments if p.method in immediate_payment_methods)
         
-        if self.due_amount <= 0:
-            self.payment_status = 'paid'
-        elif total_paid > 0:
+        # Deferred/promised payments: EMI, Store Credit/Credit
+        total_promised = sum(p.amount for p in all_payments if p.method in ['emi', 'credit'])
+        
+        self.paid_amount = total_immediate_paid
+        # Total "covered" includes what is promised via EMI
+        total_covered = total_immediate_paid + total_promised
+        self.due_amount = self.grand_total - total_covered
+        
+        if total_covered >= self.grand_total:
+            if total_promised > 0:
+                self.payment_status = 'on_emi'
+            else:
+                self.payment_status = 'paid'
+        elif total_covered > 0:
             self.payment_status = 'partial'
         else:
             self.payment_status = 'pending'
             
-        self.save(update_fields=['paid_amount', 'due_amount', 'payment_status'])
+        self.save()
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.order_number} ({self.customer_name})"

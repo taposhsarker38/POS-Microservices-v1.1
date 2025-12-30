@@ -26,6 +26,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             status_param = self.request.query_params.get('status')
             if status_param:
                 qs = qs.filter(status=status_param)
+            
+            branch_id = self.request.query_params.get('branch_id')
+            if branch_id:
+                qs = qs.filter(branch_id=branch_id)
+                
+            start_date = self.request.query_params.get('start_date')
+            end_date = self.request.query_params.get('end_date')
+            if start_date:
+                qs = qs.filter(created_at__date__gte=start_date)
+            if end_date:
+                qs = qs.filter(created_at__date__lte=end_date)
                 
             return qs
             

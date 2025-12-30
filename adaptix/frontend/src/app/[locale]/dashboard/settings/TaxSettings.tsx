@@ -61,11 +61,17 @@ interface TaxZone {
 
 interface TaxRule {
   id: string;
-  name: string;
-  tax_zone_code: string;
-  rate_id: string;
-  product_category_id: string | null;
+  tax_zone: string;
+  tax: string;
+  product_category_uuid: string | null;
   priority: number;
+  is_active: boolean;
+  tax_details?: TaxRate;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 export function TaxSettings() {
@@ -73,13 +79,22 @@ export function TaxSettings() {
   const [rates, setRates] = useState<TaxRate[]>([]);
   const [zones, setZones] = useState<TaxZone[]>([]);
   const [rules, setRules] = useState<TaxRule[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form States
   const [rateForm, setRateForm] = useState({ name: "", rate: "" });
   const [zoneForm, setZoneForm] = useState({ name: "", code: "" });
+  const [ruleForm, setRuleForm] = useState({
+    tax_zone: "",
+    tax: "",
+    product_category_uuid: "global",
+    priority: "1",
+  });
+
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
 
   const parseError = (error: any) => {
     console.error("API Error Response:", error.response);
@@ -106,14 +121,16 @@ export function TaxSettings() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ratesRes, zonesRes, rulesRes] = await Promise.all([
-        api.get("/accounting/tax/rates/"),
-        api.get("/accounting/tax/zones/"),
-        api.get("/accounting/tax/rules/"),
+      const [ratesRes, zonesRes, rulesRes, catsRes] = await Promise.all([
+        api.get("accounting/tax/rates/"),
+        api.get("accounting/tax/zones/"),
+        api.get("accounting/tax/rules/"),
+        api.get("product/categories/"),
       ]);
       setRates(ratesRes.data.results || ratesRes.data);
       setZones(zonesRes.data.results || zonesRes.data);
       setRules(rulesRes.data.results || rulesRes.data);
+      setCategories(catsRes.data.results || catsRes.data);
     } catch (error) {
       console.error("Failed to fetch tax data", error);
       toast.error(parseError(error));
@@ -132,7 +149,7 @@ export function TaxSettings() {
       return;
     }
     try {
-      await api.post("/accounting/tax/rates/", {
+      await api.post("accounting/tax/rates/", {
         name: rateForm.name,
         rate: parseFloat(rateForm.rate),
       });
@@ -151,7 +168,7 @@ export function TaxSettings() {
       return;
     }
     try {
-      await api.post("/accounting/tax/zones/", {
+      await api.post("accounting/tax/zones/", {
         name: zoneForm.name,
         code: zoneForm.code,
       });
@@ -164,12 +181,41 @@ export function TaxSettings() {
     }
   };
 
+  const handleCreateRule = async () => {
+    if (!ruleForm.tax_zone || !ruleForm.tax) {
+      toast.error("Zone and Tax Rate are required");
+      return;
+    }
+    try {
+      await api.post("accounting/tax/rules/", {
+        tax_zone: ruleForm.tax_zone,
+        tax: ruleForm.tax,
+        product_category_uuid:
+          ruleForm.product_category_uuid === "global"
+            ? null
+            : ruleForm.product_category_uuid,
+        priority: parseInt(ruleForm.priority) || 1,
+      });
+      toast.success(t("saveSuccess"));
+      setRuleForm({
+        tax_zone: "",
+        tax: "",
+        product_category_uuid: "global",
+        priority: "1",
+      });
+      setIsRuleModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast.error(parseError(error));
+    }
+  };
+
   const handleDelete = async (
     type: "rates" | "zones" | "rules",
     id: string
   ) => {
     try {
-      await api.delete(`/accounting/tax/${type}/${id}/`);
+      await api.delete(`accounting/tax/${type}/${id}/`);
       toast.success("Deleted successfully");
       fetchData();
     } catch (error) {
@@ -449,29 +495,175 @@ export function TaxSettings() {
               animate={{ opacity: 1, y: 0 }}
             >
               <Card className="border-border/40 bg-card/50 backdrop-blur-sm shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">{t("rules")}</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{t("rules")}</CardTitle>
+                    <CardDescription className="text-xs">
+                      Map tax rates to zones and product categories.
+                    </CardDescription>
+                  </div>
+
+                  {/* Add Rule Modal */}
+                  <Dialog
+                    open={isRuleModalOpen}
+                    onOpenChange={setIsRuleModalOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2 h-8">
+                        <Plus className="h-3 w-3" /> {t("addRule")}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>{t("addRuleTitle")}</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        {/* Zone Selection */}
+                        <div className="space-y-2">
+                          <Label>Tax Zone</Label>
+                          <select
+                            className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                            value={ruleForm.tax_zone}
+                            onChange={(e) =>
+                              setRuleForm({
+                                ...ruleForm,
+                                tax_zone: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Select Zone</option>
+                            {zones.map((z) => (
+                              <option key={z.id} value={z.id}>
+                                {z.name} ({z.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Tax Rate Selection */}
+                        <div className="space-y-2">
+                          <Label>Tax Rate</Label>
+                          <select
+                            className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                            value={ruleForm.tax}
+                            onChange={(e) =>
+                              setRuleForm({ ...ruleForm, tax: e.target.value })
+                            }
+                          >
+                            <option value="">Select Rate</option>
+                            {rates.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name} ({r.rate}%)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Category Selection */}
+                        <div className="space-y-2">
+                          <Label>Product Category (Optional)</Label>
+                          <select
+                            className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                            value={ruleForm.product_category_uuid}
+                            onChange={(e) =>
+                              setRuleForm({
+                                ...ruleForm,
+                                product_category_uuid: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="global">
+                              All Categories (Global)
+                            </option>
+                            {categories.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Priority */}
+                        <div className="space-y-2">
+                          <Label>Priority</Label>
+                          <Input
+                            type="number"
+                            value={ruleForm.priority}
+                            onChange={(e) =>
+                              setRuleForm({
+                                ...ruleForm,
+                                priority: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          onClick={handleCreateRule}
+                          className="bg-violet-600 hover:bg-violet-700 text-white w-full"
+                        >
+                          {t("save")}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Settings2 className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-md font-medium">No rules defined</h3>
-                    <p className="text-xs text-muted-foreground max-w-62.5 mx-auto mt-1">
-                      Start by adding a tax rule to correlate products with
-                      zones.
-                    </p>
-                    <Button
-                      className="mt-4 bg-violet-600 hover:bg-violet-700 text-white gap-2 h-9 px-4 disabled:opacity-50"
-                      disabled
-                    >
-                      <Plus className="h-4 w-4" /> {t("addRule")}
-                    </Button>
-                    <p className="text-[10px] text-muted-foreground mt-2 italic">
-                      Rules logic coming soon
-                    </p>
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Zone</TableHead>
+                        <TableHead>Tax Rate</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rules.map((rule) => (
+                        <TableRow key={rule.id}>
+                          <TableCell className="font-medium">
+                            {zones.find((z) => z.id === rule.tax_zone)?.name ||
+                              "Unknown"}
+                          </TableCell>
+                          <TableCell>
+                            {rule.tax_details?.name} ({rule.tax_details?.rate}%)
+                          </TableCell>
+                          <TableCell>
+                            {rule.product_category_uuid
+                              ? categories.find(
+                                  (c) => c.id === rule.product_category_uuid
+                                )?.name || "Shared"
+                              : "Global"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{rule.priority}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDelete("rules", rule.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {rules.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={5}
+                            className="text-center py-12 text-muted-foreground italic"
+                          >
+                            No rules defined yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </motion.div>

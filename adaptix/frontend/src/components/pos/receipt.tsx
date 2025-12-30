@@ -16,6 +16,7 @@ interface ReceiptProps {
       qty: number;
       price: number;
       total: number;
+      isTaxExempt?: boolean;
     }>;
     subtotal: number;
     tax: number;
@@ -66,6 +67,11 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 <tr key={index}>
                   <td className="py-1 pr-1 truncate max-w-[100px]">
                     {item.name}
+                    {item.isTaxExempt && (
+                      <span className="block text-[8px] font-bold text-slate-500">
+                        *TAX FREE*
+                      </span>
+                    )}
                   </td>
                   <td className="py-1 text-right">{item.qty}</td>
                   <td className="py-1 text-right">{item.price.toFixed(2)}</td>
@@ -95,22 +101,25 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           </div>
         </div>
 
-        <div className="mb-4 text-center space-y-1">
-          <p className="uppercase">PAID BY {data.paymentMethod}</p>
+        <div className="mb-4 text-center space-y-2 pt-2 border-t border-dashed border-black">
+          <p className="uppercase font-bold">PAID BY {data.paymentMethod}</p>
           {data.paidAmount !== undefined && (
-            <p className="flex justify-between px-4">
-              <span>Paid:</span>
-              <span>{data.paidAmount.toFixed(2)}</span>
-            </p>
+            <div className="flex justify-between px-2 text-sm">
+              <span className="font-bold">TOTAL PAID:</span>
+              <span className="font-bold">{data.paidAmount.toFixed(2)}</span>
+            </div>
           )}
           {data.balanceDue !== undefined && data.balanceDue > 0 && (
-            <p className="flex justify-between px-4 font-bold text-red-600">
-              <span>Balance Due:</span>
+            <div className="flex justify-between px-2 font-bold text-red-600">
+              <span>BALANCE DUE:</span>
               <span>{data.balanceDue.toFixed(2)}</span>
-            </p>
+            </div>
           )}
           {data.change !== undefined && data.change > 0 && (
-            <p>CHANGE: {data.change.toFixed(2)}</p>
+            <div className="flex justify-between px-2 text-sm border-t border-black pt-1">
+              <span className="font-bold">CHANGE RETURN:</span>
+              <span className="font-bold">{data.change.toFixed(2)}</span>
+            </div>
           )}
         </div>
 

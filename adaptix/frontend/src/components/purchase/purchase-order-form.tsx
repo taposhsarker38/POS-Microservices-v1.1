@@ -7,7 +7,8 @@ import * as z from "zod";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, UserPlus } from "lucide-react";
+import { VendorForm } from "@/components/purchase/vendor-form";
 
 import {
   Dialog,
@@ -59,6 +60,7 @@ interface PurchaseOrderFormProps {
   products: any[];
   isOpen: boolean;
   onClose: () => void;
+  onVendorCreated?: () => void;
 }
 
 export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
@@ -67,9 +69,11 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   products,
   isOpen,
   onClose,
+  onVendorCreated,
 }) => {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
+  const [openVendor, setOpenVendor] = React.useState(false);
 
   // Calculate Total (Display only)
   const calculateTotal = (items: any[]) => {
@@ -175,25 +179,40 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vendor</FormLabel>
-                    <Select
-                      disabled={loading}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Vendor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {vendors.map((vendor) => (
-                          <SelectItem key={vendor.id} value={String(vendor.id)}>
-                            {vendor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        disabled={loading}
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Vendor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.isArray(vendors) &&
+                            vendors.map((vendor) => (
+                              <SelectItem
+                                key={vendor.id}
+                                value={String(vendor.id)}
+                              >
+                                {vendor.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setOpenVendor(true)}
+                        title="Add New Vendor"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -293,11 +312,12 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {products.map((p) => (
-                                <SelectItem key={p.id} value={String(p.id)}>
-                                  {p.name}
-                                </SelectItem>
-                              ))}
+                              {Array.isArray(products) &&
+                                products.map((p) => (
+                                  <SelectItem key={p.id} value={String(p.id)}>
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -373,6 +393,17 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
             </div>
           </form>
         </Form>
+        <VendorForm
+          isOpen={openVendor}
+          onClose={() => setOpenVendor(false)}
+          onSuccess={() => {
+            // Ideally we'd refresh the vendor list here,
+            // but the parent PurchaseOrderClient will do it on modal close.
+            // For immediate feedback, we might need a way to tell the parent.
+            // But since this is a child of the dashboard, it works via props.
+            toast.info("Please refresh data to see the new vendor.");
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

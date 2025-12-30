@@ -8,6 +8,7 @@ import { CustomFieldsSettings } from "./CustomFieldsSettings";
 import { TaxSettings } from "./TaxSettings";
 import { CurrencySettings } from "./CurrencySettings";
 import { WhiteLabelSettings } from "./WhiteLabelSettings";
+import { EMISettings } from "./EMISettings";
 import { useTranslations } from "next-intl";
 import {
   Card,
@@ -35,6 +36,7 @@ export default function SettingsPage() {
           <TabsTrigger value="currencies">Currencies</TabsTrigger>
           <TabsTrigger value="white-label">White-labeling</TabsTrigger>
           <TabsTrigger value="loyalty">Loyalty & Rewards</TabsTrigger>
+          <TabsTrigger value="emi">EMI Plans</TabsTrigger>
           <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -56,6 +58,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="loyalty" className="space-y-4">
           <LoyaltySettings />
+        </TabsContent>
+        <TabsContent value="emi" className="space-y-4">
+          <EMISettings />
         </TabsContent>
         <TabsContent value="custom-fields" className="space-y-4">
           <CustomFieldsSettings />

@@ -12,7 +12,7 @@ urlpatterns = [
     path('api/logistics/health/', health_check),
     path('metrics/', ExportToDjangoView, name='prometheus-metrics'),
     path('admin/', admin.site.urls),
-    path('shipping/', include('apps.shipping.urls')),
+    path('api/logistics/', include('apps.shipping.urls')),
     
     # OpenAPI
     path('api/logistics/schema/', SpectacularAPIView.as_view(), name='schema'),

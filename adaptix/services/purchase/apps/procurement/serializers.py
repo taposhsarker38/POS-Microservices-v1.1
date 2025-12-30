@@ -31,6 +31,7 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
 
 class VendorQuoteSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source='vendor.name', read_only=True)
+    rfq_title = serializers.CharField(source='rfq.title', read_only=True)
     
     class Meta:
         model = VendorQuote

@@ -21,6 +21,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RefundDialog } from "@/components/orders/refund-dialog";
 import { useTranslations } from "next-intl";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, X } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 type Order = components["schemas"]["Order"];
 
@@ -30,8 +46,26 @@ export default function OrdersPage() {
   const locale = params.locale as string;
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
   const [refundOpen, setRefundOpen] = React.useState(false);
+  const [selectedBranch, setSelectedBranch] = React.useState<string>("all");
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
 
   const { companyId } = useCompany();
+
+  // --- Fetch Branches ---
+  const { data: branches = [] } = useQuery({
+    queryKey: ["wings", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await api.get("/company/wings/", {
+        params: { company_uuid: companyId },
+      });
+      return Array.isArray(res.data) ? res.data : res.data?.results || [];
+    },
+    enabled: !!companyId,
+  });
 
   // --- Data Fetching ---
   const {
@@ -39,13 +73,16 @@ export default function OrdersPage() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["orders", companyId],
+    queryKey: ["orders", companyId, selectedBranch, date],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await api.get("/pos/orders/", {
-        params: { company_uuid: companyId },
-      }); // Add params for pagination if needed
-      return res.data as Order[];
+      const params: any = { company_uuid: companyId };
+      if (selectedBranch !== "all") params.branch_id = selectedBranch;
+      if (date?.from) params.start_date = format(date.from, "yyyy-MM-dd");
+      if (date?.to) params.end_date = format(date.to, "yyyy-MM-dd");
+
+      const res = await api.get("/pos/orders/", { params });
+      return Array.isArray(res.data) ? res.data : res.data?.results || [];
     },
     enabled: !!companyId,
   });
@@ -182,9 +219,80 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Sales History</h2>
-          <p className="text-muted-foreground">
-            Manage orders, track payments, and process returns.
+          <p className="text-muted-foreground text-xs uppercase font-bold tracking-widest mt-1">
+            Track and filter transactions
           </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Branch Filter */}
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[180px] bg-white dark:bg-slate-950">
+              <SelectValue placeholder="All Branches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">🏢 All Branches</SelectItem>
+              {Array.isArray(branches) &&
+                branches.map((w: any) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    📍 {w.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {/* Date Filter */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[260px] justify-start text-left font-normal bg-white dark:bg-slate-950",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date?.from ? (
+                    date.to ? (
+                      <>
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(date.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={date?.from}
+                  selected={date}
+                  onSelect={setDate}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {(date?.from || date?.to || selectedBranch !== "all") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-slate-400 hover:text-rose-500"
+                onClick={() => {
+                  setSelectedBranch("all");
+                  setDate({ from: undefined, to: undefined });
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -197,7 +305,7 @@ export default function OrdersPage() {
           <DataTable
             data={orders}
             columns={columns}
-            searchKey="customer_name"
+            enableGlobalFilter={true}
           />
         )}
       </div>

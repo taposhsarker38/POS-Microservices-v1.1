@@ -118,6 +118,11 @@ const routes: SidebarRoute[] = [
         permission: "view_purchase",
       },
       {
+        label: "vendors",
+        href: "/dashboard/purchase/vendors",
+        permission: "view_purchase",
+      },
+      {
         label: "accounting",
         href: "/dashboard/accounting",
         permission: "view_accounting",

@@ -134,6 +134,11 @@ class Product(SoftDeleteModel):
     is_returnable = models.BooleanField(default=True)
     return_window_days = models.IntegerField(default=30, help_text="Number of days eligible for return")
     
+    # Tax and Payment Controls
+    is_tax_exempt = models.BooleanField(default=False)
+    is_emi_eligible = models.BooleanField(default=True)
+    emi_plan_ids = models.JSONField(default=list, blank=True, help_text="List of supported EMI Plan UUIDs")
+    
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

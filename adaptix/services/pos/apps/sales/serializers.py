@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 from .models import Order, OrderItem, Payment, POSSession, POSSettings, OrderReturn, ReturnItem
 
@@ -10,7 +11,7 @@ class POSSessionSerializer(serializers.ModelSerializer):
 class POSSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = POSSettings
-        fields = ['allow_partial_payment', 'allow_split_payment']
+        fields = ['allow_partial_payment', 'allow_split_payment', 'default_tax_zone_code']
         
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -35,7 +36,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = '__all__'
+        fields = [
+            'id', 'order', 'method', 'provider', 'amount', 
+            'emi_plan', 'transaction_id', 'note', 'company_uuid', 'created_by'
+        ]
         read_only_fields = ['company_uuid', 'created_by', 'order']
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -100,6 +104,14 @@ class OrderSerializer(serializers.ModelSerializer):
         if not allow_split and len(payments_data) > 1:
             raise serializers.ValidationError({"payment_data": "Split payments are disabled for this company."})
 
+        # -- GUEST CUSTOMER CHECK --
+        customer_uuid = validated_data.get('customer_uuid')
+        is_guest = customer_uuid is None
+        
+        has_emi = any(p.get('method') == 'emi' for p in payments_data)
+        if is_guest and has_emi:
+            raise serializers.ValidationError({"payment_data": "Guest customers are not eligible for EMI sales. Please register/select a customer."})
+
         # Calculate total provided in payment_data
         total_payment_provided = sum(float(p.get('amount', 0)) for p in payments_data)
         
@@ -124,9 +136,9 @@ class OrderSerializer(serializers.ModelSerializer):
             
             # Initial status is pending/draft. It will be updated at the end.
             
-            calculated_subtotal = 0
-            calculated_tax = 0
-            calculated_discount = 0
+            calculated_subtotal = Decimal('0')
+            calculated_tax = Decimal('0')
+            calculated_discount = Decimal('0')
             
             tax_zone_code = validated_data.get('tax_zone_code')
             
@@ -134,13 +146,15 @@ class OrderSerializer(serializers.ModelSerializer):
                 # Propagate company_uuid
                 item_data['company_uuid'] = company_uuid
                 
-                qty = item_data.get('quantity', 1)
-                price = item_data.get('unit_price', 0)
-                disc = item_data.get('discount_amount', 0)
-                tax = item_data.get('tax_amount', 0)
+                qty = Decimal(str(item_data.get('quantity', 1)))
+                price = Decimal(str(item_data.get('unit_price', 0)))
+                disc = Decimal(str(item_data.get('discount_amount', 0)))
+                tax = Decimal(str(item_data.get('tax_amount', 0)))
                 
                 # Dynamic Tax Calculation if zone provided and no tax sent by client
-                if tax_zone_code and tax == 0:
+                is_exempt = item_data.get('metadata', {}).get('is_tax_exempt', False)
+                
+                if not is_exempt and tax_zone_code and tax == 0:
                     try:
                         from adaptix_core.service_registry import ServiceRegistry
                         url = f"{ServiceRegistry.get_api_url('accounting')}/tax/engine/calculate/"
@@ -157,6 +171,9 @@ class OrderSerializer(serializers.ModelSerializer):
                             item_data['tax_amount'] = tax
                     except Exception as e:
                         print(f"Tax Engine Error: {e}")
+                elif is_exempt:
+                    tax = Decimal('0')
+                    item_data['tax_amount'] = tax
 
                 # Simple server-side calc
                 item_subtotal = (qty * price) - disc + tax
@@ -169,7 +186,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 OrderItem.objects.create(order=order, **item_data)
             
             # Loyalty Redemption Logic
-            loyalty_discount = 0
+            loyalty_discount = Decimal('0')
             if loyalty_action == 'REDEEM' and order.customer_uuid and redeemed_points > 0:
                 try:
                     # 1. Deduct points from Customer Service
@@ -179,7 +196,7 @@ class OrderSerializer(serializers.ModelSerializer):
                     
                     if resp.status_code == 200:
                         # 2. Apply Discount (1 Point = 1 Currency Unit for MVP)
-                        loyalty_discount = float(redeemed_points)
+                        loyalty_discount = Decimal(str(redeemed_points))
                         calculated_discount += loyalty_discount
                     else:
                         print(f"Failed to redeem points: {resp.text}")
@@ -190,7 +207,7 @@ class OrderSerializer(serializers.ModelSerializer):
             order.subtotal = calculated_subtotal
             order.tax_total = calculated_tax
             order.discount_total = calculated_discount
-            service = validated_data.get('service_charge', 0)
+            service = Decimal(str(validated_data.get('service_charge', 0)))
             
             order.grand_total = calculated_subtotal - calculated_discount + calculated_tax + service
             
@@ -198,6 +215,12 @@ class OrderSerializer(serializers.ModelSerializer):
             for p_data in payments_data:
                 p_data['company_uuid'] = company_uuid
                 p_data['created_by'] = created_by
+                # Ensure emi_plan is handled (renamed if necessary between frontend/backend)
+                if 'emi_plan' in p_data:
+                    pass # already matches model
+                elif 'emiPlanId' in p_data:
+                    p_data['emi_plan'] = p_data.pop('emiPlanId')
+                
                 Payment.objects.create(order=order, **p_data)
                 
             # Final Status Update (handled by signals but good to ensure grand_total consistency)

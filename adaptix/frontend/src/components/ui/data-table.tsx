@@ -45,6 +45,7 @@ interface DataTableProps<TData, TValue> {
   exportFileName?: string;
   isLoading?: boolean;
   onRowClick?: (row: TData) => void;
+  enableGlobalFilter?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -57,11 +58,13 @@ export function DataTable<TData, TValue>({
   exportFileName = "data_export",
   isLoading = false,
   onRowClick,
+  enableGlobalFilter = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
+  const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
@@ -74,6 +77,7 @@ export function DataTable<TData, TValue>({
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -83,6 +87,7 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnFilters,
+      globalFilter,
       columnVisibility,
       rowSelection,
     },
@@ -232,15 +237,24 @@ export function DataTable<TData, TValue>({
   return (
     <div className="w-full">
       <div className="flex items-center py-4 gap-2">
-        {searchKey && !hideSearch && (
+        {searchKey && !hideSearch && !enableGlobalFilter && (
           <Input
-            placeholder={`Filter ${searchKey}...`}
+            placeholder={`Filter ${searchKey.replace(/_/g, " ")}...`}
             value={
               (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
             }
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }
+            className="max-w-sm"
+          />
+        )}
+
+        {enableGlobalFilter && (
+          <Input
+            placeholder="Search all columns..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
             className="max-w-sm"
           />
         )}

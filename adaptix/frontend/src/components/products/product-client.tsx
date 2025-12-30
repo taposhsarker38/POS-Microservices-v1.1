@@ -152,6 +152,38 @@ export const ProductClient: React.FC = () => {
       ),
     },
     {
+      accessorKey: "is_tax_exempt",
+      header: "VAT",
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.is_tax_exempt ? "outline" : "secondary"}
+          className={
+            row.original.is_tax_exempt
+              ? "text-emerald-600 border-emerald-600"
+              : ""
+          }
+        >
+          {row.original.is_tax_exempt ? "Exempt" : "Standard"}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "is_emi_eligible",
+      header: "EMI",
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.is_emi_eligible ? "outline" : "secondary"}
+          className={
+            row.original.is_emi_eligible
+              ? "text-indigo-600 border-indigo-600"
+              : ""
+          }
+        >
+          {row.original.is_emi_eligible ? "Eligible" : "No"}
+        </Badge>
+      ),
+    },
+    {
       id: "actions",
       cell: ({ row }) => {
         return (

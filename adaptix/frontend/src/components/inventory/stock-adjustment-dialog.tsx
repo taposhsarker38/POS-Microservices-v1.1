@@ -70,12 +70,23 @@ export const StockAdjustmentDialog: React.FC<StockAdjustmentDialogProps> = ({
       notes: "",
     },
   });
+  React.useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        type: "add",
+        quantity: "",
+        notes: "",
+        warehouse_id: "",
+        product_uuid: "",
+      } as any);
+    }
+  }, [isOpen, form]);
 
   const onSubmit = async (values: FormValues) => {
     try {
       setLoading(true);
       const payload = {
-        warehouse_id: parseInt(values.warehouse_id),
+        warehouse_id: values.warehouse_id,
         product_uuid: values.product_uuid,
         type: values.type,
         quantity: parseFloat(values.quantity),
@@ -113,7 +124,7 @@ export const StockAdjustmentDialog: React.FC<StockAdjustmentDialogProps> = ({
                   <Select
                     disabled={loading}
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -142,7 +153,7 @@ export const StockAdjustmentDialog: React.FC<StockAdjustmentDialogProps> = ({
                   <Select
                     disabled={loading}
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -150,6 +161,11 @@ export const StockAdjustmentDialog: React.FC<StockAdjustmentDialogProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {products.length === 0 && (
+                        <SelectItem value="none" disabled>
+                          No products available
+                        </SelectItem>
+                      )}
                       {products.map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           {p.name}

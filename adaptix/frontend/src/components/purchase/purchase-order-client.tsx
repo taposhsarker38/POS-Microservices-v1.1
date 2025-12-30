@@ -8,6 +8,7 @@ import {
   FileText,
   DollarSign,
   Wallet,
+  Users,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-order-form";
 import { ReceiveOrderDialog } from "@/components/purchase/receive-order-dialog";
 import { VendorPaymentDialog } from "@/components/purchase/vendor-payment-dialog";
+import { VendorForm } from "@/components/purchase/vendor-form";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -45,6 +47,8 @@ export const PurchaseOrderClient: React.FC = () => {
   const [openPayment, setOpenPayment] = React.useState(false);
   const [paymentOrderId, setPaymentOrderId] = React.useState<any>(null);
 
+  const [openVendor, setOpenVendor] = React.useState(false);
+
   const fetchData = React.useCallback(async () => {
     try {
       setLoading(true);
@@ -54,23 +58,17 @@ export const PurchaseOrderClient: React.FC = () => {
         api.get("/product/products/"), // Assuming product service
       ]);
 
-      const orders = Array.isArray(ordersRes.data.data)
-        ? ordersRes.data.data
-        : Array.isArray(ordersRes.data)
+      const orders = Array.isArray(ordersRes.data)
         ? ordersRes.data
-        : [];
+        : ordersRes.data.results || ordersRes.data.data || [];
 
-      const vends = Array.isArray(vendorsRes.data.data)
-        ? vendorsRes.data.data
-        : Array.isArray(vendorsRes.data)
+      const vends = Array.isArray(vendorsRes.data)
         ? vendorsRes.data
-        : [];
+        : vendorsRes.data.results || vendorsRes.data.data || [];
 
-      const prods = Array.isArray(productsRes.data.data)
-        ? productsRes.data.data
-        : Array.isArray(productsRes.data)
+      const prods = Array.isArray(productsRes.data)
         ? productsRes.data
-        : [];
+        : productsRes.data.results || productsRes.data.data || [];
 
       setData(orders);
       setVendors(vends);
@@ -262,9 +260,14 @@ export const PurchaseOrderClient: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight">Purchase Orders</h2>
           <p className="text-muted-foreground">Manage inventory procurement.</p>
         </div>
-        <Button onClick={onCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Create Order
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setOpenVendor(true)}>
+            <Users className="mr-2 h-4 w-4" /> Add Vendor
+          </Button>
+          <Button onClick={onCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Create Order
+          </Button>
+        </div>
       </div>
       <div className="mt-8">
         <DataTable searchKey="reference_number" columns={columns} data={data} />
@@ -275,6 +278,7 @@ export const PurchaseOrderClient: React.FC = () => {
         initialData={selectedOrder}
         isOpen={open}
         onClose={handleModalClose}
+        onVendorCreated={fetchData}
       />
       <ReceiveOrderDialog
         orderId={receiveOrderId}
@@ -287,6 +291,11 @@ export const PurchaseOrderClient: React.FC = () => {
         isOpen={openPayment}
         onClose={() => setOpenPayment(false)}
         onSuccess={handlePaymentSuccess}
+      />
+      <VendorForm
+        isOpen={openVendor}
+        onClose={() => setOpenVendor(false)}
+        onSuccess={fetchData}
       />
     </>
   );

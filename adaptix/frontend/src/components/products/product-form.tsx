@@ -25,6 +25,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -53,6 +54,12 @@ const formSchema = z.object({
   quantity: z.coerce.number().min(0).default(0),
   attribute_set: z.string().optional(),
   attributes: z.record(z.string(), z.any()).default({}),
+  // Policy & Controls
+  is_tax_exempt: z.boolean().default(false),
+  is_emi_eligible: z.boolean().default(true),
+  is_returnable: z.boolean().default(true),
+  return_window_days: z.coerce.number().min(0).default(30),
+  emi_plan_ids: z.array(z.string()).default([]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -78,6 +85,19 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 }) => {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
+  const [emiPlans, setEmiPlans] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchEmiPlans = async () => {
+      try {
+        const res = await api.get("payment/emi-plans/");
+        setEmiPlans(res.data.results || res.data);
+      } catch (error) {
+        console.error("Failed to fetch EMI plans", error);
+      }
+    };
+    fetchEmiPlans();
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as any,
@@ -96,6 +116,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       quantity: 0,
       attribute_set: "",
       attributes: {},
+      is_tax_exempt: false,
+      is_emi_eligible: true,
+      is_returnable: true,
+      return_window_days: 30,
+      emi_plan_ids: [],
     },
   });
 
@@ -122,6 +147,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         quantity: firstVariant.quantity ? Number(firstVariant.quantity) : 0,
         attribute_set: initialData.attribute_set || "",
         attributes: initialData.attributes || {},
+        is_tax_exempt: initialData.is_tax_exempt ?? false,
+        is_emi_eligible: initialData.is_emi_eligible ?? true,
+        is_returnable: initialData.is_returnable ?? true,
+        return_window_days: initialData.return_window_days ?? 30,
+        emi_plan_ids: initialData.emi_plan_ids || [],
       });
     } else {
       form.reset({
@@ -139,6 +169,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         quantity: 0,
         attribute_set: "",
         attributes: {},
+        is_tax_exempt: false,
+        is_emi_eligible: true,
+        is_returnable: true,
+        return_window_days: 30,
+        emi_plan_ids: [],
       });
     }
   }, [initialData, isOpen, form]);
@@ -407,6 +442,151 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  POS & Tax Controls
+                </h4>
+                <FormField
+                  control={form.control}
+                  name="is_tax_exempt"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 bg-white dark:bg-slate-950">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Tax Exempt</FormLabel>
+                        <FormDescription className="text-[10px]">
+                          Disable VAT calculation for this product.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="is_emi_eligible"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col space-y-3 rounded-md border p-3 bg-white dark:bg-slate-950">
+                      <div className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>EMI Eligible</FormLabel>
+                          <FormDescription className="text-[10px]">
+                            Allow installments for this product.
+                          </FormDescription>
+                        </div>
+                      </div>
+
+                      {field.value && emiPlans.length > 0 && (
+                        <div className="space-y-2 pt-3 border-t">
+                          <Label className="text-[10px] font-bold uppercase text-slate-500">
+                            Supported Plans
+                          </Label>
+                          <div className="grid grid-cols-1 gap-2">
+                            {emiPlans.map((plan) => (
+                              <FormField
+                                key={plan.id}
+                                control={form.control}
+                                name="emi_plan_ids"
+                                render={({ field: planField }) => (
+                                  <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={planField.value?.includes(
+                                          plan.id
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          const current = planField.value || [];
+                                          if (checked) {
+                                            planField.onChange([
+                                              ...current,
+                                              plan.id,
+                                            ]);
+                                          } else {
+                                            planField.onChange(
+                                              current.filter(
+                                                (id: string) => id !== plan.id
+                                              )
+                                            );
+                                          }
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-[10px] font-normal cursor-pointer">
+                                      {plan.name} ({plan.tenure_months}m)
+                                    </FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <FormDescription className="text-[10px]">
+                            Select specific plans. If none selected, all active
+                            plans are allowed.
+                          </FormDescription>
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Return Policy
+                </h4>
+                <FormField
+                  control={form.control}
+                  name="is_returnable"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 bg-white dark:bg-slate-950">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Can be Returned</FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                {form.watch("is_returnable") && (
+                  <FormField
+                    control={form.control}
+                    name="return_window_days"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">
+                          Return Window (Days)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            disabled={loading}
+                            className="h-8"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             </div>
 
             <FormField

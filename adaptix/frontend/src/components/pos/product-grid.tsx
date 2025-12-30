@@ -37,8 +37,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart }) => {
     try {
       setLoading(true);
       const [prodRes, catRes] = await Promise.all([
-        api.get("/product/products/"),
-        api.get("/product/categories/"),
+        api.get("product/products/"),
+        api.get("product/categories/"),
       ]);
 
       const prods = Array.isArray(prodRes.data.data)
@@ -198,15 +198,33 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart }) => {
                     <span className="font-extrabold text-primary text-sm">
                       ${Number(product.sales_price || 0).toFixed(2)}
                     </span>
-                    {product.stock_quantity <=
-                      (product.alert_quantity || 0) && (
-                      <Badge
-                        variant="destructive"
-                        className="h-4 px-1 text-[8px]"
-                      >
-                        LOW
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {product.is_tax_exempt && (
+                        <Badge
+                          variant="outline"
+                          className="h-4 px-1 text-[8px] border-emerald-500 text-emerald-600 bg-emerald-50"
+                        >
+                          TAX FREE
+                        </Badge>
+                      )}
+                      {product.is_emi_eligible === false && (
+                        <Badge
+                          variant="outline"
+                          className="h-4 px-1 text-[8px] border-orange-500 text-orange-600 bg-orange-50"
+                        >
+                          NO EMI
+                        </Badge>
+                      )}
+                      {product.stock_quantity <=
+                        (product.alert_quantity || 0) && (
+                        <Badge
+                          variant="destructive"
+                          className="h-4 px-1 text-[8px]"
+                        >
+                          LOW
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

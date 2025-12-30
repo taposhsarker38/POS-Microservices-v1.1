@@ -44,11 +44,32 @@ class ProductSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='brand.name')
     unit_name = serializers.ReadOnlyField(source='unit.short_name')
     attribute_set_name = serializers.ReadOnlyField(source='attribute_set.name')
+    
+    sales_price = serializers.SerializerMethodField()
+    alert_quantity = serializers.SerializerMethodField()
+    stock_quantity = serializers.SerializerMethodField()
+    sku = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = '__all__'
         read_only_fields = ('company_uuid', 'approval_status')
+
+    def get_sales_price(self, obj):
+        variant = obj.variants.first()
+        return variant.price if variant else 0
+
+    def get_alert_quantity(self, obj):
+        variant = obj.variants.first()
+        return variant.alert_quantity if variant else 0
+
+    def get_stock_quantity(self, obj):
+        from django.db.models import Sum
+        return obj.variants.aggregate(total=Sum('quantity'))['total'] or 0
+
+    def get_sku(self, obj):
+        variant = obj.variants.first()
+        return variant.sku if variant else "NO SKU"
 
 from .models import ApprovalRequest
 

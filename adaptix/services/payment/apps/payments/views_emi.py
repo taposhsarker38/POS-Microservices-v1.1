@@ -12,8 +12,15 @@ class EMIPlanViewSet(viewsets.ModelViewSet):
     serializer_class = EMIPlanSerializer
 
     def get_queryset(self):
-        # Multi-tenant filtering (assuming company_uuid exists in request)
-        return self.queryset.filter(is_active=True)
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        qs = self.queryset.filter(is_active=True)
+        if company_uuid:
+            return qs.filter(company_uuid=company_uuid)
+        return qs
+
+    def perform_create(self, serializer):
+        company_uuid = getattr(self.request, 'company_uuid', None)
+        serializer.save(company_uuid=company_uuid)
 
 class EMIScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = EMISchedule.objects.all()

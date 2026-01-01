@@ -23,5 +23,5 @@ django-prometheus
 pytest==8.0.0
 pytest-django==4.8.0
 
- django-filter>=23.2,<25
+ django-filter>=23.2,<26
 cryptography

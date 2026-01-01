@@ -32,6 +32,7 @@ const journalSchema = z.object({
   date: z.string(),
   reference: z.string().optional(),
   wing_uuid: z.string().min(1, "Branch is required"),
+  voucher_type: z.enum(["receipt", "payment", "contra", "journal"]),
   description: z.string().optional(),
   items: z
     .array(
@@ -65,11 +66,13 @@ export function JournalEntryForm({
   initialCompanyId,
   initialWingId,
   entities = [],
+  initialData,
 }: {
   onSuccess?: () => void;
   initialCompanyId?: string;
   initialWingId?: string;
   entities?: any[];
+  initialData?: any;
 }) {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [wings, setWings] = useState<any[]>([]);
@@ -77,11 +80,14 @@ export function JournalEntryForm({
   const form = useForm<JournalFormValues>({
     resolver: zodResolver(journalSchema) as any,
     defaultValues: {
-      date: new Date().toISOString().split("T")[0],
-      reference: "",
-      wing_uuid: initialWingId || "",
-      description: "",
-      items: [
+      date: initialData?.date || new Date().toISOString().split("T")[0],
+      reference: initialData?.reference || "",
+      wing_uuid:
+        initialWingId ||
+        (initialData?.wing_uuid ? initialData.wing_uuid : "MAIN_UNIT"),
+      voucher_type: initialData?.voucher_type || "journal",
+      description: initialData?.description || "",
+      items: initialData?.items || [
         { account: "", debit: 0, credit: 0, description: "" },
         { account: "", debit: 0, credit: 0, description: "" },
       ],
@@ -89,10 +95,37 @@ export function JournalEntryForm({
   });
 
   useEffect(() => {
-    if (initialWingId) {
+    if (initialData) {
+      const resetItems =
+        initialData.items?.length > 0
+          ? initialData.items.map((it: any) => ({
+              account: it.account,
+              debit: parseFloat(it.debit) || 0,
+              credit: parseFloat(it.credit) || 0,
+              description: it.description || "",
+            }))
+          : [
+              { account: "", debit: 0, credit: 0, description: "" },
+              { account: "", debit: 0, credit: 0, description: "" },
+            ];
+
+      form.reset({
+        date: initialData.date,
+        reference: initialData.reference || "",
+        wing_uuid: initialData.wing_uuid || "MAIN_UNIT",
+        voucher_type: initialData.voucher_type,
+        description: initialData.description || "",
+        items: resetItems,
+      });
+    }
+  }, [initialData, form]);
+
+  useEffect(() => {
+    // Only set default wing if we are NOT in edit mode
+    if (initialWingId && !initialData) {
       form.setValue("wing_uuid", initialWingId);
     }
-  }, [initialWingId, form]);
+  }, [initialWingId, initialData, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -100,21 +133,54 @@ export function JournalEntryForm({
   });
 
   useEffect(() => {
+    // Priority: 1. initialData's company, 2. dashboard's selected company
+    const contextCompanyId = initialData?.company_uuid || initialCompanyId;
+
     const fetchContextualData = async () => {
       const params = new URLSearchParams();
-      if (initialCompanyId) params.append("company_uuid", initialCompanyId);
+      if (contextCompanyId) params.append("company_uuid", contextCompanyId);
 
       api.get(`/accounting/accounts/?${params.toString()}`).then((res) => {
         setAccounts(res.data.results || res.data);
       });
 
       if (entities.length > 0) {
-        let filteredWings = entities.filter((e) => e.type === "branch");
-        if (initialCompanyId) {
-          filteredWings = filteredWings.filter(
-            (w) => w.company_id === initialCompanyId
+        // Step 1: Broadly filter to the relevant company context
+        let filteredWings = entities.filter(
+          (w) =>
+            String(w.id) === String(contextCompanyId) ||
+            String(w.company_id) === String(contextCompanyId) ||
+            String(w.id) === String(initialData?.company_uuid) ||
+            String(w.company_id) === String(initialData?.company_uuid)
+        );
+
+        // Step 2: If we didn't find any branches/units for this company,
+        // fallback to showing all entities so the user isn't blocked.
+        if (filteredWings.length === 0) {
+          filteredWings = entities.filter(
+            (e) => e.type === "branch" || e.type === "unit"
           );
         }
+
+        // Step 3: Ensure the specific branch/unit assigned to the journal is in the list
+        const targetWingId = initialData?.wing_uuid || "MAIN_UNIT";
+        const hasSelection = filteredWings.find((w) =>
+          w.type === "unit"
+            ? targetWingId === "MAIN_UNIT"
+            : String(w.id) === String(targetWingId)
+        );
+
+        if (!hasSelection) {
+          const contextName =
+            entities.find((e) => String(e.id) === String(contextCompanyId))
+              ?.name || "Main Unit";
+          filteredWings.unshift({
+            id: targetWingId === "MAIN_UNIT" ? "MAIN_UNIT" : targetWingId,
+            name: targetWingId === "MAIN_UNIT" ? contextName : "Unknown Branch",
+            type: targetWingId === "MAIN_UNIT" ? "unit" : "branch",
+          });
+        }
+
         setWings(filteredWings);
       } else {
         api.get("/company/wings/").then((res) => {
@@ -123,17 +189,34 @@ export function JournalEntryForm({
       }
     };
     fetchContextualData();
-  }, [initialCompanyId, entities]);
+  }, [initialCompanyId, initialData, entities]);
 
   const onSubmit = async (values: JournalFormValues) => {
+    // Convert magic string back to null/empty for backend
+    const submissionValues = {
+      ...values,
+      wing_uuid: values.wing_uuid === "MAIN_UNIT" ? "" : values.wing_uuid,
+    };
+
     try {
-      await api.post("/accounting/journals/", {
-        ...values,
-      });
-      handleApiSuccess("Transaction Posted");
+      if (initialData?.id) {
+        await api.put(`/accounting/journals/${initialData.id}/`, {
+          ...submissionValues,
+          company_uuid: initialData.company_uuid,
+        });
+        handleApiSuccess("Transaction Updated");
+      } else {
+        await api.post("/accounting/journals/", {
+          ...submissionValues,
+          company_uuid: initialCompanyId,
+        });
+        handleApiSuccess("Transaction Posted");
+      }
       form.reset({
         date: new Date().toISOString().split("T")[0],
         reference: "",
+        wing_uuid: initialData?.wing_uuid || initialWingId || "MAIN_UNIT",
+        voucher_type: "journal",
         description: "",
         items: [
           { account: "", debit: 0, credit: 0, description: "" },
@@ -192,17 +275,34 @@ export function JournalEntryForm({
                 <FormLabel>Branch / Unit</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value || "MAIN_UNIT"}
                 >
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Branch" />
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder="Select Branch / Unit"
+                        className="truncate"
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {wings.map((wing) => (
-                      <SelectItem key={wing.id} value={wing.id}>
-                        {wing.name} ({wing.code})
+                      <SelectItem
+                        key={wing.id}
+                        value={
+                          wing.type === "unit" && wing.id === "MAIN_UNIT"
+                            ? "MAIN_UNIT"
+                            : String(wing.id)
+                        }
+                        className="max-w-[400px] truncate"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span>{wing.type === "unit" ? "🏢" : "📍"}</span>
+                          <span className="truncate">{wing.name}</span>
+                          <span className="text-[10px] opacity-50 shrink-0">
+                            ({wing.type === "unit" ? "Main" : "Branch"})
+                          </span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -212,19 +312,48 @@ export function JournalEntryForm({
             )}
           />
         </div>
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input placeholder="Transaction summary..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="voucher_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Voucher Type (ভাউচার টাইপ)</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="receipt">Receipt (RV)</SelectItem>
+                    <SelectItem value="payment">Payment (PV)</SelectItem>
+                    <SelectItem value="contra">Contra (CV)</SelectItem>
+                    <SelectItem value="journal">Journal (JV)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Input placeholder="Transaction summary..." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="border rounded-md p-4 bg-muted/20">
           <div className="mb-2 grid grid-cols-12 gap-2 text-sm font-medium">
@@ -246,17 +375,29 @@ export function JournalEntryForm({
                     <FormItem>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Account" />
+                          <SelectTrigger className="truncate">
+                            <SelectValue placeholder="Account" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="max-h-[300px]">
+                          {accounts.length === 0 && (
+                            <div className="p-2 text-xs text-muted-foreground text-center">
+                              No accounts found
+                            </div>
+                          )}
                           {accounts.map((acc) => (
-                            <SelectItem key={acc.id} value={acc.id}>
-                              {acc.code} - {acc.name}
+                            <SelectItem
+                              key={acc.id}
+                              value={acc.id}
+                              className="truncate"
+                            >
+                              <span className="font-mono text-[10px] mr-2 opacity-70">
+                                [{acc.code}]
+                              </span>
+                              <span>{acc.name}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -342,7 +483,7 @@ export function JournalEntryForm({
           type="submit"
           disabled={Number(unbalanced) > 0.01 || form.formState.isSubmitting}
         >
-          Post Transaction
+          {initialData?.id ? "Update Transaction" : "Post Transaction"}
         </Button>
       </form>
     </Form>

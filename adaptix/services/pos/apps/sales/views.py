@@ -235,6 +235,7 @@ class OrderReturnViewSet(viewsets.ModelViewSet):
                 "order_id": str(order_return.order.id),
                 "order_number": order_return.order.order_number,
                 "company_uuid": str(order_return.company_uuid),
+                "wing_uuid": str(order_return.order.branch_id) if order_return.order.branch_id else None,
                 "refund_amount": str(order_return.refund_amount),
                 "created_at": order_return.created_at.isoformat(),
                 "items": [

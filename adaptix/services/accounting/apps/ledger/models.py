@@ -26,6 +26,8 @@ class AccountGroup(models.Model):
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subgroups')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.UUIDField(null=True, blank=True)
+    updated_by = models.UUIDField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.code} {self.name}"
@@ -47,6 +49,8 @@ class ChartOfAccount(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.UUIDField(null=True, blank=True)
+    updated_by = models.UUIDField(null=True, blank=True)
 
     class Meta:
         unique_together = ('company_uuid', 'code')
@@ -58,9 +62,16 @@ class JournalEntry(models.Model):
     """
     Head of a transaction. e.g. "Invoice #123"
     """
+    VOUCHER_TYPES = (
+        ("receipt", "Receipt"),
+        ("payment", "Payment"),
+        ("contra", "Contra"),
+        ("journal", "Journal"),
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company_uuid = models.UUIDField(db_index=True)
     wing_uuid = models.UUIDField(db_index=True, null=True, blank=True)
+    voucher_type = models.CharField(max_length=20, choices=VOUCHER_TYPES, default="journal", db_index=True)
     date = models.DateField()
     reference = models.CharField(max_length=100, blank=True) # e.g. Invoice Number
     description = models.TextField(blank=True)
@@ -72,6 +83,8 @@ class JournalEntry(models.Model):
     is_posted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.UUIDField(null=True, blank=True)
+    updated_by = models.UUIDField(null=True, blank=True)
 
 class JournalItem(models.Model):
     """
@@ -122,3 +135,28 @@ def on_account_save(sender, instance, created, **kwargs):
     
     # Recalculate
     recalculate_account_balance(instance)
+
+class SystemAccount(models.Model):
+    """
+    Maps system purposes to specific Chart of Accounts.
+    Allows for configurable automated bookkeeping.
+    """
+    PURPOSE_CHOICES = (
+        ("sales_revenue", "Sales Revenue"),
+        ("cash_on_hand", "Cash on Hand"),
+        ("sales_tax_payable", "Sales Tax Payable"),
+        ("depreciation_expense", "Depreciation Expense"),
+        ("accumulated_depreciation", "Accumulated Depreciation"),
+        ("inventory", "Inventory Assets"),
+        ("cost_of_goods_sold", "Cost of Goods Sold"),
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company_uuid = models.UUIDField(db_index=True)
+    purpose = models.CharField(max_length=50, choices=PURPOSE_CHOICES)
+    account = models.ForeignKey(ChartOfAccount, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('company_uuid', 'purpose')
+
+    def __str__(self):
+        return f"{self.purpose} -> {self.account.name}"

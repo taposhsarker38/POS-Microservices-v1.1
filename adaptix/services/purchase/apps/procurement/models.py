@@ -58,6 +58,7 @@ class PurchaseOrder(SoftDeleteModel):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='orders')
     reference_number = models.CharField(max_length=100)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    branch_id = models.UUIDField(null=True, blank=True, db_index=True) # Branch/Wing association
     
     # Payment Tracking
     PAYMENT_STATUS_CHOICES = (

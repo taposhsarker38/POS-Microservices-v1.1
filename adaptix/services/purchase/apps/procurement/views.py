@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from .models import PurchaseOrder, RFQ, VendorQuote
 from .serializers import PurchaseOrderSerializer, RFQSerializer, VendorQuoteSerializer
 from adaptix_core.permissions import HasPermission
-# Service integration import later
+from adaptix_core.messaging import publish_event
+import json
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
@@ -55,6 +56,28 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
         order.status = 'received'
         order.save()
+        
+        # Publish Event for Accounting
+        try:
+            event_payload = {
+                "event": "purchase.order.received",
+                "order_id": str(order.id),
+                "reference": order.reference_number,
+                "company_uuid": str(order.company_uuid),
+                "wing_uuid": str(order.branch_id) if order.branch_id else None,
+                "vendor_uuid": str(order.vendor.id),
+                "total_amount": str(order.total_amount),
+                "items": [
+                    {
+                        "product_uuid": str(item.product_uuid),
+                        "quantity": str(item.quantity),
+                        "unit_cost": str(item.unit_cost)
+                    } for item in order.items.all()
+                ]
+            }
+            publish_event("events", "purchase.order.received", event_payload)
+        except Exception as e:
+            print(f"Failed to publish purchase receipt event: {e}")
         
         return Response({"status": "received", "id": order.id, "detail": "Stock updated successfully"})
 
@@ -125,9 +148,21 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
              
         order.save()
         
-        # Publish Event (Mocking for now, real implementation would use rabbitmq publisher)
-        # from adaptix_core.messaging import publish_event
-        # publish_event("purchase.payment.recorded", { ... })
+        # Publish Event for Accounting
+        try:
+            event_payload = {
+                "event": "purchase.payment.recorded",
+                "order_id": str(order.id),
+                "reference": order.reference_number,
+                "company_uuid": str(order.company_uuid),
+                "wing_uuid": str(order.branch_id) if order.branch_id else None,
+                "amount": str(amount),
+                "method": method,
+                "vendor_uuid": str(order.vendor.id)
+            }
+            publish_event("events", "purchase.payment.recorded", event_payload)
+        except Exception as e:
+            print(f"Failed to publish purchase payment event: {e}")
         
         return Response({
             "status": "success", 

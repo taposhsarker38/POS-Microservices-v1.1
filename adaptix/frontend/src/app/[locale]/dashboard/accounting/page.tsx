@@ -6,6 +6,9 @@ import { AccountGroupClient } from "@/components/accounting/group-client";
 import { JournalEntryForm } from "@/components/accounting/journal-form";
 import { BalanceSheet } from "@/components/accounting/balance-sheet";
 import { ProfitLoss } from "@/components/accounting/profit-loss";
+import { TrialBalance } from "@/components/accounting/trial-balance";
+import { AccountingOverview } from "@/components/accounting/overview";
+import { SystemAccountMapping } from "@/components/accounting/system-accounts";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import {
@@ -15,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -25,6 +30,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Trash2, Edit, Plus } from "lucide-react";
 
 function JournalList({
   wingId,
@@ -32,6 +45,7 @@ function JournalList({
   entities = [],
   startDate,
   endDate,
+  voucherType,
   targetName,
 }: {
   wingId?: string;
@@ -39,40 +53,49 @@ function JournalList({
   entities?: any[];
   startDate?: string;
   endDate?: string;
+  voucherType?: string;
   targetName?: string;
 }) {
   const [journals, setJournals] = useState<any[]>([]);
   const [wings, setWings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingJournal, setEditingJournal] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  useEffect(() => {
+  const fetchJournals = () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (wingId) params.append("wing_uuid", wingId);
     if (companyId) params.append("company_uuid", companyId);
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
+    if (voucherType && voucherType !== "all")
+      params.append("voucher_type", voucherType);
 
     api
       .get(`/accounting/journals/?${params.toString()}`)
       .then((res) => {
         setJournals(res.data.results || res.data);
+        setLoading(false);
       })
       .catch((err) => {
         console.error(err);
+        setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchJournals();
 
     api
       .get("/company/wings/")
       .then((res) => {
         setWings(res.data.results || res.data);
-        setLoading(false);
       })
       .catch((err) => {
         console.error(err);
-        setLoading(false);
       });
-  }, [wingId, companyId, startDate, endDate]);
+  }, [wingId, companyId, startDate, endDate, voucherType]);
 
   return (
     <div className="border rounded-md">
@@ -80,6 +103,7 @@ function JournalList({
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Ref</TableHead>
             <TableHead>Branch</TableHead>
             <TableHead>Entity / Unit</TableHead>
@@ -100,6 +124,23 @@ function JournalList({
             journals.map((j) => (
               <TableRow key={j.id}>
                 <TableCell>{j.date}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "uppercase text-[10px] font-bold",
+                      j.voucher_type === "receipt"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : j.voucher_type === "payment"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : j.voucher_type === "contra"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : ""
+                    )}
+                  >
+                    {j.voucher_type?.substring(0, 3) || "JV"}
+                  </Badge>
+                </TableCell>
                 <TableCell>{j.reference}</TableCell>
                 <TableCell>
                   {wings.find((w) => w.id === j.wing_uuid)?.name || "-"}
@@ -122,12 +163,42 @@ function JournalList({
                     ? new Date(j.updated_at).toLocaleDateString()
                     : "-"}
                 </TableCell>
-                <TableCell className="text-right"></TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      setEditingJournal(j);
+                      setIsEditDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 text-blue-600" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Journal Entry</DialogTitle>
+          </DialogHeader>
+          {editingJournal && (
+            <JournalEntryForm
+              initialData={editingJournal}
+              onSuccess={() => {
+                setIsEditDialogOpen(false);
+                fetchJournals();
+              }}
+              entities={entities}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -140,6 +211,7 @@ export default function AccountingPage() {
   const [rootCompanyId, setRootCompanyId] = useState<string | undefined>();
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [voucherType, setVoucherType] = useState<string>("all");
 
   useEffect(() => {
     const fetchEntities = async () => {
@@ -179,7 +251,7 @@ export default function AccountingPage() {
             name: w.name,
             type: "branch",
             code: w.code,
-            company_id: w.company,
+            company_id: w.company || w.company_uuid,
           })
         );
 
@@ -248,6 +320,19 @@ export default function AccountingPage() {
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
+
+          <Select value={voucherType} onValueChange={setVoucherType}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Voucher Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Vouchers</SelectItem>
+              <SelectItem value="receipt">Receipt (RV)</SelectItem>
+              <SelectItem value="payment">Payment (PV)</SelectItem>
+              <SelectItem value="contra">Contra (CV)</SelectItem>
+              <SelectItem value="journal">Journal (JV)</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={selectedEntity} onValueChange={setSelectedEntity}>
             <SelectTrigger className="w-[300px]">
               <SelectValue placeholder="Select Entity/Branch" />
@@ -279,15 +364,24 @@ export default function AccountingPage() {
 
       <AnomalyAlert />
 
-      <Tabs defaultValue="chart-of-accounts" className="space-y-4">
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="chart-of-accounts">Chart of Accounts</TabsTrigger>
           <TabsTrigger value="groups">Account Groups</TabsTrigger>
           <TabsTrigger value="journals">General Ledger</TabsTrigger>
           <TabsTrigger value="balance-sheet">Balance Sheet</TabsTrigger>
           <TabsTrigger value="profit-loss">Profit & Loss</TabsTrigger>
+          <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="new-journal">New Transaction</TabsTrigger>
         </TabsList>
+        <TabsContent value="overview" className="space-y-4">
+          <AccountingOverview
+            companyId={companyId || rootCompanyId}
+            wingId={wingId}
+          />
+        </TabsContent>
         <TabsContent value="chart-of-accounts" className="space-y-4">
           <ChartOfAccountClient
             wingId={wingId}
@@ -317,6 +411,7 @@ export default function AccountingPage() {
             entities={entities}
             startDate={startDate}
             endDate={endDate}
+            voucherType={voucherType}
             targetName={targetName}
           />
         </TabsContent>
@@ -334,6 +429,16 @@ export default function AccountingPage() {
             startDate={startDate}
             endDate={endDate}
           />
+        </TabsContent>
+        <TabsContent value="trial-balance" className="space-y-4">
+          <TrialBalance
+            companyId={companyId || rootCompanyId}
+            wingId={wingId}
+            date={endDate}
+          />
+        </TabsContent>
+        <TabsContent value="settings" className="space-y-4">
+          <SystemAccountMapping companyId={companyId || rootCompanyId} />
         </TabsContent>
         <TabsContent value="new-journal" className="space-y-4">
           <div className="max-w-2xl border p-6 rounded-md bg-white dark:bg-slate-950">

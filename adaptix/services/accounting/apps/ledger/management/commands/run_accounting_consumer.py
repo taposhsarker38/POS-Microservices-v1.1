@@ -30,6 +30,13 @@ class Command(BaseCommand):
         queue_sales = 'accounting_sales_queue'
         channel.queue_declare(queue=queue_sales, durable=True)
         channel.queue_bind(exchange='events', queue=queue_sales, routing_key='pos.sale.closed')
+        channel.queue_bind(exchange='events', queue=queue_sales, routing_key='pos.return.created')
+
+        # Purchase Queue
+        queue_purchase = 'accounting_purchase_queue'
+        channel.queue_declare(queue=queue_purchase, durable=True)
+        channel.queue_bind(exchange='events', queue=queue_purchase, routing_key='purchase.order.received')
+        channel.queue_bind(exchange='events', queue=queue_purchase, routing_key='purchase.payment.recorded')
 
         def callback(ch, method, properties, body):
             try:
@@ -42,6 +49,12 @@ class Command(BaseCommand):
                     self.process_payroll(data)
                 elif event == 'pos.sale.closed':
                     self.process_sale(data)
+                elif event == 'pos.return.created':
+                    self.process_pos_return(data)
+                elif event == 'purchase.order.received':
+                    self.process_purchase_receipt(data)
+                elif event == 'purchase.payment.recorded':
+                    self.process_purchase_payment(data)
 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
             except Exception as e:
@@ -51,6 +64,7 @@ class Command(BaseCommand):
         logger.info(' [*] Waiting for Accounting events...')
         channel.basic_consume(queue=queue_name, on_message_callback=callback)
         channel.basic_consume(queue=queue_sales, on_message_callback=callback)
+        channel.basic_consume(queue=queue_purchase, on_message_callback=callback)
         channel.start_consuming()
 
     def process_sale(self, data):
@@ -67,6 +81,8 @@ class Command(BaseCommand):
         # 2. Journal Entry
         entry = JournalEntry.objects.create(
             company_uuid=company_uuid,
+            wing_uuid=data.get('wing_uuid'),
+            voucher_type='receipt',
             date=timezone.now().date(),
             reference=f"INV-{order_number}",
             description=f"POS Sale: {order_number}",
@@ -109,6 +125,7 @@ class Command(BaseCommand):
         # 2. Create Journal Entry
         entry = JournalEntry.objects.create(
             company_uuid=company_uuid,
+            voucher_type='payment',
             date=timezone.now().date(),
             reference=f"PAYAP-{payslip_id[:8]}",
             description=f"Payroll Automation: {period}",
@@ -152,3 +169,129 @@ class Command(BaseCommand):
                 is_active=True
             )
         return account
+
+    def process_purchase_receipt(self, data):
+        company_uuid = data['company_uuid']
+        wing_uuid = data.get('wing_uuid')
+        total_amount = Decimal(str(data['total_amount']))
+        reference = data['reference']
+        
+        logger.info(f"Processing Purchase Receipt Journal: {reference} for {total_amount}")
+        
+        # 1. Accounts
+        inventory_account = self.get_or_create_account(company_uuid, "Inventory Stock", "asset", "1005")
+        ap_account = self.get_or_create_account(company_uuid, "Accounts Payable", "liability", "2005")
+        
+        # 2. Journal Entry
+        entry = JournalEntry.objects.create(
+            company_uuid=company_uuid,
+            wing_uuid=wing_uuid,
+            voucher_type='journal',
+            date=timezone.now().date(),
+            reference=f"PRC-{reference}",
+            description=f"Purchase Receipt: {reference}",
+            total_debit=total_amount,
+            total_credit=total_amount,
+            is_posted=True
+        )
+
+        # 3. Items (Debit Inventory, Credit AP)
+        JournalItem.objects.create(
+            entry=entry,
+            account=inventory_account,
+            debit=total_amount,
+            credit=0,
+            description="Stock Received"
+        )
+        JournalItem.objects.create(
+            entry=entry,
+            account=ap_account,
+            debit=0,
+            credit=total_amount,
+            description="Accounts Payable Liability"
+        )
+        logger.info(f"✅ Purchase Receipt Journal Created: {entry.reference}")
+
+    def process_purchase_payment(self, data):
+        company_uuid = data['company_uuid']
+        wing_uuid = data.get('wing_uuid')
+        amount = Decimal(str(data['amount']))
+        reference = data['reference']
+        
+        logger.info(f"Processing Purchase Payment Journal: {reference} for {amount}")
+        
+        # 1. Accounts
+        ap_account = self.get_or_create_account(company_uuid, "Accounts Payable", "liability", "2005")
+        cash_account = self.get_or_create_account(company_uuid, "Cash on Hand", "asset", "1001")
+        
+        # 2. Journal Entry
+        entry = JournalEntry.objects.create(
+            company_uuid=company_uuid,
+            wing_uuid=wing_uuid,
+            voucher_type='payment',
+            date=timezone.now().date(),
+            reference=f"PPAY-{reference}",
+            description=f"Payment for PO: {reference}",
+            total_debit=amount,
+            total_credit=amount,
+            is_posted=True
+        )
+
+        # 3. Items (Debit AP, Credit Cash)
+        JournalItem.objects.create(
+            entry=entry,
+            account=ap_account,
+            debit=amount,
+            credit=0,
+            description="Payment to Vendor"
+        )
+        JournalItem.objects.create(
+            entry=entry,
+            account=cash_account,
+            debit=0,
+            credit=amount,
+            description="Cash Payment"
+        )
+        logger.info(f"✅ Purchase Payment Journal Created: {entry.reference}")
+
+    def process_pos_return(self, data):
+        company_uuid = data['company_uuid']
+        wing_uuid = data.get('wing_uuid')
+        refund_amount = Decimal(str(data['refund_amount']))
+        order_number = data['order_number']
+        
+        logger.info(f"Processing POS Return Journal: {order_number} for {refund_amount}")
+        
+        # 1. Accounts
+        sales_account = self.get_or_create_account(company_uuid, "Sales Revenue", "income", "4001")
+        cash_account = self.get_or_create_account(company_uuid, "Cash on Hand", "asset", "1001")
+        
+        # 2. Journal Entry
+        entry = JournalEntry.objects.create(
+            company_uuid=company_uuid,
+            wing_uuid=wing_uuid,
+            voucher_type='payment',
+            date=timezone.now().date(),
+            reference=f"RET-{order_number}",
+            description=f"POS Return: {order_number}",
+            total_debit=refund_amount,
+            total_credit=refund_amount,
+            is_posted=True
+        )
+
+        # 3. Items (Debit Revenue/Returns, Credit Cash)
+        JournalItem.objects.create(
+            entry=entry,
+            account=sales_account,
+            debit=refund_amount,
+            credit=0,
+            description="Sales Return/Refund"
+        )
+        JournalItem.objects.create(
+            entry=entry,
+            account=cash_account,
+            debit=0,
+            credit=refund_amount,
+            description="Cash Refund"
+        )
+        logger.info(f"✅ POS Return Journal Created: {entry.reference}")

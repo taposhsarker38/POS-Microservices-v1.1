@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 const kpiSchema = z.object({
   title: z.string().min(2, "Title is required"),
@@ -66,14 +67,13 @@ export function KPIForm({ initialData, onSuccess, onCancel }: KPIFormProps) {
     try {
       if (initialData) {
         await api.put(`/hrms/performance/kpis/${initialData.id}/`, values);
-        toast.success("KPI updated");
       } else {
         await api.post("/hrms/performance/kpis/", values);
-        toast.success("KPI created");
       }
+      handleApiSuccess(initialData ? "KPI updated" : "KPI created");
       onSuccess();
-    } catch (error) {
-      toast.error("Failed to save KPI");
+    } catch (error: any) {
+      handleApiError(error, form);
     }
   };
 

@@ -13,6 +13,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import api from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -114,37 +115,30 @@ export function OrganizationWizard({
           };
 
     try {
-      const res = await fetch(url, {
-        method: initialData ? "PATCH" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = initialData
+        ? await api.patch(`${endpoint}${initialData.id}/`, payload)
+        : await api.post(endpoint, payload);
 
-      if (res.ok) {
-        toast.success(
-          `${type} ${initialData ? "updated" : "created"} successfully!`
-        );
-        onOpenChange(false);
-        onSuccess();
-        setFormData({
-          name: "",
-          code: "",
-          address: "",
-          logo: "",
-          timezone: "UTC",
-          is_group: false,
-        });
-      } else {
-        const err = await res.json();
-        console.error("Wizard API Error:", err);
-        toast.error(err.detail || err.message || `Failed to create ${type}`);
-      }
-    } catch (error) {
-      console.error("Wizard Fetch Error:", error);
-      toast.error("Network error. Check console for details.");
+      toast.success(
+        `${type} ${initialData ? "updated" : "created"} successfully!`
+      );
+      onOpenChange(false);
+      onSuccess();
+      setFormData({
+        name: "",
+        code: "",
+        address: "",
+        logo: "",
+        timezone: "UTC",
+        is_group: false,
+      });
+    } catch (error: any) {
+      console.error("Wizard API Error:", error);
+      const detail =
+        error.response?.data?.detail ||
+        error.message ||
+        `Failed to ${initialData ? "update" : "create"} ${type}`;
+      toast.error(detail);
     } finally {
       setLoading(false);
     }

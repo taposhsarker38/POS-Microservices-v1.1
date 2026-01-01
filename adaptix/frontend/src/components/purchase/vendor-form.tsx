@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/api-handler";
 
 import {
   Dialog,
@@ -91,27 +92,9 @@ export const VendorForm: React.FC<VendorFormProps> = ({
         await api.post("/purchase/vendors/", values);
         toast.success("Vendor created successfully");
       }
-      onSuccess?.();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      const errorData = error.response?.data;
-      let errorMessage = "Something went wrong";
-
-      if (typeof errorData === "string") {
-        errorMessage = errorData;
-      } else if (errorData?.detail) {
-        errorMessage = errorData.detail;
-      } else if (errorData) {
-        // Handle common DRF field errors (e.g., { name: ["This field is required."] })
-        const firstKey = Object.keys(errorData)[0];
-        const firstError = errorData[firstKey];
-        errorMessage = Array.isArray(firstError)
-          ? `${firstKey}: ${firstError[0]}`
-          : `${firstKey}: ${firstError}`;
-      }
-
-      toast.error(errorMessage);
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }

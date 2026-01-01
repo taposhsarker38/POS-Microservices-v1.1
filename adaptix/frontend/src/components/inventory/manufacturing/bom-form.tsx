@@ -23,6 +23,7 @@ import {
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/api-handler";
 import { Plus, Trash2 } from "lucide-react";
 
 const bomSchema = z.object({
@@ -125,9 +126,9 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
         toast.success("BOM created");
       }
       onSuccess();
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save BOM");
+      onSuccess();
+    } catch (error: any) {
+      handleApiError(error, form);
     }
   };
 

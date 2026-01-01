@@ -7,6 +7,7 @@ import * as z from "zod";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 import {
   Dialog,
@@ -75,12 +76,11 @@ export const RoleForm: React.FC<RoleFormProps> = ({
 
       await method(url, values);
 
-      toast.success(initialData ? "Role updated" : "Role created");
+      handleApiSuccess(initialData ? "Role updated" : "Role created");
       router.refresh();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      toast.error("Something went wrong.");
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }

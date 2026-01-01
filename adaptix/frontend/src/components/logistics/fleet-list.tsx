@@ -81,9 +81,13 @@ function VehicleForm({
       await api.post("/logistics/vehicles/", values);
       toast.success("Vehicle added");
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to add vehicle");
+      const message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to add vehicle";
+      toast.error(message);
     }
   };
 

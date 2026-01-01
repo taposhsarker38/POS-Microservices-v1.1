@@ -2,9 +2,10 @@
 import json
 import os
 import pika
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from apps.ledger.models import JournalEntry, JournalItem, ChartOfAccount
+from apps.ledger.models import JournalEntry, JournalItem, ChartOfAccount, AccountGroup
 from django.db import transaction
 
 class Command(BaseCommand):
@@ -58,40 +59,57 @@ class Command(BaseCommand):
 
     def handle_pos_sale(self, payload):
         company_uuid = payload.get("company_uuid")
-        grand_total = float(payload.get("grand_total", 0))
+        grand_total = Decimal(payload.get("grand_total", 0))
         order_number = payload.get("order_number")
         
         with transaction.atomic():
             # Create Header
             entry = JournalEntry.objects.create(
                 company_uuid=company_uuid,
-                reference_number=order_number,
+                wing_uuid=payload.get("wing_uuid"),
+                reference=order_number,
                 description=f"Auto-generated entry for Sale {order_number}",
                 date=payload.get("created_at")[:10], # YYYY-MM-DD
-                is_posted=True
+                is_posted=True,
+                total_debit=grand_total,
+                total_credit=grand_total
             )
             
             # Simple Logic: 
             # Dr. Cash/Bank
             # Cr. Sales Revenue
             
-            # Find default accounts (or create generic ones if missing for now)
+            # Find or create Groups first
+            income_group, _ = AccountGroup.objects.get_or_create(
+                company_uuid=company_uuid,
+                group_type="income",
+                name="Revenue",
+                defaults={"code": "40"}
+            )
+            
+            asset_group, _ = AccountGroup.objects.get_or_create(
+                company_uuid=company_uuid,
+                group_type="asset",
+                name="Current Assets",
+                defaults={"code": "10"}
+            )
+
+            # Find default accounts
             sales_account, _ = ChartOfAccount.objects.get_or_create(
                 company_uuid=company_uuid,
                 code="4000",
-                defaults={"name": "Sales Revenue", "group_type": "income"}
+                defaults={"name": "Sales Revenue", "group": income_group}
             )
             
             cash_account, _ = ChartOfAccount.objects.get_or_create(
                 company_uuid=company_uuid,
                 code="1000",
-                defaults={"name": "Cash on Hand", "group_type": "asset"}
+                defaults={"name": "Cash on Hand", "group": asset_group}
             )
             
             # Debit Cash
             JournalItem.objects.create(
                 entry=entry,
-                company_uuid=company_uuid,
                 account=cash_account,
                 debit=grand_total,
                 credit=0,
@@ -101,7 +119,6 @@ class Command(BaseCommand):
             # Credit Sales
             JournalItem.objects.create(
                 entry=entry,
-                company_uuid=company_uuid,
                 account=sales_account,
                 debit=0,
                 credit=grand_total,
@@ -110,7 +127,7 @@ class Command(BaseCommand):
 
     def handle_asset_depreciation(self, payload):
         company_uuid = payload.get("company_uuid")
-        amount = float(payload.get("amount", 0))
+        amount = Decimal(payload.get("amount", 0))
         asset_name = payload.get("asset_name")
         date = payload.get("date")
         
@@ -118,32 +135,45 @@ class Command(BaseCommand):
             # Create Header
             entry = JournalEntry.objects.create(
                 company_uuid=company_uuid,
-                reference_number=f"DEP-{payload.get('schedule_id')}",
+                wing_uuid=payload.get("wing_uuid"),
+                reference=f"DEP-{payload.get('schedule_id')}",
                 description=f"Depreciation for {asset_name}",
                 date=date,
-                is_posted=True
+                is_posted=True,
+                total_debit=amount,
+                total_credit=amount
             )
             
-            # Simple Logic: 
-            # Dr. Depreciation Expense (Expense)
-            # Cr. Accumulated Depreciation (Contra-Asset or Liability)
+            # Find or create Groups
+            expense_group, _ = AccountGroup.objects.get_or_create(
+                company_uuid=company_uuid,
+                group_type="expense",
+                name="Operating Expenses",
+                defaults={"code": "60"}
+            )
+            
+            asset_group, _ = AccountGroup.objects.get_or_create(
+                company_uuid=company_uuid,
+                group_type="asset",
+                name="Fixed Assets",
+                defaults={"code": "15"}
+            )
             
             expense_account, _ = ChartOfAccount.objects.get_or_create(
                 company_uuid=company_uuid,
                 code="6000",
-                defaults={"name": "Depreciation Expense", "group_type": "expense"}
+                defaults={"name": "Depreciation Expense", "group": expense_group}
             )
             
             accumulated_account, _ = ChartOfAccount.objects.get_or_create(
                 company_uuid=company_uuid,
                 code="1500",
-                defaults={"name": "Accumulated Depreciation", "group_type": "asset"}
+                defaults={"name": "Accumulated Depreciation", "group": asset_group}
             )
             
             # Debit Expense
             JournalItem.objects.create(
                 entry=entry,
-                company_uuid=company_uuid,
                 account=expense_account,
                 debit=amount,
                 credit=0,
@@ -153,7 +183,6 @@ class Command(BaseCommand):
             # Credit Accumulated Depreciation
             JournalItem.objects.create(
                 entry=entry,
-                company_uuid=company_uuid,
                 account=accumulated_account,
                 debit=0,
                 credit=amount,

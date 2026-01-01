@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 const couponSchema = z.object({
   code: z.string().min(3, "Code must be at least 3 chars"),
@@ -86,15 +87,13 @@ export function CouponForm({
     try {
       if (initialData) {
         await api.put(`/promotion/coupons/${initialData.id}/`, values);
-        toast.success("Coupon updated");
       } else {
         await api.post("/promotion/coupons/", values);
-        toast.success("Coupon created");
       }
+      handleApiSuccess(initialData ? "Coupon updated" : "Coupon created");
       onSuccess();
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to save coupon");
+      handleApiError(error, form);
     }
   };
 

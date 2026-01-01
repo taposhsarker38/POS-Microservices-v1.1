@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 const reviewSchema = z.object({
   employee: z.string().min(1, "Employee is required"),
@@ -81,14 +82,13 @@ export function ReviewForm({
     try {
       if (initialData) {
         await api.put(`/hrms/performance/reviews/${initialData.id}/`, values);
-        toast.success("Review updated");
       } else {
         await api.post("/hrms/performance/reviews/", values);
-        toast.success("Review submitted");
       }
+      handleApiSuccess(initialData ? "Review updated" : "Review submitted");
       onSuccess();
-    } catch (error) {
-      toast.error("Failed to save review");
+    } catch (error: any) {
+      handleApiError(error, form);
     }
   };
 

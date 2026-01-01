@@ -73,9 +73,13 @@ function ShipmentForm({
       await api.post("/logistics/shipments/", values);
       toast.success("Shipment created");
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to create shipment");
+      const message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to create shipment";
+      toast.error(message);
     }
   };
 

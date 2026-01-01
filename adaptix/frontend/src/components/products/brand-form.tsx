@@ -7,6 +7,7 @@ import * as z from "zod";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 import {
   Dialog,
@@ -83,12 +84,11 @@ export const BrandForm: React.FC<BrandFormProps> = ({
       const method = initialData ? api.put : api.post;
       await method(url, values);
 
-      toast.success(initialData ? "Brand updated" : "Brand created");
+      handleApiSuccess(initialData ? "Brand updated" : "Brand created");
       router.refresh();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.response?.data?.detail || "Something went wrong.");
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }

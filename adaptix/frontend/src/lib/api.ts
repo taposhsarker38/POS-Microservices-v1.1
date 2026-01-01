@@ -3,8 +3,8 @@ import { db } from "./offline/OfflineStore";
 import { jwtDecode } from "jwt-decode";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") + "/" ||
-  "http://localhost:8101/api/";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  "http://localhost:8101/api";
 
 const api = axios.create({
   baseURL: API_URL,

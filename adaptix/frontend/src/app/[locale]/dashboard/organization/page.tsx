@@ -12,8 +12,10 @@ import {
   MoreVertical,
   PlusCircle,
   Settings2,
+  RefreshCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import api from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -81,19 +83,11 @@ export default function OrganizationHub() {
 
   const fetchTree = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/company/info/tree/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setTree(data);
-        // Initially expand the root
-        if (data.id) setExpandedNodes(new Set([data.id]));
-      }
+      setLoading(true);
+      const res = await api.get("/company/info/tree/");
+      const data = res.data;
+      setTree(data);
+      if (data.id) setExpandedNodes(new Set([data.id]));
     } catch (error) {
       toast.error("Failed to load organization tree");
     } finally {
@@ -304,15 +298,15 @@ function NodeView({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2"
-                onClick={() =>
-                  onAdd(
-                    node.type === "GROUP" ? "HOLDING" : "UNIT",
-                    node.id,
-                    node.name
-                  )
-                }
+                onClick={() => onAdd("HOLDING", node.id, node.name)}
               >
-                <PlusCircle className="h-4 w-4" /> Add Subsidiary
+                <Home className="h-4 w-4" /> Add Holding Group
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2"
+                onClick={() => onAdd("UNIT", node.id, node.name)}
+              >
+                <Building2 className="h-4 w-4" /> Add Business Unit
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="gap-2"

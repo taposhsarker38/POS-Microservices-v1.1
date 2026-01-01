@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2, Plus, UserPlus } from "lucide-react";
 import { VendorForm } from "@/components/purchase/vendor-form";
+import { handleApiError } from "@/lib/api-handler";
 
 import {
   Dialog,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const itemSchema = z.object({
   product_uuid: z.string().min(1, "Product is required"),
@@ -142,8 +144,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       router.refresh();
       onClose();
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.response?.data?.detail || "Something went wrong.");
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }
@@ -161,7 +162,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl w-[95vw] max-w-[95vw] h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Edit Purchase Order" : "Create Purchase Order"}
@@ -172,7 +173,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 flex-1 overflow-hidden flex flex-col"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="vendor"
@@ -286,19 +287,21 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
               </Button>
             </div>
 
-            <ScrollArea className="flex-1 border rounded-md p-4">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 border rounded-md p-2 sm:p-4">
+              <div className="space-y-6 sm:space-y-4">
                 {fields.map((field, index) => (
                   <div
                     key={field.id}
-                    className="flex gap-4 items-end border-b pb-4 last:border-0 last:pb-0"
+                    className="flex flex-col md:flex-row gap-3 md:gap-4 items-start md:items-end border-b pb-6 md:pb-4 last:border-0 last:pb-0"
                   >
                     <FormField
                       control={form.control}
                       name={`items.${index}.product_uuid`}
                       render={({ field }) => (
-                        <FormItem className="flex-1 min-w-[200px]">
-                          <FormLabel className={index !== 0 ? "sr-only" : ""}>
+                        <FormItem className="w-full md:flex-1">
+                          <FormLabel
+                            className={index !== 0 ? "md:sr-only" : ""}
+                          >
                             Product
                           </FormLabel>
                           <Select
@@ -308,7 +311,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Product" />
+                                <SelectValue placeholder="Select Product" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -324,45 +327,58 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field }) => (
-                        <FormItem className="w-[100px]">
-                          <FormLabel className={index !== 0 ? "sr-only" : ""}>
-                            Qty
-                          </FormLabel>
-                          <FormControl>
-                            <Input type="number" step="1" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.unit_cost`}
-                      render={({ field }) => (
-                        <FormItem className="w-[120px]">
-                          <FormLabel className={index !== 0 ? "sr-only" : ""}>
-                            Cost
-                          </FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="mb-0.5"
-                      onClick={() => remove(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    <div className="flex gap-3 w-full md:w-auto">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1 md:w-[100px]">
+                            <FormLabel
+                              className={index !== 0 ? "md:sr-only" : ""}
+                            >
+                              Qty
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="number" step="1" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.unit_cost`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1 md:w-[120px]">
+                            <FormLabel
+                              className={index !== 0 ? "md:sr-only" : ""}
+                            >
+                              Cost
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div
+                        className={cn(
+                          "flex items-end",
+                          index === 0 ? "h-[64px] md:h-auto" : ""
+                        )}
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

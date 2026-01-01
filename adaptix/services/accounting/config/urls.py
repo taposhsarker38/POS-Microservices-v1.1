@@ -16,7 +16,7 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     
     # App URLs
-    path('api/accounting/ledger/', include('apps.ledger.urls')),
+    path('api/accounting/', include('apps.ledger.urls')),
     path('api/accounting/tax/', include('apps.tax.urls')),
     path('metrics/', ExportToDjangoView, name='prometheus-metrics'),
 ]

@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 import {
   Popover,
   PopoverContent,
@@ -105,14 +106,13 @@ export function TaskForm({
 
       if (initialData) {
         await api.put(`/hrms/projects/tasks/${initialData.id}/`, payload);
-        toast.success("Task updated");
       } else {
         await api.post("/hrms/projects/tasks/", payload);
-        toast.success("Task created");
       }
+      handleApiSuccess(initialData ? "Task updated" : "Task created");
       onSuccess();
-    } catch (error) {
-      toast.error("Failed to save task");
+    } catch (error: any) {
+      handleApiError(error, form);
     }
   };
 

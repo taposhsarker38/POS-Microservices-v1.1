@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,29 +30,29 @@ import { Checkbox } from "@/components/ui/checkbox";
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
-  type: z.string().min(1, "Type is required"),
-  description: z.string().optional(),
-  is_active: z.boolean().default(true),
+  group_type: z.string().min(1, "Type is required"),
 });
 
 interface GroupFormProps {
   initialData?: any;
   onSuccess: () => void;
   onCancel: () => void;
+  companyId?: string;
 }
 
 const ACCOUNT_TYPES = [
-  { value: "ASSET", label: "Asset" },
-  { value: "LIABILITY", label: "Liability" },
-  { value: "EQUITY", label: "Equity" },
-  { value: "INCOME", label: "Income" },
-  { value: "EXPENSE", label: "Expense" },
+  { value: "asset", label: "Asset" },
+  { value: "liability", label: "Liability" },
+  { value: "equity", label: "Equity" },
+  { value: "income", label: "Income" },
+  { value: "expense", label: "Expense" },
 ];
 
 export function AccountGroupForm({
   initialData,
   onSuccess,
   onCancel,
+  companyId,
 }: GroupFormProps) {
   const [loading, setLoading] = useState(false);
 
@@ -60,26 +61,30 @@ export function AccountGroupForm({
     defaultValues: {
       name: initialData?.name || "",
       code: initialData?.code || "",
-      type: initialData?.type || "",
-      description: initialData?.description || "",
-      is_active: initialData?.is_active ?? true,
+      group_type: initialData?.group_type || "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true);
+      const payload = {
+        ...values,
+        company_uuid:
+          companyId ||
+          initialData?.company_uuid ||
+          "00000000-0000-0000-0000-000000000000",
+      };
+
       if (initialData) {
-        await api.patch(`/accounting/groups/${initialData.id}/`, values);
-        toast.success("Group updated");
+        await api.patch(`/accounting/groups/${initialData.id}/`, payload);
       } else {
-        await api.post("/accounting/groups/", values);
-        toast.success("Group created");
+        await api.post("/accounting/groups/", payload);
       }
+      handleApiSuccess(initialData ? "Group updated" : "Group created");
       onSuccess();
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save group");
+    } catch (error: any) {
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }
@@ -119,7 +124,7 @@ export function AccountGroupForm({
 
         <FormField
           control={form.control}
-          name="type"
+          name="group_type"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Account Type</FormLabel>
@@ -138,38 +143,6 @@ export function AccountGroupForm({
                 </SelectContent>
               </Select>
               <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="is_active"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Active Status</FormLabel>
-              </div>
             </FormItem>
           )}
         />

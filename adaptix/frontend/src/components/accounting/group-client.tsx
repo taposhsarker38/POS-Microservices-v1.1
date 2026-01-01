@@ -17,7 +17,23 @@ import { AccountGroupForm } from "./group-form";
 import { Badge } from "@/components/ui/badge";
 import { AlertModal } from "@/components/modals/alert-modal";
 
-export function AccountGroupClient() {
+export function AccountGroupClient({
+  wingId,
+  companyId,
+  creationCompanyId,
+  targetName,
+  entities = [],
+  startDate,
+  endDate,
+}: {
+  wingId?: string;
+  companyId?: string;
+  creationCompanyId?: string;
+  targetName?: string;
+  entities?: any[];
+  startDate?: string;
+  endDate?: string;
+}) {
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +45,12 @@ export function AccountGroupClient() {
 
   const fetchGroups = async () => {
     try {
-      const res = await api.get("/accounting/groups/");
+      const params = new URLSearchParams();
+      if (wingId) params.append("wing_uuid", wingId);
+      if (companyId) params.append("company_uuid", companyId);
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
+      const res = await api.get(`/accounting/groups/?${params.toString()}`);
       setGroups(res.data.results || res.data);
     } catch (e) {
       console.error(e);
@@ -41,7 +62,7 @@ export function AccountGroupClient() {
 
   useEffect(() => {
     fetchGroups();
-  }, []);
+  }, [wingId, companyId, startDate, endDate]);
 
   const openCreate = () => {
     setSelectedGroup(null);
@@ -89,21 +110,50 @@ export function AccountGroupClient() {
       header: "Name",
     },
     {
-      accessorKey: "type",
-      header: "Type",
-      cell: ({ row }) => <Badge variant="outline">{row.original.type}</Badge>,
+      accessorKey: "company_uuid",
+      header: "Entity / Unit",
+      cell: ({ row }) => {
+        const companyUuid = row.original.company_uuid;
+        if (
+          !companyUuid ||
+          companyUuid === "00000000-0000-0000-0000-000000000000"
+        ) {
+          return targetName || "Main Organization";
+        }
+        const entity = entities.find((e) => e.id === companyUuid);
+        return entity ? entity.name : companyUuid;
+      },
     },
     {
-      accessorKey: "is_active",
-      header: "Status",
-      cell: ({ row }) =>
-        row.original.is_active ? (
-          <Badge variant="default" className="bg-green-600">
-            Active
-          </Badge>
-        ) : (
-          <Badge variant="destructive">Inactive</Badge>
-        ),
+      accessorKey: "group_type",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="capitalize">
+          {row.original.group_type}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.created_at
+            ? new Date(row.original.created_at).toLocaleDateString()
+            : "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "updated_at",
+      header: "Updated",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.updated_at
+            ? new Date(row.original.updated_at).toLocaleDateString()
+            : "-"}
+        </span>
+      ),
     },
     {
       id: "actions",
@@ -165,6 +215,7 @@ export function AccountGroupClient() {
             initialData={selectedGroup}
             onSuccess={handleSuccess}
             onCancel={() => setIsDialogOpen(false)}
+            companyId={creationCompanyId}
           />
         </DialogContent>
       </Dialog>

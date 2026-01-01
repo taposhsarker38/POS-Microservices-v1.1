@@ -23,6 +23,7 @@ import {
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 import { Trash2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 const journalSchema = z.object({
   date: z.string(),
   reference: z.string().optional(),
+  wing_uuid: z.string().min(1, "Branch is required"),
   description: z.string().optional(),
   items: z
     .array(
@@ -58,14 +60,26 @@ const journalSchema = z.object({
 
 type JournalFormValues = z.infer<typeof journalSchema>;
 
-export function JournalEntryForm({ onSuccess }: { onSuccess?: () => void }) {
+export function JournalEntryForm({
+  onSuccess,
+  initialCompanyId,
+  initialWingId,
+  entities = [],
+}: {
+  onSuccess?: () => void;
+  initialCompanyId?: string;
+  initialWingId?: string;
+  entities?: any[];
+}) {
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [wings, setWings] = useState<any[]>([]);
 
   const form = useForm<JournalFormValues>({
     resolver: zodResolver(journalSchema) as any,
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
       reference: "",
+      wing_uuid: initialWingId || "",
       description: "",
       items: [
         { account: "", debit: 0, credit: 0, description: "" },
@@ -74,24 +88,49 @@ export function JournalEntryForm({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
 
+  useEffect(() => {
+    if (initialWingId) {
+      form.setValue("wing_uuid", initialWingId);
+    }
+  }, [initialWingId, form]);
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
   useEffect(() => {
-    api.get("/accounting/accounts/").then((res) => {
-      setAccounts(res.data.results || res.data);
-    });
-  }, []);
+    const fetchContextualData = async () => {
+      const params = new URLSearchParams();
+      if (initialCompanyId) params.append("company_uuid", initialCompanyId);
+
+      api.get(`/accounting/accounts/?${params.toString()}`).then((res) => {
+        setAccounts(res.data.results || res.data);
+      });
+
+      if (entities.length > 0) {
+        let filteredWings = entities.filter((e) => e.type === "branch");
+        if (initialCompanyId) {
+          filteredWings = filteredWings.filter(
+            (w) => w.company_id === initialCompanyId
+          );
+        }
+        setWings(filteredWings);
+      } else {
+        api.get("/company/wings/").then((res) => {
+          setWings(res.data.results || res.data);
+        });
+      }
+    };
+    fetchContextualData();
+  }, [initialCompanyId, entities]);
 
   const onSubmit = async (values: JournalFormValues) => {
     try {
       await api.post("/accounting/journals/", {
         ...values,
-        company_uuid: "dummy",
       });
-      toast.success("Transaction Posted");
+      handleApiSuccess("Transaction Posted");
       form.reset({
         date: new Date().toISOString().split("T")[0],
         reference: "",
@@ -103,8 +142,7 @@ export function JournalEntryForm({ onSuccess }: { onSuccess?: () => void }) {
       });
       onSuccess?.();
     } catch (e: any) {
-      console.error(e);
-      toast.error("Failed to post transaction");
+      handleApiError(e, form);
     }
   };
 
@@ -142,6 +180,33 @@ export function JournalEntryForm({ onSuccess }: { onSuccess?: () => void }) {
                 <FormControl>
                   <Input placeholder="INV-001" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="wing_uuid"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Branch / Unit</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Branch" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {wings.map((wing) => (
+                      <SelectItem key={wing.id} value={wing.id}>
+                        {wing.name} ({wing.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 const promotionSchema = z.object({
   employee: z.string().min(1, "Employee is required"),
@@ -93,14 +94,15 @@ export function PromotionForm({
           `/hrms/performance/promotions/${initialData.id}/`,
           values
         );
-        toast.success("Promotion updated");
       } else {
         await api.post("/hrms/performance/promotions/", values);
-        toast.success("Promotion recorded");
       }
+      handleApiSuccess(
+        initialData ? "Promotion updated" : "Promotion recorded"
+      );
       onSuccess();
-    } catch (error) {
-      toast.error("Failed to save promotion");
+    } catch (error: any) {
+      handleApiError(error, form);
     }
   };
 

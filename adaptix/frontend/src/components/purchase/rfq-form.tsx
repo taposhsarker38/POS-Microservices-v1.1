@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/api-handler";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -112,20 +113,10 @@ export const RFQForm: React.FC<RFQFormProps> = ({
       onSuccess();
       onClose();
       form.reset();
+      onClose();
+      form.reset();
     } catch (error: any) {
-      console.error("RFQ Creation Error:", error.response?.data);
-      const errorMessage =
-        error.response?.data?.detail || "Failed to create RFQ";
-      toast.error(errorMessage);
-
-      // If there are specific field errors, show them
-      if (error.response?.data) {
-        Object.entries(error.response.data).forEach(([key, value]) => {
-          if (key !== "detail" && Array.isArray(value)) {
-            value.forEach((msg: string) => toast.error(`${key}: ${msg}`));
-          }
-        });
-      }
+      handleApiError(error, form);
     } finally {
       setLoading(false);
     }

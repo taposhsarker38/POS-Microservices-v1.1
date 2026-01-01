@@ -16,7 +16,23 @@ import { ColumnDef } from "@tanstack/react-table";
 import { AccountForm } from "./account-form";
 import { AlertModal } from "@/components/modals/alert-modal";
 
-export function ChartOfAccountClient() {
+export function ChartOfAccountClient({
+  wingId,
+  companyId,
+  creationCompanyId,
+  targetName,
+  entities = [],
+  startDate,
+  endDate,
+}: {
+  wingId?: string;
+  companyId?: string;
+  creationCompanyId?: string;
+  targetName?: string;
+  entities?: any[];
+  startDate?: string;
+  endDate?: string;
+}) {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<any[]>([]);
@@ -29,7 +45,13 @@ export function ChartOfAccountClient() {
 
   const fetchAccounts = async () => {
     try {
-      const res = await api.get("/accounting/accounts/");
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (wingId) params.append("wing_uuid", wingId);
+      if (companyId) params.append("company_uuid", companyId);
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
+      const res = await api.get(`/accounting/accounts/?${params.toString()}`);
       setAccounts(res.data.results || res.data);
     } catch (e) {
       console.error(e);
@@ -51,7 +73,7 @@ export function ChartOfAccountClient() {
   useEffect(() => {
     fetchAccounts();
     fetchGroups();
-  }, []);
+  }, [wingId, companyId, startDate, endDate]);
 
   const openCreate = () => {
     setSelectedAccount(null);
@@ -99,6 +121,21 @@ export function ChartOfAccountClient() {
       header: "Name",
     },
     {
+      accessorKey: "company_uuid",
+      header: "Entity / Unit",
+      cell: ({ row }) => {
+        const companyUuid = row.original.company_uuid;
+        if (
+          !companyUuid ||
+          companyUuid === "00000000-0000-0000-0000-000000000000"
+        ) {
+          return targetName || "Main Organization";
+        }
+        const entity = entities.find((e) => e.id === companyUuid);
+        return entity ? entity.name : companyUuid;
+      },
+    },
+    {
       accessorKey: "group",
       header: "Group",
       cell: ({ row }) => {
@@ -111,6 +148,28 @@ export function ChartOfAccountClient() {
       header: "Balance",
       cell: ({ row }) => (
         <span className="font-mono">{row.original.current_balance}</span>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.created_at
+            ? new Date(row.original.created_at).toLocaleDateString()
+            : "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "updated_at",
+      header: "Updated",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.updated_at
+            ? new Date(row.original.updated_at).toLocaleDateString()
+            : "-"}
+        </span>
       ),
     },
     {
@@ -172,9 +231,16 @@ export function ChartOfAccountClient() {
           </DialogHeader>
           <AccountForm
             initialData={selectedAccount}
-            groups={groups}
-            onSuccess={handleSuccess}
+            onSuccess={() => {
+              setIsDialogOpen(false);
+              fetchAccounts();
+            }}
             onCancel={() => setIsDialogOpen(false)}
+            groups={groups}
+            companyId={creationCompanyId}
+            wingId={wingId}
+            targetName={targetName}
+            entities={entities}
           />
         </DialogContent>
       </Dialog>

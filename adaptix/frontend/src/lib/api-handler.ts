@@ -62,10 +62,17 @@ export const handleApiError = (
         toast.error(`${firstKey}: ${message}`);
       }
     }
+  } else if (error.response?.status === 401) {
+    toast.error("Session expired. Please login again.");
   } else if (error.message === "Network Error") {
     toast.error("Network error. Please check your connection.");
   } else {
-    toast.error(defaultMessage);
+    // If we have a string response from backend (e.g. 500 HTML or Kong message)
+    const customMsg =
+      typeof error.response?.data === "string"
+        ? error.response.data.substring(0, 100)
+        : defaultMessage;
+    toast.error(customMsg);
   }
 };
 

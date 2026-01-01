@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
 
 const assetSchema = z.object({
   name: z.string().min(2, "Name required"),
@@ -94,15 +95,13 @@ export function AssetForm({
 
       if (initialData) {
         await api.put(`/asset/assets/${initialData.id}/`, payload);
-        toast.success("Asset updated");
       } else {
         await api.post("/asset/assets/", payload);
-        toast.success("Asset created");
       }
+      handleApiSuccess(initialData ? "Asset updated" : "Asset created");
       onSuccess();
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to save asset");
+      handleApiError(error, form);
     }
   };
 

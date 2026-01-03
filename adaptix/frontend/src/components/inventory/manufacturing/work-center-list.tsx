@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
-import axiosInstance from "@/lib/axios";
+import api from "@/lib/api";
 
 export function WorkCenterList() {
   const queryClient = useQueryClient();
@@ -33,7 +33,7 @@ export function WorkCenterList() {
   // Create Mutation
   const createMutation = useMutation({
     mutationFn: (data: Partial<WorkCenter>) =>
-      axiosInstance.post("/manufacturing/work-centers/", data),
+      api.post("/inventory/manufacturing/work-centers/", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mfg", "work-centers"] });
       setIsDialogOpen(false);

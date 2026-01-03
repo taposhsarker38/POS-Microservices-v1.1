@@ -10,7 +10,7 @@ class CompanySerializer(serializers.ModelSerializer):
     uuid = serializers.UUIDField(source='id', read_only=True)
     class Meta:
         model = Company
-        fields = ["id", "uuid", "name", "code", "timezone", "parent", "is_group", "entity_type", "custom_domain", "address", "logo"]
+        fields = ["id", "uuid", "auth_company_uuid", "name", "code", "timezone", "parent", "is_group", "entity_type", "custom_domain", "address", "logo"]
         read_only_fields = ["id"]
 
 
@@ -28,7 +28,7 @@ class OrganizationTreeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ["id", "name", "code", "is_group", "type", "address", "logo", "subsidiaries", "wings"]
+        fields = ["id", "auth_company_uuid", "name", "code", "is_group", "type", "address", "logo", "subsidiaries", "wings"]
 
     def get_subsidiaries(self, obj):
         subs = obj.subsidiaries.all()

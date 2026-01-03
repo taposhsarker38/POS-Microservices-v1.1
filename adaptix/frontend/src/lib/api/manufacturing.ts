@@ -1,4 +1,4 @@
-import axiosInstance from "@/lib/axios";
+import api from "@/lib/api";
 
 export interface WorkCenter {
   id: number;
@@ -47,26 +47,24 @@ export interface ProductionOrder {
 export const manufacturingApi = {
   // Work Centers
   getWorkCenters: async () => {
-    const response = await axiosInstance.get<any>(
-      "/manufacturing/work-centers/"
-    );
+    const response = await api.get<any>("/manufacturing/work-centers/");
     return response.data.results || response.data;
   },
 
   // BOMs
   getBOMs: async () => {
-    const response = await axiosInstance.get<any>("/manufacturing/boms/");
+    const response = await api.get<any>("/manufacturing/boms/");
     return response.data.results || response.data;
   },
 
   // Production Orders
   getOrders: async () => {
-    const response = await axiosInstance.get<any>("/manufacturing/orders/");
+    const response = await api.get<any>("/manufacturing/orders/");
     return response.data.results || response.data;
   },
 
   createOrder: async (data: Partial<ProductionOrder>) => {
-    const response = await axiosInstance.post<ProductionOrder>(
+    const response = await api.post<ProductionOrder>(
       "/manufacturing/orders/",
       data
     );
@@ -74,7 +72,7 @@ export const manufacturingApi = {
   },
 
   updateOrder: async (id: number, data: Partial<ProductionOrder>) => {
-    const response = await axiosInstance.patch<ProductionOrder>(
+    const response = await api.patch<ProductionOrder>(
       `/manufacturing/orders/${id}/`,
       data
     );
@@ -86,7 +84,7 @@ export const manufacturingApi = {
     quantity?: number;
     order_id?: number;
   }) => {
-    const response = await axiosInstance.post<{
+    const response = await api.post<{
       status: "AVAILABLE" | "SHORTAGE";
       can_produce: boolean;
       shortages?: {

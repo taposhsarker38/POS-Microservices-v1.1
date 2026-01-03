@@ -28,33 +28,33 @@ def auth_client(api_client, user, company_uuid, settings):
     """Authenticated API Client with Company Context."""
     settings.DEBUG = True
     
-    # Disable AuditMiddleware
-    new_middleware = [
+    # Disable problematic middleware in tests
+    settings.MIDDLEWARE = [
         m for m in settings.MIDDLEWARE 
-        if m != 'adaptix_core.middleware.AuditMiddleware'
+        if m not in [
+            'adaptix_core.middleware.AuditMiddleware',
+            'adaptix_core.middleware.JWTCompanyMiddleware'
+        ]
     ]
-    settings.MIDDLEWARE = new_middleware
 
     api_client.force_authenticate(user=user)
+    # We still send the header because the View might look for it if middleware is disabled
     api_client.credentials(HTTP_X_COMPANY_UUID=company_uuid)
     return api_client
 
 @pytest.fixture
 def mock_permissions():
     """Bypass permission checks. Not autouse."""
-    with patch('apps.sales.permissions.HasPermission.has_permission', return_value=True):
+    with patch('adaptix_core.permissions.HasPermission.has_permission', return_value=True):
         yield
 
 @pytest.fixture(autouse=True)
 def mock_kombu():
     """Mock Kombu to prevent RabbitMQ connection attempts."""
-    # Patch where it is imported in views.py
-    # Since imports happen inside perform_create, patching modules should work.
     with patch('kombu.Connection') as mock_conn, \
          patch('kombu.Producer') as mock_prod, \
          patch('kombu.Exchange') as mock_exch:
         
-        # Make the connection mock usable
         instance = mock_conn.return_value
         instance.connect.return_value = None
         instance.release.return_value = None

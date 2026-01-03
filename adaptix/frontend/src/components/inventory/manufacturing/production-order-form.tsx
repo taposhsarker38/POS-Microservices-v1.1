@@ -119,10 +119,23 @@ export function ProductionOrderForm({
     }
   };
 
+  const onSubmit = async (values: POFormValues) => {
+    try {
+      if (initialData?.id) {
+        await api.put(
+          `/inventory/manufacturing/orders/${initialData.id}/`,
+          values
+        );
+        toast.success("Production Order updated");
+      } else {
+        await api.post("/inventory/manufacturing/orders/", values);
+        toast.success("Production Order created");
+      }
       onSuccess();
     } catch (error: any) {
-      handleApiError(error, form);
+      toast.error(error.response?.data?.detail || "Failed to save order");
     }
+  };
 
   return (
     <Form {...form}>

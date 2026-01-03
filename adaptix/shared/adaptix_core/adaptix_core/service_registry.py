@@ -60,12 +60,7 @@ class ServiceRegistry:
     @classmethod
     def get_api_url(cls, service_name: str) -> str:
         """Returns the full API base URL (e.g., http://inventory:8000/api/inventory)"""
-        base = cls.get_url(service_name)
-        # Assuming standard /api/{service_name} convention, but some might differ.
-        # For now, let's just return base + /api if that's the standard.
-        # Actually, standard seems to be /api/{service_name} based on kong.yml routes, 
-        # BUT services generally mount at /api or similar or strictly handled by Kong.
-        # When communicating inter-service *directly* (bypassing Kong), we hit the container port 8000.
-        # Most views are at /api/{service}/... inside the container too?
-        # Let's verify standard. POS uses http://inventory:8000/api
-        return f"{base}/api"
+        service_key = service_name.lower()
+        base = cls.get_url(service_key)
+        # Standard convention: /api/{service_name}
+        return f"{base}/api/{service_key}"

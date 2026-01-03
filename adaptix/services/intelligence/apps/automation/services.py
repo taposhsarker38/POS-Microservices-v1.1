@@ -59,7 +59,7 @@ class ActionRunner:
         """
         from adaptix_core.service_registry import ServiceRegistry
         
-        purchase_url = f"{ServiceRegistry.get_api_url('purchase')}/api/purchase/rfqs/"
+        purchase_url = f"{ServiceRegistry.get_api_url('purchase')}/rfqs/"
         
         # Product info should be in context (from inventory stock event)
         product_uuid = context.get('product_uuid')

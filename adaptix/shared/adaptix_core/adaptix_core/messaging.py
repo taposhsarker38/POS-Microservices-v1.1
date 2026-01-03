@@ -22,10 +22,12 @@ def publish_event(exchange, routing_key, payload):
         
         channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
         
+        from django.core.serializers.json import DjangoJSONEncoder
+        
         channel.basic_publish(
             exchange=exchange,
             routing_key=routing_key,
-            body=json.dumps(payload),
+            body=json.dumps(payload, cls=DjangoJSONEncoder),
             properties=pika.BasicProperties(
                 delivery_mode=2,  # make message persistent
             )

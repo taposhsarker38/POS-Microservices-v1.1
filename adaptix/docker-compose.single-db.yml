@@ -181,6 +181,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=company
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/company:/app
@@ -222,6 +223,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=product
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/product:/app
@@ -263,6 +265,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=pos
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/pos:/app
@@ -303,6 +306,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=inventory-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/inventory:/app
     - ./shared:/shared
@@ -337,6 +341,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=inventory
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/inventory:/app
@@ -378,6 +383,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=purchase
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/purchase:/app
@@ -419,6 +425,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=hrms
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/hrms:/app
@@ -460,6 +467,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=accounting
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/accounting:/app
@@ -498,6 +506,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=accounting-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/accounting:/app
     - ./shared:/shared
@@ -532,6 +541,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=customer
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/customer:/app
@@ -570,6 +580,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=customer-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/customer:/app
@@ -605,6 +616,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=asset
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/asset:/app
@@ -646,6 +658,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=promotion
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/promotion:/app
@@ -687,6 +700,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=payment
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/payment:/app
@@ -728,6 +742,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=notification
+    - PYTHONPATH=/app:/shared/adaptix_core
     - DEFAULT_FROM_EMAIL=MyApp <info@expotechglobal.com>
     - EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
     - EMAIL_HOST=sg2plzcpnl476824.prod.sin2.secureserver.net
@@ -776,6 +791,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=notification-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     - DEFAULT_FROM_EMAIL=MyApp <info@expotechglobal.com>
     - EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
     - EMAIL_HOST=sg2plzcpnl476824.prod.sin2.secureserver.net
@@ -819,6 +835,7 @@ services:
     - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=reporting
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/reporting:/app
@@ -864,6 +881,7 @@ services:
     - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=reporting-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/reporting:/app
@@ -902,6 +920,7 @@ services:
     - REDIS_URL=redis://redis:6379/0
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=ai
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/intelligence:/app
@@ -997,6 +1016,7 @@ services:
     - JWT_ISSUER=auth-service
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=quality
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/quality:/app
     - ./keys:/keys:ro
@@ -1040,6 +1060,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=logistics
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/logistics:/app
     - ./keys:/keys:ro
@@ -1112,6 +1133,7 @@ services:
     - CELERY_BROKER_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - REDIS_URL=redis://redis:6379/0
     - SERVICE_NAME=ai-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/intelligence:/app
     - ./shared:/shared
@@ -1145,6 +1167,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=manufacturing-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/manufacturing:/app
     - ./shared:/shared
@@ -1179,6 +1202,7 @@ services:
     - JWT_ALGORITHM=RS256
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=manufacturing
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./keys:/keys:ro
     - ./services/manufacturing:/app
@@ -1219,6 +1243,7 @@ services:
     - SECRET_KEY=${SECRET_KEY:-your-secret-key}
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=quality-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
     volumes:
     - ./services/quality:/app
     - ./shared:/shared

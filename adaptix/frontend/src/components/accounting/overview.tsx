@@ -55,9 +55,13 @@ interface OverviewData {
 export function AccountingOverview({
   companyId,
   wingId,
+  startDate,
+  endDate,
 }: {
   companyId?: string;
   wingId?: string;
+  startDate?: string;
+  endDate?: string;
 }) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +71,8 @@ export function AccountingOverview({
     const params = new URLSearchParams();
     if (companyId) params.append("company_uuid", companyId);
     if (wingId) params.append("wing_uuid", wingId);
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
 
     api
       .get(`/accounting/dashboard/?${params.toString()}`)
@@ -78,7 +84,7 @@ export function AccountingOverview({
         console.error("Dashboard Fetch Error:", err);
         setLoading(false);
       });
-  }, [companyId, wingId]);
+  }, [companyId, wingId, startDate, endDate]);
 
   if (loading) {
     return (
@@ -143,7 +149,7 @@ export function AccountingOverview({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight">
-              ${parseFloat(data.cash_balance).toLocaleString()}
+              ৳ {parseFloat(data.cash_balance).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
               <span className="text-green-500 font-medium">Liquid Assets</span>
@@ -160,10 +166,12 @@ export function AccountingOverview({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight">
-              ${totalRevenue.toLocaleString()}
+              ৳ {totalRevenue.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Last 6 Months cumulative
+              {startDate
+                ? `Period: ${startDate} to ${endDate || "today"}`
+                : "Last 6 Months cumulative"}
             </p>
           </CardContent>
         </Card>
@@ -177,10 +185,12 @@ export function AccountingOverview({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight">
-              ${totalExpense.toLocaleString()}
+              ৳ {totalExpense.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Last 6 Months cumulative
+              {startDate
+                ? `Period: ${startDate} to ${endDate || "today"}`
+                : "Last 6 Months cumulative"}
             </p>
           </CardContent>
         </Card>
@@ -206,7 +216,7 @@ export function AccountingOverview({
                 netProfit < 0 ? "text-red-500" : ""
               }`}
             >
-              ${netProfit.toLocaleString()}
+              ৳ {netProfit.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {netProfit >= 0 ? "Net Profit" : "Net Loss"}
@@ -272,7 +282,7 @@ export function AccountingOverview({
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `$${value}`}
+                    tickFormatter={(value) => `৳${value}`}
                   />
                   <Tooltip
                     contentStyle={{

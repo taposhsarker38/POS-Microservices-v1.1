@@ -58,6 +58,25 @@ class ChartOfAccount(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+class AccountingPeriod(models.Model):
+    """
+    Defines when a period is open or closed for transactions.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company_uuid = models.UUIDField(db_index=True)
+    name = models.CharField(max_length=50) # e.g. "January 2026"
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_closed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return self.name
+
 class JournalEntry(models.Model):
     """
     Head of a transaction. e.g. "Invoice #123"
@@ -68,10 +87,18 @@ class JournalEntry(models.Model):
         ("contra", "Contra"),
         ("journal", "Journal"),
     )
+    SOURCE_CHOICES = (
+        ("manual", "Manual Entry"),
+        ("pos", "Point of Sale"),
+        ("purchase", "Purchase"),
+        ("inventory", "Inventory"),
+        ("other", "Other"),
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company_uuid = models.UUIDField(db_index=True)
     wing_uuid = models.UUIDField(db_index=True, null=True, blank=True)
     voucher_type = models.CharField(max_length=20, choices=VOUCHER_TYPES, default="journal", db_index=True)
+    source = models.CharField(max_length=50, choices=SOURCE_CHOICES, default="manual", db_index=True)
     date = models.DateField()
     reference = models.CharField(max_length=100, blank=True) # e.g. Invoice Number
     description = models.TextField(blank=True)

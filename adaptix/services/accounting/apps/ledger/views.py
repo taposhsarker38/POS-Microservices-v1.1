@@ -8,6 +8,7 @@ from .serializers import (
     JournalEntrySerializer, SystemAccountSerializer
 )
 from .report_services import ReportService
+from .utils import get_tenant_unit_ids
 
 from django.db.models import Sum, Q, DecimalField, F
 from django.db.models.functions import Coalesce, TruncMonth
@@ -28,6 +29,14 @@ class AccountGroupViewSet(ProtectedModelViewSet):
     queryset = AccountGroup.objects.all()
     serializer_class = AccountGroupSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_uuid = self.request.query_params.get('company_uuid')
+        if company_uuid:
+            company_ids = get_tenant_unit_ids(company_uuid)
+            qs = qs.filter(company_uuid__in=company_ids)
+        return qs
+
 class ChartOfAccountViewSet(ProtectedModelViewSet):
     queryset = ChartOfAccount.objects.all()
     serializer_class = ChartOfAccountSerializer
@@ -38,9 +47,11 @@ class ChartOfAccountViewSet(ProtectedModelViewSet):
         wing_uuid = self.request.query_params.get('wing_uuid')
         
         if company_uuid:
-            qs = qs.filter(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            qs = qs.filter(company_uuid__in=company_ids)
             
         if wing_uuid:
+            qs = qs.filter(wing_uuid=wing_uuid)
             # Annotate with branch-specific debits and credits
             qs = qs.annotate(
                 branch_debit=Coalesce(Sum('journal_items__debit', filter=Q(journal_items__entry__wing_uuid=wing_uuid)), Decimal('0'), output_field=DecimalField()),
@@ -96,7 +107,8 @@ class JournalEntryViewSet(ProtectedModelViewSet):
         voucher_type = self.request.query_params.get('voucher_type')
         
         if company_uuid:
-            qs = qs.filter(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            qs = qs.filter(company_uuid__in=company_ids)
             
         if wing_uuid:
             qs = qs.filter(wing_uuid=wing_uuid)
@@ -131,7 +143,8 @@ class BalanceSheetView(APIView):
         )
 
         # Consolidated report logic
-        groups = AccountGroup.objects.filter(parent=None, company_uuid=company_uuid)
+        company_ids = get_tenant_unit_ids(company_uuid)
+        groups = AccountGroup.objects.filter(parent=None, company_uuid__in=company_ids)
 
         data = {
             "asset": {"groups": [], "total": Decimal('0')},
@@ -198,9 +211,10 @@ class ProfitLossView(APIView):
         )
 
         # Consolidated report logic
+        company_ids = get_tenant_unit_ids(company_uuid)
         groups = AccountGroup.objects.filter(
             parent=None, 
-            company_uuid=company_uuid
+            company_uuid__in=company_ids
         ).filter(Q(group_type__iexact="income") | Q(group_type__iexact="expense"))
 
         data = {
@@ -259,7 +273,8 @@ class TrialBalanceView(APIView):
         # Consolidated report logic
         acc_filter = Q()
         if company_uuid:
-            acc_filter &= Q(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            acc_filter &= Q(company_uuid__in=company_ids)
             
         accounts = ChartOfAccount.objects.filter(acc_filter)
         
@@ -324,23 +339,44 @@ class AccountingDashboardView(APIView):
     def get(self, request):
         company_uuid = request.query_params.get('company_uuid')
         wing_uuid = request.query_params.get('wing_uuid')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
         
         # Filter for Journal items
         item_filter = Q()
         if company_uuid:
-            item_filter &= Q(entry__company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            item_filter &= Q(entry__company_uuid__in=company_ids)
         if wing_uuid:
             item_filter &= Q(entry__wing_uuid=wing_uuid)
 
+        # Base filter for date-specific queries (Trends, Expenses)
+        date_filter = Q()
+        if start_date:
+            date_filter &= Q(entry__date__gte=start_date)
+        if end_date:
+            date_filter &= Q(entry__date__lte=end_date)
+        
+        # Base filter for cumulative queries (Balance Sheet components like Assets, Cash)
+        cumulative_filter = Q()
+        if end_date:
+            cumulative_filter &= Q(entry__date__lte=end_date)
+
         # 1. Income vs Expense Trend (Last 6 months)
-        six_months_ago = timezone.now().date().replace(day=1) - timezone.timedelta(days=150)
+        if not start_date:
+            start_date = timezone.now().date().replace(day=1) - timezone.timedelta(days=150)
         
         trend_data = {}
         monthly_qs = JournalItem.objects.filter(
             item_filter, 
-            entry__date__gte=six_months_ago,
+            entry__date__gte=start_date,
             account__group__group_type__in=['Income', 'Expense']
-        ).annotate(
+        )
+        
+        if end_date:
+            monthly_qs = monthly_qs.filter(entry__date__lte=end_date)
+            
+        monthly_qs = monthly_qs.annotate(
             month=TruncMonth('entry__date')
         )
         
@@ -363,12 +399,13 @@ class AccountingDashboardView(APIView):
         # Use company_uuid filter for groups
         group_base = Q(parent=None, group_type__iexact='asset')
         if company_uuid:
-            group_base &= Q(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            group_base &= Q(company_uuid__in=company_ids)
         
         asset_groups = AccountGroup.objects.filter(group_base)
         assets_dist = []
         for g in asset_groups:
-            bal = self.get_group_balance(g, wing_uuid)
+            bal = self.get_group_balance(g, wing_uuid, end_date)
             if bal > 0:
                 assets_dist.append({"name": g.name, "value": float(bal)})
 
@@ -376,16 +413,19 @@ class AccountingDashboardView(APIView):
         # Aggregate per account
         acc_base = Q(group__group_type__iexact='expense')
         if company_uuid:
-            acc_base &= Q(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            acc_base &= Q(company_uuid__in=company_ids)
             
-        # We need a separate filter for the annotation because it's relative to ChartOfAccount,
-        # but the aggregate filter inside Sum needs to be either relative to the related model
-        # or prefixed with the relation name.
+        # We need a separate filter for the annotation
         ann_item_filter = Q()
         if company_uuid:
-            ann_item_filter &= Q(journal_items__entry__company_uuid=company_uuid)
+            ann_item_filter &= Q(journal_items__entry__company_uuid__in=company_ids)
         if wing_uuid:
             ann_item_filter &= Q(journal_items__entry__wing_uuid=wing_uuid)
+        if start_date:
+            ann_item_filter &= Q(journal_items__entry__date__gte=start_date)
+        if end_date:
+            ann_item_filter &= Q(journal_items__entry__date__lte=end_date)
 
         expense_accounts = ChartOfAccount.objects.filter(acc_base).annotate(
             total_exp=Coalesce(Sum('journal_items__debit', filter=ann_item_filter), Decimal('0')) - 
@@ -397,12 +437,13 @@ class AccountingDashboardView(APIView):
         # 4. Cash Balance
         cash_base = Q(name__icontains='cash')
         if company_uuid:
-            cash_base &= Q(company_uuid=company_uuid)
+            company_ids = get_tenant_unit_ids(company_uuid)
+            cash_base &= Q(company_uuid__in=company_ids)
             
         cash_accounts = ChartOfAccount.objects.filter(cash_base)
         total_cash = Decimal('0')
         for acc in cash_accounts:
-            items = JournalItem.objects.filter(item_filter, account=acc)
+            items = JournalItem.objects.filter(item_filter, cumulative_filter, account=acc)
             debits = items.aggregate(Sum('debit'))['debit__sum'] or Decimal('0')
             credits = items.aggregate(Sum('credit'))['credit__sum'] or Decimal('0')
             # Only add opening balance if viewing unit-level (no wing filter)
@@ -416,18 +457,20 @@ class AccountingDashboardView(APIView):
             "cash_balance": str(total_cash)
         })
 
-    def get_group_balance(self, group, wing_uuid):
+    def get_group_balance(self, group, wing_uuid, end_date=None):
         total = Decimal('0')
         for acc in group.accounts.all():
             items_qs = JournalItem.objects.filter(account=acc)
             if wing_uuid:
                 items_qs = items_qs.filter(entry__wing_uuid=wing_uuid)
+            if end_date:
+                items_qs = items_qs.filter(entry__date__lte=end_date)
             debits = items_qs.aggregate(Sum('debit'))['debit__sum'] or Decimal('0')
             credits = items_qs.aggregate(Sum('credit'))['credit__sum'] or Decimal('0')
             acc_opening = acc.opening_balance if not wing_uuid else Decimal('0')
             total += (acc_opening + debits - credits)
         for sub in group.subgroups.all():
-            total += self.get_group_balance(sub, wing_uuid)
+            total += self.get_group_balance(sub, wing_uuid, end_date)
         return total
 
 class SystemAccountViewSet(viewsets.ModelViewSet):

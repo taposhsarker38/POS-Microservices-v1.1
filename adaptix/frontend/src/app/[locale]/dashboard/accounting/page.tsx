@@ -9,7 +9,8 @@ import { ProfitLoss } from "@/components/accounting/profit-loss";
 import { TrialBalance } from "@/components/accounting/trial-balance";
 import { AccountingOverview } from "@/components/accounting/overview";
 import { SystemAccountMapping } from "@/components/accounting/system-accounts";
-import { useState, useEffect } from "react";
+import { getUser, isSuperUser } from "@/lib/auth";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import {
   Select,
@@ -62,7 +63,7 @@ function JournalList({
   const [editingJournal, setEditingJournal] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const fetchJournals = () => {
+  const fetchJournals = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
     if (wingId) params.append("wing_uuid", wingId);
@@ -71,6 +72,9 @@ function JournalList({
     if (endDate) params.append("end_date", endDate);
     if (voucherType && voucherType !== "all")
       params.append("voucher_type", voucherType);
+
+    // Cache busting
+    params.append("_t", Date.now().toString());
 
     api
       .get(`/accounting/journals/?${params.toString()}`)
@@ -82,7 +86,7 @@ function JournalList({
         console.error(err);
         setLoading(false);
       });
-  };
+  }, [wingId, companyId, startDate, endDate, voucherType]);
 
   useEffect(() => {
     fetchJournals();
@@ -164,20 +168,43 @@ function JournalList({
                     : "-"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => {
-                      setEditingJournal(j);
-                      setIsEditDialogOpen(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4 text-blue-600" />
-                  </Button>
+                  {(j.source === "manual" || !j.source) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        setEditingJournal(j);
+                        setIsEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))
+          )}
+          {!loading && journals.length > 0 && (
+            <TableRow className="bg-muted/50 font-bold hover:bg-muted/50">
+              <TableCell
+                colSpan={6}
+                className="text-right text-muted-foreground uppercase text-xs"
+              >
+                Total
+              </TableCell>
+              <TableCell className="text-right">
+                {journals
+                  .reduce((sum, j) => sum + (Number(j.total_debit) || 0), 0)
+                  .toFixed(2)}
+              </TableCell>
+              <TableCell className="text-right">
+                {journals
+                  .reduce((sum, j) => sum + (Number(j.total_credit) || 0), 0)
+                  .toFixed(2)}
+              </TableCell>
+              <TableCell colSpan={3}></TableCell>
+            </TableRow>
           )}
         </TableBody>
       </Table>
@@ -226,18 +253,24 @@ export default function AccountingPage() {
           (c: any) => ({
             id: c.id,
             name: c.name,
-            type: "unit",
+            type: c.is_group ? "group" : "unit",
             code: c.code,
+            tenant_id: c.auth_company_uuid,
           })
         );
 
         // Add root company from tree
         const root = treeRes.data;
         if (root && root.id) {
-          setRootCompanyId(root.id);
+          // Use auth_company_uuid if available, otherwise fallback to id (for local/single-tenant)
+          // The Accounting service expects the Tenant ID (auth_company_uuid)
+          const tenantId = root.auth_company_uuid || root.id;
+          setRootCompanyId(tenantId);
+
           if (!companies.find((c: any) => c.id === root.id)) {
             companies.unshift({
               id: root.id,
+              tenant_id: tenantId,
               name: root.name,
               type: "unit",
               code: root.code || "ROOT",
@@ -252,6 +285,8 @@ export default function AccountingPage() {
             type: "branch",
             code: w.code,
             company_id: w.company || w.company_uuid,
+            // Branches belong to the tenant too
+            tenant_id: root?.auth_company_uuid,
           })
         );
 
@@ -266,7 +301,7 @@ export default function AccountingPage() {
   const getSelectedContext = () => {
     if (selectedEntity === "all")
       return {
-        companyId: undefined, // Don't filter the fetch
+        companyId: rootCompanyId, // Use the Tenant ID (which setRootCompanyId set)
         wingId: undefined,
         targetName: "Consolidated (All Units)",
         creationCompanyId: rootCompanyId,
@@ -274,20 +309,20 @@ export default function AccountingPage() {
     const entity = entities.find((e) => e.id === selectedEntity);
     if (entity?.type === "unit")
       return {
-        companyId: entity.id,
+        companyId: entity.tenant_id || entity.id, // Prefer Tenant ID for accounting
         wingId: undefined,
         targetName: entity.name,
         creationCompanyId: entity.id,
       };
     if (entity?.type === "branch")
       return {
-        companyId: entity.company_id,
+        companyId: entity.tenant_id || entity.company_id, // Prefer Tenant ID
         wingId: entity.id,
         targetName: entity.name,
         creationCompanyId: entity.company_id,
       };
     return {
-      companyId: undefined,
+      companyId: rootCompanyId,
       wingId: undefined,
       targetName: "Default",
       creationCompanyId: rootCompanyId,
@@ -340,14 +375,15 @@ export default function AccountingPage() {
             <SelectContent>
               <SelectItem value="all">Consolidated (All Units)</SelectItem>
               {entities
-                .filter((e) => e.type === "unit")
+                .filter((e) => e.type === "unit" || e.type === "group")
                 .map((unit) => (
                   <SelectItem
                     key={unit.id}
                     value={unit.id}
                     className="font-bold"
                   >
-                    🏢 {unit.name} (Unit)
+                    {unit.type === "group" ? "🏦" : "🏢"} {unit.name} (
+                    {unit.type === "group" ? "Group" : "Unit"})
                   </SelectItem>
                 ))}
               {entities
@@ -380,6 +416,8 @@ export default function AccountingPage() {
           <AccountingOverview
             companyId={companyId || rootCompanyId}
             wingId={wingId}
+            startDate={startDate}
+            endDate={endDate}
           />
         </TabsContent>
         <TabsContent value="chart-of-accounts" className="space-y-4">

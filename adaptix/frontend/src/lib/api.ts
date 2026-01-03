@@ -46,8 +46,14 @@ api.interceptors.request.use(
               "Header Check - JWT company_uuid:",
               decoded.company_uuid
             );
-          } else {
-            console.warn("No company_uuid found in token payload");
+          }
+          if (decoded.role || decoded.is_superuser) {
+            config.headers["X-User-Role"] = decoded.is_superuser
+              ? "admin"
+              : decoded.role || "";
+          }
+          if (decoded.user_id || decoded.sub) {
+            config.headers["X-User-Id"] = decoded.user_id || decoded.sub;
           }
         } catch (e) {
           console.error("Failed to decode token for company header", e);

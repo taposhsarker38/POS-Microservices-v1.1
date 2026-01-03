@@ -395,7 +395,14 @@ services:
               origins: ["*"]
               methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
               headers:
-                ["Authorization", "Content-Type", "Accept", "X-Company-Id"]
+                [
+                  "Authorization",
+                  "Content-Type",
+                  "Accept",
+                  "X-Company-Id",
+                  "X-User-Role",
+                  "X-User-Id",
+                ]
               credentials: true
 
   - id: 4ea043bc-c724-4c97-b9ff-76eccee23999
@@ -448,7 +455,15 @@ plugins:
     config:
       origins: ["*"]
       methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"]
-      headers: ["Authorization", "Content-Type", "Accept", "X-Company-Id"]
+      headers:
+        [
+          "Authorization",
+          "Content-Type",
+          "Accept",
+          "X-Company-Id",
+          "X-User-Role",
+          "X-User-Id",
+        ]
       credentials: true
 
   # ============================================

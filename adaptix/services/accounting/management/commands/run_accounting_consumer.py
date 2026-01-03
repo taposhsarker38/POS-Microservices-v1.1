@@ -97,6 +97,7 @@ class Command(BaseCommand):
                 company_uuid=company_uuid,
                 wing_uuid=payload.get("wing_uuid"),
                 voucher_type="receipt",
+                source="pos",
                 reference=order_number,
                 description=f"Auto-generated entry for Sale {order_number}",
                 date=payload.get("created_at")[:10], # YYYY-MM-DD
@@ -161,6 +162,7 @@ class Command(BaseCommand):
                 company_uuid=company_uuid,
                 wing_uuid=payload.get("wing_uuid"),
                 voucher_type="journal",
+                source="other",
                 reference=reference,
                 description=f"Depreciation for {asset_name}",
                 date=date,

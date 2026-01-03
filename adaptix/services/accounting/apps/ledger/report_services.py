@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.db.models import Sum, Q
 from .models import ChartOfAccount, JournalItem
+from .utils import get_tenant_unit_ids
 
 class ReportService:
     @staticmethod
@@ -10,7 +11,11 @@ class ReportService:
         Returns a dictionary mapping account UUID to its calculated balance.
         """
         # 1. Base filter for Journal Items
-        item_filter = Q(entry__company_uuid=company_uuid)
+        item_filter = Q()
+        if company_uuid:
+            company_ids = get_tenant_unit_ids(company_uuid)
+            item_filter &= Q(entry__company_uuid__in=company_ids)
+            
         if wing_uuid:
             item_filter &= Q(entry__wing_uuid=wing_uuid)
         

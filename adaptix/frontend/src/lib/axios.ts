@@ -13,7 +13,7 @@ api.interceptors.request.use(
   (config) => {
     // Check if we are in the browser
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -47,8 +47,8 @@ api.interceptors.response.use(
         // if (refreshSuccess) return api(originalRequest);
 
         console.warn("Unauthorized: Redirecting to login...");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
         window.location.href = "/auth/login";
       }
     }

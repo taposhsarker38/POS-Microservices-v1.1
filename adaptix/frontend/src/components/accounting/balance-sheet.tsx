@@ -40,11 +40,13 @@ export function BalanceSheet({
 }) {
   const [data, setData] = useState<BalanceSheetData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
 
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     params.append("company_uuid", companyId);
     if (wingId) params.append("wing_uuid", wingId);
@@ -53,7 +55,10 @@ export function BalanceSheet({
     api
       .get(`/accounting/balance-sheet/?${params.toString()}`)
       .then((res) => setData(res.data))
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to load Balance Sheet data. Please try again.");
+      })
       .finally(() => setLoading(false));
   }, [companyId, wingId, date]);
 
@@ -66,7 +71,16 @@ export function BalanceSheet({
     );
   }
 
-  if (!data) return null;
+  if (error) {
+    return (
+      <div className="p-4 text-red-500 border border-red-200 rounded-md bg-red-50">
+        {error}
+      </div>
+    );
+  }
+
+  if (!data)
+    return <div className="p-4 text-muted-foreground">No data available.</div>;
 
   const renderSection = (title: string, category: BalanceCategory) => (
     <Card className="h-full">

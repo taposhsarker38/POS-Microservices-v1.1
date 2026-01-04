@@ -39,6 +39,15 @@ const bomSchema = z.object({
       })
     )
     .min(1, "At least one item required"),
+  operations: z
+    .array(
+      z.object({
+        operation: z.string().min(1, "Operation required"),
+        sequence: z.number(),
+        estimated_time_minutes: z.string(),
+      })
+    )
+    .optional(),
 });
 
 type BOMFormValues = z.infer<typeof bomSchema>;
@@ -51,11 +60,18 @@ interface BOMFormProps {
 
 export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
   const [products, setProducts] = useState<any[]>([]);
+  const [availableOperations, setAvailableOperations] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch products for selection
+    // Fetch products
     api.get("/product/products/").then((res) => {
-      setProducts(res.data.results || res.data);
+      const data = res.data.results || res.data;
+      setProducts(Array.isArray(data) ? data : []);
+    });
+    // Fetch distinct operations
+    api.get("/manufacturing/operations/").then((res) => {
+      const data = res.data.results || res.data;
+      setAvailableOperations(Array.isArray(data) ? data : []);
     });
   }, []);
 
@@ -65,12 +81,22 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
       name: "",
       quantity: "1",
       items: [{ quantity: "1", waste_percentage: "0", component_uuid: "" }],
+      operations: [],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
+  });
+
+  const {
+    fields: opFields,
+    append: appendOp,
+    remove: removeOp,
+  } = useFieldArray({
+    control: form.control,
+    name: "operations",
   });
 
   useEffect(() => {
@@ -84,6 +110,12 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
             ...i,
             quantity: String(i.quantity),
             waste_percentage: String(i.waste_percentage || 0),
+          })) || [],
+        operations:
+          initialData.operations?.map((op: any) => ({
+            ...op,
+            operation: String(op.operation),
+            estimated_time_minutes: String(op.estimated_time_minutes),
           })) || [],
       });
     }
@@ -101,31 +133,19 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
             ? parseFloat(i.waste_percentage)
             : 0,
         })),
+        operations: values.operations?.map((op) => ({
+          ...op,
+          estimated_time_minutes: parseInt(op.estimated_time_minutes),
+        })),
       };
 
       if (initialData) {
-        await api.put(
-          `/inventory/manufacturing/boms/${initialData.id}/`,
-          payload
-        );
+        await api.put(`/manufacturing/boms/${initialData.id}/`, payload);
         toast.success("BOM updated");
       } else {
-        const { items, ...bomData } = payload;
-        const res = await api.post("/inventory/manufacturing/boms/", bomData);
-        const bomId = res.data.id;
-
-        // Add items
-        for (const item of items) {
-          await api.post(`/inventory/manufacturing/boms/${bomId}/add_item/`, {
-            component_uuid: item.component_uuid,
-            quantity: item.quantity,
-            waste_percentage: item.waste_percentage,
-          });
-        }
-
+        await api.post("/manufacturing/boms/", payload);
         toast.success("BOM created");
       }
-      onSuccess();
       onSuccess();
     } catch (error: any) {
       handleApiError(error, form);
@@ -155,11 +175,12 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
+                  {Array.isArray(products) &&
+                    products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -235,11 +256,12 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {products.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
+                        {Array.isArray(products) &&
+                          products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -268,6 +290,92 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
                 size="icon"
                 className="h-8 w-8 text-red-500"
                 onClick={() => remove(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2 border-t pt-4">
+          <div className="flex justify-between items-center">
+            <FormLabel>Operations / Routing</FormLabel>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                appendOp({
+                  operation: "",
+                  sequence: opFields.length + 1,
+                  estimated_time_minutes: "60",
+                })
+              }
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add Operation
+            </Button>
+          </div>
+
+          {opFields.map((field, index) => (
+            <div
+              key={field.id}
+              className="flex space-x-2 items-end border p-2 rounded-md bg-secondary/20"
+            >
+              <div className="flex flex-col space-y-1 w-12">
+                <span className="text-[10px] text-muted-foreground">Seq</span>
+                <Input
+                  type="number"
+                  className="h-8 text-center"
+                  {...form.register(`operations.${index}.sequence`, {
+                    valueAsNumber: true,
+                  })}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name={`operations.${index}.operation`}
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel className="text-xs">Operation</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select Operation" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Array.isArray(availableOperations) &&
+                          availableOperations.map((op) => (
+                            <SelectItem key={op.id} value={String(op.id)}>
+                              {op.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`operations.${index}.estimated_time_minutes`}
+                render={({ field }) => (
+                  <FormItem className="w-24">
+                    <FormLabel className="text-xs">Est. Min</FormLabel>
+                    <FormControl>
+                      <Input type="number" className="h-8" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-500"
+                onClick={() => removeOp(index)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

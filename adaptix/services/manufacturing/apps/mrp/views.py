@@ -1,7 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from .models import WorkCenter, BillOfMaterial, ProductionOrder
-from .serializers import WorkCenterSerializer, BillOfMaterialSerializer, ProductionOrderSerializer
+from rest_framework.response import Response
+from .models import WorkCenter, BillOfMaterial, ProductionOrder, Operation, ProductionOrderOperation
+from .serializers import WorkCenterSerializer, BillOfMaterialSerializer, ProductionOrderSerializer, OperationSerializer, ProductionOrderOperationSerializer
 from adaptix_core.permissions import HasPermission
 import os
 import json
@@ -24,6 +25,55 @@ class WorkCenterViewSet(viewsets.ModelViewSet):
         uuid = getattr(self.request, "company_uuid", None)
         serializer.save(company_uuid=uuid)
 
+class OperationViewSet(viewsets.ModelViewSet):
+    queryset = Operation.objects.all()
+    serializer_class = OperationSerializer
+    permission_classes = [HasPermission]
+    required_permission = "mrp.work_center"
+
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid)
+        return self.queryset.none()
+    
+    def perform_create(self, serializer):
+        uuid = getattr(self.request, "company_uuid", None)
+        serializer.save(company_uuid=uuid)
+
+class ProductionOrderOperationViewSet(viewsets.ModelViewSet):
+    queryset = ProductionOrderOperation.objects.all()
+    serializer_class = ProductionOrderOperationSerializer
+    permission_classes = [HasPermission]
+    required_permission = "mrp.order"
+
+    def get_queryset(self):
+        order_id = self.request.query_params.get('production_order')
+        if order_id:
+            return self.queryset.filter(production_order_id=order_id)
+        return self.queryset.all()
+
+    @action(detail=True, methods=['post'])
+    def start(self, request, pk=None):
+        op = self.get_object()
+        from django.utils import timezone
+        op.status = 'IN_PROGRESS'
+        op.started_at = timezone.now()
+        op.save()
+        return Response({"status": "operation started"})
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        op = self.get_object()
+        from django.utils import timezone
+        op.status = 'COMPLETED'
+        op.completed_at = timezone.now()
+        if op.started_at:
+            delta = op.completed_at - op.started_at
+            op.actual_time_minutes = int(delta.total_seconds() / 60)
+        op.save()
+        return Response({"status": "operation completed"})
+
 class BillOfMaterialViewSet(viewsets.ModelViewSet):
     queryset = BillOfMaterial.objects.all()
     serializer_class = BillOfMaterialSerializer
@@ -33,7 +83,7 @@ class BillOfMaterialViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            return self.queryset.filter(company_uuid=uuid).prefetch_related('items')
+            return self.queryset.filter(company_uuid=uuid).prefetch_related('items', 'operations')
         return self.queryset.none()
 
     def perform_create(self, serializer):
@@ -49,14 +99,23 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
         if uuid:
-            return self.queryset.filter(company_uuid=uuid).select_related('bom', 'work_center')
+            return self.queryset.filter(company_uuid=uuid).select_related('bom', 'work_center').prefetch_related('operation_trackers')
         return self.queryset.none()
 
     def perform_create(self, serializer):
         uuid = getattr(self.request, "company_uuid", None)
         claims = getattr(self.request, "user_claims", {})
         user_id = claims.get("sub")
-        serializer.save(company_uuid=uuid, created_by=user_id)
+        order = serializer.save(company_uuid=uuid, created_by=user_id)
+        
+        # Create Operation Trackers from BOM
+        if order.bom:
+            for bom_op in order.bom.operations.all():
+                ProductionOrderOperation.objects.create(
+                    production_order=order,
+                    operation=bom_op.operation,
+                    sequence=bom_op.sequence
+                )
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -71,6 +130,10 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         # Trigger Material Deduction if moved to IN_PROGRESS
         if old_status != 'IN_PROGRESS' and new_status == 'IN_PROGRESS':
             self.publish_consumption_event(updated_instance)
+        
+        # Trigger Stock Increase if moved to COMPLETED
+        if old_status != 'COMPLETED' and new_status == 'COMPLETED':
+            self.publish_completion_event(updated_instance)
 
     def publish_qc_event(self, order):
         try:
@@ -110,11 +173,12 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
             pass # Placeholder
             
             producer.publish(
-                json.dumps(event_payload, cls=DjangoJSONEncoder),
+                event_payload,
                 exchange=exchange,
                 routing_key="production.qc_requested",
                 declare=[exchange],
-                retry=True
+                retry=True,
+                serializer='json'
             )
             connection.release()
             print(f"Published production.qc_requested event for Order {order.id}")
@@ -153,17 +217,63 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
             }
             
             producer.publish(
-                json.dumps(event_payload, cls=DjangoJSONEncoder),
+                event_payload,
                 exchange=exchange,
                 routing_key="production.materials_consumed",
                 declare=[exchange],
-                retry=True
+                retry=True,
+                serializer='json'
             )
             connection.release()
             print(f"Published production.materials_consumed event for Order {order.id}")
             
         except Exception as e:
             print(f"Failed to publish Consumption event: {e}")
+    def publish_completion_event(self, order):
+        try:
+            BROKER_URL = os.environ.get("RABBITMQ_URL", "amqp://adaptix:adaptix123@rabbitmq:5672/")
+            connection = Connection(BROKER_URL)
+            connection.connect()
+            
+            exchange = Exchange("events", type="topic", durable=True)
+            producer = Producer(connection)
+            
+            event_payload = {
+                "event": "production.output_created",
+                "order_id": str(order.id),
+                "product_uuid": str(order.product_uuid),
+                "quantity": float(order.quantity_planned),
+                "company_uuid": str(order.company_uuid),
+                "target_warehouse_uuid": str(order.target_warehouse_uuid) if order.target_warehouse_uuid else None,
+                "source": "manufacturing",
+                "reference_no": f"PO-{order.id}"
+            }
+            
+            producer.publish(
+                event_payload,
+                exchange=exchange,
+                routing_key="production.output_created",
+                declare=[exchange],
+                retry=True,
+                serializer='json'
+            )
+            connection.release()
+            print(f"Published production.output_created for Order {order.id}")
+        except Exception as e:
+            print(f"Failed to publish completion event: {e}")
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        order = self.get_object()
+        if order.status == 'COMPLETED':
+             return Response({"status": "already completed"})
+        
+        order.status = 'COMPLETED'
+        order.quantity_produced = order.quantity_planned
+        order.save()
+        
+        self.publish_completion_event(order)
+        return Response({"status": "production completed"})
 
     @action(detail=False, methods=['post'], url_path='check-availability')
     def check_availability(self, request):

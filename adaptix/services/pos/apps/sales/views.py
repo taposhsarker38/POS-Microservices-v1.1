@@ -88,6 +88,55 @@ class OrderViewSet(viewsets.ModelViewSet):
             # In Strict mode, we would rollback transaction.
             print(f"Inventory Sync Failed: {e}")
 
+    @action(detail=True, methods=['post'], url_path='request-production')
+    def request_production(self, request, pk=None):
+        """
+        Manually trigger a production request for this order.
+        Expects: {'items': [{'product_uuid': '...', 'quantity': 100}, ...]}
+        If items not provided, requests production for all items in the order.
+        """
+        order = self.get_object()
+        requested_items = request.data.get('items')
+        
+        from adaptix_core.messaging import publish_event
+        from django.core.serializers.json import DjangoJSONEncoder
+        import json
+        
+        results = []
+        
+        # If no specific items provided, use all items in order
+        items_to_process = []
+        if not requested_items:
+            for item in order.items.all():
+                items_to_process.append({
+                    "product_uuid": str(item.product_uuid),
+                    "quantity": float(item.quantity)
+                })
+        else:
+            items_to_process = requested_items
+
+        for item in items_to_process:
+            p_uuid = item.get('product_uuid')
+            qty = item.get('quantity')
+            
+            event_payload = {
+                "event": "sales.production_requested",
+                "order_uuid": str(order.id),
+                "order_number": order.order_number,
+                "product_uuid": p_uuid,
+                "quantity": qty,
+                "company_uuid": str(order.company_uuid),
+                "requested_by": str(request.user.id) if request.user.is_authenticated else "system"
+            }
+            
+            try:
+                publish_event("events", "sales.production_requested", event_payload)
+                results.append({"product_uuid": p_uuid, "status": "sent"})
+            except Exception as e:
+                results.append({"product_uuid": p_uuid, "status": "failed", "error": str(e)})
+                
+        return Response({"order_number": order.order_number, "results": results})
+
     @action(detail=False, methods=['post'], url_path='calculate')
     def calculate_totals(self, request):
         """

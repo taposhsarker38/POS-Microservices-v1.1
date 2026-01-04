@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from kombu import Connection, Exchange, Queue, Consumer
 from django.conf import settings
@@ -21,13 +22,15 @@ class Command(BaseCommand):
 
         with Connection(broker_url) as conn:
             # We listen on BOTH queues
-            with Consumer(conn, queues=[queue, queue_mfg], callbacks=[self.process_message], accept=['json']):
+            with Consumer(conn, queues=[queue, queue_mfg], callbacks=[self.process_message], accept=['json', 'text/plain']):
                 while True:
                     conn.drain_events()
 
     def process_message(self, body, message):
         try:
             data = body
+            if isinstance(data, str):
+                data = json.loads(data)
             event_type = data.get("event") or data.get("type")
             
             if event_type == "production.output_created":
@@ -48,7 +51,7 @@ class Command(BaseCommand):
 
             product_uuid = data.get("product_uuid")
             company_uuid = data.get("company_uuid")
-            quantity = float(data.get("quantity", 0))
+            quantity = Decimal(str(data.get("quantity", 0)))
             action = data.get("action")
             reason = data.get("reason", "Event Update")
 
@@ -143,9 +146,10 @@ class Command(BaseCommand):
         self.update_stock(
             company_uuid=data.get("company_uuid"),
             product_uuid=data.get("product_uuid"),
-            quantity=float(data.get("quantity", 0)),
+            quantity=Decimal(str(data.get("quantity", 0))),
             action="increase",
-            reason=f"Production Output: Order {data.get('order_id')}"
+            reason=f"Production Output: Order {data.get('order_id')}",
+            warehouse_uuid=data.get("target_warehouse_uuid")
         )
 
     def handle_materials_consumed(self, data):
@@ -155,17 +159,30 @@ class Command(BaseCommand):
             self.update_stock(
                 company_uuid=data.get("company_uuid"),
                 product_uuid=item.get("component_uuid"),
-                quantity=float(item.get("quantity", 0)),
+                quantity=Decimal(str(item.get("quantity", 0))),
                 action="decrease",
                 reason=f"Production Consumption: Order {data.get('order_id')}"
             )
 
-    def update_stock(self, company_uuid, product_uuid, quantity, action, reason):
-            warehouse, _ = Warehouse.objects.get_or_create(
-                company_uuid=company_uuid, 
-                name="Main Warehouse",
-                defaults={"is_active": True}
-            )
+    def update_stock(self, company_uuid, product_uuid, quantity, action, reason, warehouse_uuid=None):
+            quantity = Decimal(str(quantity))
+            
+            if warehouse_uuid:
+                try:
+                    warehouse = Warehouse.objects.get(id=warehouse_uuid, company_uuid=company_uuid)
+                except Warehouse.DoesNotExist:
+                     self.stdout.write(self.style.WARNING(f"Target warehouse {warehouse_uuid} not found. Falling back to local Main."))
+                     warehouse, _ = Warehouse.objects.get_or_create(
+                        company_uuid=company_uuid, 
+                        name="Main Warehouse",
+                        defaults={"is_active": True}
+                    )
+            else:
+                warehouse, _ = Warehouse.objects.get_or_create(
+                    company_uuid=company_uuid, 
+                    name="Main Warehouse",
+                    defaults={"is_active": True}
+                )
 
             stock, created = Stock.objects.get_or_create(
                 company_uuid=company_uuid,

@@ -80,3 +80,18 @@ class ApprovalRequestSerializer(serializers.ModelSerializer):
         model = ApprovalRequest
         fields = '__all__'
         read_only_fields = ('company_uuid', 'requested_by', 'approved_by', 'status')
+
+from .models import PriceList, PriceListItem
+
+class PriceListItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceListItem
+        fields = '__all__'
+
+class PriceListSerializer(serializers.ModelSerializer):
+    items = PriceListItemSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = PriceList
+        fields = '__all__'
+        read_only_fields = ('company_uuid',)

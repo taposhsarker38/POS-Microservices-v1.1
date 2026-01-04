@@ -1,10 +1,10 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .models import Warehouse, Stock, StockTransaction, UOMConversion, StockSerial, BillOfMaterial
+from .models import Warehouse, Stock, StockTransaction, UOMConversion, StockSerial, BillOfMaterial, StockTransfer, StockTransferItem
 from .serializers import (
     WarehouseSerializer, StockSerializer, StockTransactionSerializer,
     UOMConversionSerializer, StockSerialSerializer, BillOfMaterialSerializer,
-    StockAdjustmentSerializer
+    StockAdjustmentSerializer, StockTransferSerializer, StockTransferItemSerializer
 )
 from adaptix_core.permissions import HasPermission
 from rest_framework.decorators import action
@@ -182,3 +182,94 @@ class BillOfMaterialViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         uuid = getattr(self.request, "company_uuid", None)
         serializer.save(company_uuid=uuid)
+
+from django.db import transaction
+
+class StockTransferViewSet(viewsets.ModelViewSet):
+    queryset = StockTransfer.objects.all()
+    serializer_class = StockTransferSerializer
+    permission_classes = [HasPermission]
+    required_permission = "inventory.stock"
+
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid).prefetch_related('items')
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        uuid = getattr(self.request, "company_uuid", None)
+        claims = getattr(self.request, "user_claims", {})
+        user_id = claims.get("sub")
+        serializer.save(company_uuid=uuid, created_by=user_id)
+
+    @action(detail=True, methods=['post'])
+    def ship(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'DRAFT':
+            return Response({"error": "Only draft transfers can be shipped"}, status=400)
+        
+        with transaction.atomic():
+            for item in transfer.items.all():
+                # Deduct from source
+                stock, _ = Stock.objects.get_or_create(
+                    company_uuid=transfer.company_uuid,
+                    warehouse=transfer.source_warehouse,
+                    product_uuid=item.product_uuid,
+                    defaults={'quantity': 0}
+                )
+                
+                if stock.quantity < item.quantity:
+                    raise serializers.ValidationError(f"Insufficient stock for {item.product_uuid} in source warehouse")
+                
+                stock.quantity -= item.quantity
+                stock.save()
+                
+                StockTransaction.objects.create(
+                    company_uuid=transfer.company_uuid,
+                    stock=stock,
+                    type='transfer_out',
+                    quantity_change=-item.quantity,
+                    balance_after=stock.quantity,
+                    reference_no=transfer.reference_no,
+                    notes=f"Shipped via Transfer {transfer.reference_no}"
+                )
+            
+            transfer.status = 'SHIPPED'
+            transfer.save()
+            
+        return Response(StockTransferSerializer(transfer).data)
+
+    @action(detail=True, methods=['post'])
+    def receive(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'SHIPPED':
+            return Response({"error": "Only shipped transfers can be received"}, status=400)
+        
+        with transaction.atomic():
+            for item in transfer.items.all():
+                # Add to destination
+                stock, _ = Stock.objects.get_or_create(
+                    company_uuid=transfer.company_uuid,
+                    warehouse=transfer.destination_warehouse,
+                    product_uuid=item.product_uuid,
+                    defaults={'quantity': 0}
+                )
+                
+                stock.quantity += item.quantity
+                stock.save()
+                
+                StockTransaction.objects.create(
+                    company_uuid=transfer.company_uuid,
+                    stock=stock,
+                    type='transfer_in',
+                    quantity_change=item.quantity,
+                    balance_after=stock.quantity,
+                    reference_no=transfer.reference_no,
+                    notes=f"Received via Transfer {transfer.reference_no}"
+                )
+            
+            transfer.status = 'RECEIVED'
+            transfer.save()
+            
+        return Response(StockTransferSerializer(transfer).data)

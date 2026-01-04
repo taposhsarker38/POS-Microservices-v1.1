@@ -19,10 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ColumnDef } from "@tanstack/react-table";
 import api from "@/lib/api";
+import { handleApiError } from "@/lib/api-handler";
 
 export function WorkCenterList() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<WorkCenter | null>(null);
 
   // Data Fetching
   const { data: workCenters, isLoading } = useQuery({
@@ -33,13 +35,30 @@ export function WorkCenterList() {
   // Create Mutation
   const createMutation = useMutation({
     mutationFn: (data: Partial<WorkCenter>) =>
-      api.post("/inventory/manufacturing/work-centers/", data),
+      manufacturingApi.createWorkCenter(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mfg", "work-centers"] });
       setIsDialogOpen(false);
       toast.success("Work Center created");
     },
-    onError: () => toast.error("Failed to create work center"),
+    onError: (error: any) => {
+      handleApiError(error);
+    },
+  });
+
+  // Update Mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<WorkCenter>) =>
+      manufacturingApi.updateWorkCenter(editingItem!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mfg", "work-centers"] });
+      setIsDialogOpen(false);
+      setEditingItem(null);
+      toast.success("Work Center updated");
+    },
+    onError: (error: any) => {
+      handleApiError(error);
+    },
   });
 
   const columns: ColumnDef<WorkCenter>[] = [
@@ -77,10 +96,16 @@ export function WorkCenterList() {
       cell: ({ row }) => {
         return (
           <div className="flex gap-2 justify-end">
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setEditingItem(row.original);
+                setIsDialogOpen(true);
+              }}
+            >
               <Pencil className="h-4 w-4" />
             </Button>
-            {/* Delete implementation omitted for brevity */}
           </div>
         );
       },
@@ -91,20 +116,41 @@ export function WorkCenterList() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Work Centers</h3>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Work Center
-            </Button>
-          </DialogTrigger>
+        <Button
+          onClick={() => {
+            setEditingItem(null);
+            setIsDialogOpen(true);
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Work Center
+        </Button>
+
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setEditingItem(null);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Work Center</DialogTitle>
+              <DialogTitle>
+                {editingItem ? "Edit Work Center" : "Add Work Center"}
+              </DialogTitle>
             </DialogHeader>
             <WorkCenterForm
-              onSubmit={(data) => createMutation.mutate(data)}
-              isSubmitting={createMutation.isPending}
+              initialData={editingItem}
+              onSubmit={(data) => {
+                if (editingItem) {
+                  updateMutation.mutate(data);
+                } else {
+                  createMutation.mutate(data);
+                }
+              }}
+              isSubmitting={
+                createMutation.isPending || updateMutation.isPending
+              }
             />
           </DialogContent>
         </Dialog>
@@ -121,9 +167,11 @@ export function WorkCenterList() {
 }
 
 function WorkCenterForm({
+  initialData,
   onSubmit,
   isSubmitting,
 }: {
+  initialData?: WorkCenter | null;
   onSubmit: (data: any) => void;
   isSubmitting: boolean;
 }) {
@@ -133,6 +181,24 @@ function WorkCenterForm({
     capacity_per_day: "",
     description: "",
   });
+
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        code: initialData.code,
+        capacity_per_day: String(initialData.capacity_per_day),
+        description: initialData.description || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        code: "",
+        capacity_per_day: "",
+        description: "",
+      });
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +254,11 @@ function WorkCenterForm({
         />
       </div>
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Creating..." : "Create Work Center"}
+        {isSubmitting
+          ? "Saving..."
+          : initialData
+          ? "Update Work Center"
+          : "Create Work Center"}
       </Button>
     </form>
   );

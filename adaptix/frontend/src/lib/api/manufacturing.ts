@@ -51,6 +51,22 @@ export const manufacturingApi = {
     return response.data.results || response.data;
   },
 
+  createWorkCenter: async (data: Partial<WorkCenter>) => {
+    const response = await api.post<WorkCenter>(
+      "/manufacturing/work-centers/",
+      data
+    );
+    return response.data;
+  },
+
+  updateWorkCenter: async (id: number, data: Partial<WorkCenter>) => {
+    const response = await api.patch<WorkCenter>(
+      `/manufacturing/work-centers/${id}/`,
+      data
+    );
+    return response.data;
+  },
+
   // BOMs
   getBOMs: async () => {
     const response = await api.get<any>("/manufacturing/boms/");

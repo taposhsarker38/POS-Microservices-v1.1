@@ -1,11 +1,26 @@
 from rest_framework import viewsets
-from .models import QualityStandard, Inspection, TestResult
-from .serializers import QualityStandardSerializer, InspectionSerializer, TestResultSerializer
+from .models import QualityStandard, Inspection, TestResult, DefectCategory, InspectionPhoto
+from .serializers import (
+    QualityStandardSerializer, InspectionSerializer, TestResultSerializer,
+    DefectCategorySerializer, InspectionPhotoSerializer
+)
 from adaptix_core.permissions import HasPermission
 import os
 import json
 from kombu import Connection, Exchange, Producer
 from django.core.serializers.json import DjangoJSONEncoder
+
+class DefectCategoryViewSet(viewsets.ModelViewSet):
+    queryset = DefectCategory.objects.all()
+    serializer_class = DefectCategorySerializer
+    permission_classes = [HasPermission]
+    required_permission = "quality.inspection"
+
+class InspectionPhotoViewSet(viewsets.ModelViewSet):
+    queryset = InspectionPhoto.objects.all()
+    serializer_class = InspectionPhotoSerializer
+    permission_classes = [HasPermission]
+    required_permission = "quality.inspection"
 
 class QualityStandardViewSet(viewsets.ModelViewSet):
     queryset = QualityStandard.objects.all()
@@ -25,7 +40,7 @@ class InspectionViewSet(viewsets.ModelViewSet):
         updated_instance = serializer.save()
         new_status = updated_instance.status
         
-        if old_status != new_status and new_status in ['PASSED', 'FAILED']:
+        if old_status != new_status and new_status in ['PASSED', 'REJECTED', 'FAILED']:
             self.publish_completion_event(updated_instance)
 
     def publish_completion_event(self, inspection):
@@ -43,7 +58,10 @@ class InspectionViewSet(viewsets.ModelViewSet):
                 "reference_uuid": str(inspection.reference_uuid),
                 "reference_type": inspection.reference_type,
                 "status": inspection.status,
-                "notes": inspection.notes
+                "defect_category_name": inspection.defect_category.name if inspection.defect_category else None,
+                "notes": inspection.notes,
+                "inspection_date": inspection.inspection_date.isoformat(),
+                "photo_urls": [p.photo_url for p in inspection.photos.all()]
             }
             
             producer.publish(

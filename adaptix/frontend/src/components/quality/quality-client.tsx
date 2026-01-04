@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { InspectionList } from "./inspection-list";
 import { QualityStandardList } from "./standard-list";
+import { WorkflowAnalytics } from "@/components/analytics/workflow-analytics";
 
 export function QualityClient() {
   return (
@@ -28,6 +29,7 @@ export function QualityClient() {
         <TabsList>
           <TabsTrigger value="inspections">Inspections</TabsTrigger>
           <TabsTrigger value="standards">Quality Standards</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="inspections" className="space-y-4">
@@ -56,6 +58,10 @@ export function QualityClient() {
               <QualityStandardList />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <WorkflowAnalytics />
         </TabsContent>
       </Tabs>
     </div>

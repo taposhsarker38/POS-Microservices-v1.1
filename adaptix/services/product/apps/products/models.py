@@ -181,3 +181,31 @@ class ProductVariant(SoftDeleteModel):
         if not self.sku:
             self.sku = f"SKU-{str(uuid.uuid4())[:8].upper()}"
         super().save(*args, **kwargs)
+
+class PriceList(SoftDeleteModel):
+    """
+    Groups prices: 'Wholesale', 'Retail', 'Corporate'.
+    """
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('company_uuid', 'name')
+
+    def __str__(self):
+        return self.name
+
+class PriceListItem(models.Model):
+    """
+    Price for a specific variant in a specific price list.
+    """
+    price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE, related_name='items')
+    variant_uuid = models.UUIDField(db_index=True) # Link to ProductVariant
+    price = models.DecimalField(max_digits=20, decimal_places=2)
+
+    class Meta:
+        unique_together = ('price_list', 'variant_uuid')
+
+    def __str__(self):
+        return f"{self.price_list.name} - {self.variant_uuid}: {self.price}"

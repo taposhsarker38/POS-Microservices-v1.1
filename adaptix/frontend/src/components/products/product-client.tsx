@@ -20,6 +20,9 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PriceListManagement } from "./price-list-management";
+
 export const ProductClient: React.FC = () => {
   const [data, setData] = React.useState<any[]>([]);
   const [categories, setCategories] = React.useState<any[]>([]);
@@ -214,25 +217,39 @@ export const ProductClient: React.FC = () => {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Products</h2>
-          <p className="text-muted-foreground">Manage your product catalog.</p>
+    <Tabs defaultValue="catalog" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="catalog">Product Catalog</TabsTrigger>
+        <TabsTrigger value="price-lists">Price Lists (Tiers)</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="catalog" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Products</h2>
+            <p className="text-muted-foreground">
+              Manage your product catalog.
+            </p>
+          </div>
+          <Button onClick={onCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Add Product
+          </Button>
         </div>
-        <Button onClick={onCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Add Product
-        </Button>
-      </div>
-      <div className="mt-8">
-        <DataTable
-          searchKey="name"
-          columns={columns}
-          data={data}
-          enableExport={true}
-          exportFileName="product_list"
-        />
-      </div>
+        <div className="mt-4">
+          <DataTable
+            searchKey="name"
+            columns={columns}
+            data={data}
+            enableExport={true}
+            exportFileName="product_list"
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="price-lists" className="space-y-4">
+        <PriceListManagement />
+      </TabsContent>
+
       <ProductForm
         categories={categories}
         brands={brands}
@@ -242,6 +259,6 @@ export const ProductClient: React.FC = () => {
         isOpen={open}
         onClose={handleModalClose}
       />
-    </>
+    </Tabs>
   );
 };

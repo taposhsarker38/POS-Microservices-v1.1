@@ -83,6 +83,9 @@ class Customer(SoftDeleteModel):
     attribute_set = models.ForeignKey(AttributeSet, on_delete=models.SET_NULL, null=True, blank=True)
     attributes = models.JSONField(default=dict, blank=True) 
 
+    # Price List Mapping
+    price_list_uuid = models.UUIDField(null=True, blank=True, db_index=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

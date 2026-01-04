@@ -35,14 +35,15 @@ export const handleApiError = (
         }
       });
 
-      // If we only have specific field errors, show a general validation toast
-      const keys = Object.keys(errorData);
-      if (
-        keys.length > 0 &&
-        !keys.includes("non_field_errors") &&
-        !keys.includes("detail")
-      ) {
-        toast.error("Validation failed. Please check the form fields.");
+      // Show the first error found in the toast for immediate feedback
+      const firstKey = Object.keys(errorData).find(
+        (k) => k !== "non_field_errors" && k !== "detail"
+      );
+      if (firstKey) {
+        const message = Array.isArray(errorData[firstKey])
+          ? errorData[firstKey][0]
+          : String(errorData[firstKey]);
+        toast.error(`${message} (${firstKey})`);
       }
     } else {
       // No form provided, just show toasts for what we found

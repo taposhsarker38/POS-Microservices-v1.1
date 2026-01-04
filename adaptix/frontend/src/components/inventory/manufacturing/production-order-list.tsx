@@ -29,10 +29,13 @@ export function ProductionOrderList() {
   const fetchProducts = async () => {
     try {
       const res = await api.get("/product/products/");
+      const data = res.data.results || res.data;
       const productMap: Record<string, string> = {};
-      (res.data.results || res.data).forEach((p: any) => {
-        productMap[p.id] = p.name;
-      });
+      if (Array.isArray(data)) {
+        data.forEach((p: any) => {
+          productMap[p.id] = p.name;
+        });
+      }
       setProducts(productMap);
     } catch (e) {
       console.error("Failed to fetch products");
@@ -41,10 +44,9 @@ export function ProductionOrderList() {
 
   const fetchData = async () => {
     try {
-      const response = await api.get(
-        "/inventory/manufacturing/production-orders/"
-      );
-      setData(response.data.results || response.data);
+      const response = await api.get("/manufacturing/orders/");
+      const result = response.data.results || response.data;
+      setData(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch orders");
@@ -64,9 +66,7 @@ export function ProductionOrderList() {
 
   const confirmDelete = async () => {
     try {
-      await api.delete(
-        `/inventory/manufacturing/production-orders/${deleteId}/`
-      );
+      await api.delete(`/manufacturing/orders/${deleteId}/`);
       toast.success("Deleted successfully");
       fetchData();
     } catch (e) {
@@ -79,9 +79,7 @@ export function ProductionOrderList() {
 
   const completeOrder = async (id: string) => {
     try {
-      await api.post(
-        `/inventory/manufacturing/production-orders/${id}/complete/`
-      );
+      await api.post(`/manufacturing/orders/${id}/complete/`);
       toast.success("Production Completed");
       fetchData();
     } catch (e) {
@@ -99,6 +97,26 @@ export function ProductionOrderList() {
     {
       accessorKey: "quantity_planned",
       header: "Qty Planned",
+    },
+    {
+      accessorKey: "work_center_name",
+      header: "Work Center",
+      cell: ({ row }) => row.original.work_center_name || "Manual / None",
+    },
+    {
+      accessorKey: "source_order_number",
+      header: "Origin (Head Office)",
+      cell: ({ row }) =>
+        row.original.source_order_number ? (
+          <Badge
+            variant="secondary"
+            className="bg-purple-50 text-purple-700 border-purple-200"
+          >
+            {row.original.source_order_number}
+          </Badge>
+        ) : (
+          "-"
+        ),
     },
     {
       accessorKey: "status",

@@ -28,10 +28,13 @@ export function BOMList() {
   const fetchProducts = async () => {
     try {
       const res = await api.get("/product/products/");
+      const data = res.data.results || res.data;
       const productMap: Record<string, string> = {};
-      (res.data.results || res.data).forEach((p: any) => {
-        productMap[p.id] = p.name;
-      });
+      if (Array.isArray(data)) {
+        data.forEach((p: any) => {
+          productMap[p.id] = p.name;
+        });
+      }
       setProducts(productMap);
     } catch (e) {
       console.error("Failed to fetch products");
@@ -40,8 +43,9 @@ export function BOMList() {
 
   const fetchData = async () => {
     try {
-      const response = await api.get("/inventory/manufacturing/boms/");
-      setData(response.data.results || response.data);
+      const response = await api.get("/manufacturing/boms/");
+      const result = response.data.results || response.data;
+      setData(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch BOMs");
@@ -61,7 +65,7 @@ export function BOMList() {
 
   const confirmDelete = async () => {
     try {
-      await api.delete(`/inventory/manufacturing/boms/${deleteId}/`);
+      await api.delete(`/manufacturing/boms/${deleteId}/`);
       toast.success("Deleted successfully");
       fetchData();
     } catch (e) {

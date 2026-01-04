@@ -16,11 +16,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InspectionForm } from "./inspection-form";
+import { QCInspectionDialog } from "./qc-inspection-dialog";
+import { QCAnalytics } from "./qc-analytics";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart3, List } from "lucide-react";
 
 export function InspectionList() {
   const [data, setData] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedInspectionId, setSelectedInspectionId] = useState<
+    string | null
+  >(null);
+  const [isQCDialogOpen, setIsQCDialogOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -90,9 +98,14 @@ export function InspectionList() {
             variant={
               s === "PASSED"
                 ? "default"
-                : s === "FAILED"
+                : s === "REJECTED" || s === "FAILED"
                 ? "destructive"
+                : s === "REWORK"
+                ? "outline"
                 : "secondary"
+            }
+            className={
+              s === "REWORK" ? "border-yellow-500 text-yellow-600" : ""
             }
           >
             {s}
@@ -118,26 +131,17 @@ export function InspectionList() {
         return (
           <div className="flex gap-2 justify-end">
             {isPending && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                  onClick={() => handleStatusUpdate(inspection.id, "PASSED")}
-                  title="Pass Inspection"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleStatusUpdate(inspection.id, "FAILED")}
-                  title="Fail Inspection"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-primary hover:bg-primary/5"
+                onClick={() => {
+                  setSelectedInspectionId(inspection.id.toString());
+                  setIsQCDialogOpen(true);
+                }}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" /> Inspect
+              </Button>
             )}
             <Button size="sm" variant="ghost">
               <Eye className="h-4 w-4" />
@@ -150,17 +154,42 @@ export function InspectionList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> New Inspection
-        </Button>
-      </div>
-      <DataTable
-        columns={columns}
-        data={data}
-        searchKey="reference_uuid"
-        isLoading={loading}
-      />
+      <Tabs defaultValue="list" className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" /> Inspections
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" /> Analytics
+            </TabsTrigger>
+          </TabsList>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> New Inspection
+          </Button>
+        </div>
+
+        <TabsContent value="list" className="mt-0">
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="reference_uuid"
+            isLoading={loading}
+          />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-0">
+          {!loading && data.length > 0 ? (
+            <QCAnalytics data={data} />
+          ) : (
+            <div className="h-[200px] flex items-center justify-center border rounded-lg bg-muted/20">
+              <p className="text-muted-foreground">
+                Insufficient data for analytics
+              </p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
@@ -176,6 +205,15 @@ export function InspectionList() {
           />
         </DialogContent>
       </Dialog>
+
+      {selectedInspectionId && (
+        <QCInspectionDialog
+          inspectionId={selectedInspectionId}
+          open={isQCDialogOpen}
+          onOpenChange={setIsQCDialogOpen}
+          onSuccess={() => fetchData()}
+        />
+      )}
     </div>
   );
 }

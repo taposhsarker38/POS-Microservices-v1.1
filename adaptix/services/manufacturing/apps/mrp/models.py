@@ -15,6 +15,19 @@ class WorkCenter(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+class Operation(models.Model):
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    work_center = models.ForeignKey(WorkCenter, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    company_uuid = models.UUIDField(db_index=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
 class BillOfMaterial(models.Model):
     """
     Recipe for a product.
@@ -32,6 +45,18 @@ class BillOfMaterial(models.Model):
 
     def __str__(self):
         return f"BOM for {self.product_uuid} - {self.name}"
+
+class BOMOperation(models.Model):
+    bom = models.ForeignKey(BillOfMaterial, on_delete=models.CASCADE, related_name='operations')
+    operation = models.ForeignKey(Operation, on_delete=models.CASCADE)
+    sequence = models.PositiveIntegerField(default=1)
+    estimated_time_minutes = models.PositiveIntegerField(default=60)
+
+    class Meta:
+        ordering = ['sequence']
+
+    def __str__(self):
+        return f"{self.bom.name} - {self.operation.name} (Seq: {self.sequence})"
 
 class BOMItem(models.Model):
     """
@@ -52,6 +77,7 @@ class ProductionOrder(models.Model):
         ('CONFIRMED', 'Confirmed'),
         ('IN_PROGRESS', 'In Progress'),
         ('QUALITY_CHECK', 'Quality Check'),
+        ('REWORK', 'Rework'),
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     )
@@ -72,6 +98,16 @@ class ProductionOrder(models.Model):
     start_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     
+    # Smart Output: Destination Warehouse for Finished Goods
+    target_warehouse_uuid = models.UUIDField(db_index=True, null=True, blank=True)
+    
+    # Linked Order from Head Office (Sales/POS)
+    source_order_uuid = models.UUIDField(db_index=True, null=True, blank=True)
+    source_order_number = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Audit trail for QC cycles
+    qc_history = models.JSONField(default=list, blank=True)
+    
     notes = models.TextField(blank=True)
     
     company_uuid = models.UUIDField(db_index=True, null=True, blank=True)
@@ -81,3 +117,30 @@ class ProductionOrder(models.Model):
 
     def __str__(self):
         return f"PO-{self.id} {self.product_uuid}"
+
+class ProductionOrderOperation(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+    )
+    
+    production_order = models.ForeignKey(ProductionOrder, on_delete=models.CASCADE, related_name='operation_trackers')
+    operation = models.ForeignKey(Operation, on_delete=models.CASCADE)
+    sequence = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    actual_time_minutes = models.PositiveIntegerField(null=True, blank=True)
+    
+    operator_id = models.CharField(max_length=255, null=True, blank=True)
+    assigned_worker_uuids = models.JSONField(default=list, blank=True, help_text="List of worker UUIDs assigned (HRMS)")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['sequence']
+
+    def __str__(self):
+        return f"PO-{self.production_order_id} - {self.operation.name}"

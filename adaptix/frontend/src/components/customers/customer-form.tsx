@@ -46,6 +46,7 @@ const customerSchema = z.object({
   branch_id: z.string().optional().nullable(),
   attribute_set: z.string().optional(),
   attributes: z.record(z.string(), z.any()).default({}),
+  price_list_uuid: z.string().optional().nullable(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -95,6 +96,7 @@ export function CustomerForm({
         ? String(initialData.attribute_set)
         : "",
       attributes: initialData?.attributes || {},
+      price_list_uuid: initialData?.price_list_uuid || null,
     },
   });
 
@@ -110,6 +112,15 @@ export function CustomerForm({
     email: initialData?.is_email_verified || false,
     phone: initialData?.is_phone_verified || false,
   });
+
+  const [priceLists, setPriceLists] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch Price Lists from product service
+    api.get("/product/price-lists/").then((res) => {
+      setPriceLists(res.data.results || res.data);
+    });
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -370,6 +381,37 @@ export function CustomerForm({
               )}
             />
           )}
+
+        <FormField
+          control={form.control}
+          name="price_list_uuid"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Selling Price List (Retail/Wholesale)</FormLabel>
+              <Select
+                onValueChange={(val) =>
+                  field.onChange(val === "none" ? null : val)
+                }
+                value={field.value || "none"}
+              >
+                <FormControl>
+                  <SelectTrigger className="border-blue-200 bg-blue-50/30">
+                    <SelectValue placeholder="Select Price Tier" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Default Retail Price</SelectItem>
+                  {priceLists.map((pl) => (
+                    <SelectItem key={pl.id} value={pl.id}>
+                      {pl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>

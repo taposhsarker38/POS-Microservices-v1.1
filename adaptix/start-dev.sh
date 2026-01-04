@@ -46,8 +46,14 @@ else
                 shift # past argument
                 shift # past value
                 ;;
+            --lite)
+                PROFILES="core,frontend,pos,inventory,product,accounting"
+                MODE_NAME="Lite Mode (Essential Services Only)"
+                shift
+                ;;
             *)
                 if [ "$1" == "all" ]; then
+                     echo "⚠️  WARNING: 'all' profile starts 29+ services and requires significant RAM."
                      PROFILES="core,frontend,pos,inventory,product,hrms,accounting,customer,asset,promotion,payment,notification,reporting,logistics,intelligence"
                 else
                      PROFILES="$PROFILES,$1"

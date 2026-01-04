@@ -4,7 +4,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from apps.stocks.views import (
     WarehouseViewSet, StockViewSet, TransactionViewSet,
-    UOMConversionViewSet, StockSerialViewSet, BillOfMaterialViewSet
+    UOMConversionViewSet, StockSerialViewSet, BillOfMaterialViewSet,
+    StockTransferViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'transactions', TransactionViewSet)
 router.register(r'uom', UOMConversionViewSet)
 router.register(r'serials', StockSerialViewSet)
 router.register(r'bom', BillOfMaterialViewSet)
+router.register(r'transfers', StockTransferViewSet)
 
 from django_prometheus.exports import ExportToDjangoView
 from django.http import JsonResponse

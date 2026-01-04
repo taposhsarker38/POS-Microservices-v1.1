@@ -15,10 +15,26 @@ export interface Inspection {
   reference_type: "INVENTORY" | "PRODUCTION" | "RECEIVING";
   reference_uuid: string;
   inspector_id?: number;
-  status: "PENDING" | "PASSED" | "FAILED";
-  notes?: string;
+  status: "PENDING" | "PASSED" | "FAILED" | "REJECTED" | "REWORK";
   inspection_date: string;
   results: TestResult[];
+  defect_category?: string;
+  defect_category_name?: string;
+}
+
+export interface DefectCategory {
+  id: string;
+  name: string;
+  description?: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+}
+
+export interface QCPhoto {
+  id: number;
+  inspection: number;
+  photo_url: string;
+  caption?: string;
+  uploaded_at: string;
 }
 
 export interface TestResult {
@@ -49,12 +65,34 @@ export const qualityApi = {
 
   updateInspectionStatus: async (
     id: number,
-    status: "PASSED" | "FAILED",
-    notes?: string
+    status: string,
+    notes?: string,
+    defect_category?: string
   ) => {
     const response = await api.patch<Inspection>(
       `/quality/inspections/${id}/`,
-      { status, notes }
+      { status, notes, defect_category }
+    );
+    return response.data;
+  },
+
+  // Defect Categories
+  getDefectCategories: async () => {
+    const response = await api.get<DefectCategory[]>(
+      "/quality/defect-categories/"
+    );
+    return response.data;
+  },
+
+  // Photos
+  createPhoto: async (data: any) => {
+    const response = await api.post<QCPhoto>("/quality/photos/", data);
+    return response.data;
+  },
+
+  getPhotos: async (inspectionId: string) => {
+    const response = await api.get<QCPhoto[]>(
+      `/quality/photos/?inspection=${inspectionId}`
     );
     return response.data;
   },

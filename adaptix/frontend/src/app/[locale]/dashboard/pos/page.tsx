@@ -5,10 +5,53 @@ import { ProductGrid } from "@/components/pos/product-grid";
 import { Cart } from "@/components/pos/cart";
 import { usePOSShortcuts } from "@/hooks/usePOSShortcuts";
 import { toast } from "sonner";
+import api from "@/lib/api";
 
 export default function POSPage() {
   const [cartItems, setCartItems] = React.useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = React.useState<any>(null);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+  const [isUpdatingPrices, setIsUpdatingPrices] = React.useState(false);
+
+  // Recalculate all item prices when customer changes
+  const updateCartPrices = React.useCallback(
+    async (customer: any) => {
+      if (cartItems.length === 0) return;
+
+      setIsUpdatingPrices(true);
+      try {
+        const updatedItems = await Promise.all(
+          cartItems.map(async (item) => {
+            try {
+              const res = await api.get(
+                `/product/variants/${item.id}/calculate_price/`,
+                {
+                  params: { price_list_uuid: customer?.price_list_uuid },
+                }
+              );
+              return { ...item, sales_price: res.data.price };
+            } catch (e) {
+              return item;
+            }
+          })
+        );
+        setCartItems(updatedItems);
+        toast.success(`Prices updated for ${customer?.name || "Retail"}`);
+      } catch (error) {
+        toast.error("Failed to update pricing tiers");
+      } finally {
+        setIsUpdatingPrices(false);
+      }
+    },
+    [cartItems]
+  );
+
+  const handleCustomerSelect = (customer: any) => {
+    setSelectedCustomer(customer);
+    if (cartItems.length > 0) {
+      updateCartPrices(customer);
+    }
+  };
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const [quickPayAmount, setQuickPayAmount] = React.useState<number | null>(
@@ -20,19 +63,35 @@ export default function POSPage() {
     setCheckoutOpen(true);
   };
 
-  const addToCart = (product: any) => {
+  const addToCart = async (product: any) => {
+    let finalPrice = product.sales_price;
+
+    // Check for tiered price if customer is selected
+    if (selectedCustomer?.price_list_uuid) {
+      try {
+        const res = await api.get(
+          `/product/variants/${product.id}/calculate_price/`,
+          {
+            params: { price_list_uuid: selectedCustomer.price_list_uuid },
+          }
+        );
+        finalPrice = res.data.price;
+      } catch (e) {
+        console.error("Tiered price lookup failed, using default.");
+      }
+    }
+
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + 1, sales_price: finalPrice }
             : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, sales_price: finalPrice }];
     });
-    // Optional: add toast or sound for ultra-fast feedback
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -87,6 +146,7 @@ export default function POSPage() {
           onClear={clearCart}
           onCheckoutSuccess={() => {
             setCartItems([]);
+            setSelectedCustomer(null);
             setQuickPayAmount(null);
           }}
           checkoutOpen={checkoutOpen}
@@ -96,6 +156,9 @@ export default function POSPage() {
           }}
           onQuickCheckout={handleQuickCheckout}
           quickPayAmount={quickPayAmount}
+          selectedCustomer={selectedCustomer}
+          onCustomerSelect={handleCustomerSelect}
+          isUpdatingPrices={isUpdatingPrices}
         />
       </div>
     </div>

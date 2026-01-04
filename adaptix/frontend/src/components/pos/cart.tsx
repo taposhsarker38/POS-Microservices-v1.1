@@ -30,6 +30,9 @@ interface CartProps {
   onLoadAICart: (items: any[]) => void;
   onQuickCheckout: (amount: number) => void;
   quickPayAmount?: number | null;
+  selectedCustomer: any;
+  onCustomerSelect: (customer: any) => void;
+  isUpdatingPrices?: boolean;
 }
 
 export const Cart: React.FC<CartProps> = ({
@@ -42,6 +45,9 @@ export const Cart: React.FC<CartProps> = ({
   onLoadAICart,
   onQuickCheckout,
   quickPayAmount,
+  selectedCustomer,
+  onCustomerSelect,
+  isUpdatingPrices = false,
 }) => {
   const [loadingAI, setLoadingAI] = React.useState(false);
 
@@ -62,7 +68,6 @@ export const Cart: React.FC<CartProps> = ({
       setLoadingAI(false);
     }
   };
-  const [selectedCustomer, setSelectedCustomer] = React.useState<any>(null);
 
   const subtotal = items.reduce(
     (acc, item) => acc + (item.sales_price || 0) * item.quantity,
@@ -109,9 +114,14 @@ export const Cart: React.FC<CartProps> = ({
           </Button>
         </div>
         <CustomerSelector
-          onSelect={setSelectedCustomer}
+          onSelect={onCustomerSelect}
           selectedCustomer={selectedCustomer}
         />
+        {isUpdatingPrices && (
+          <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse font-bold mt-1">
+            <ShoppingCart className="h-3 w-3" /> Syncing Tiered Prices...
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-4 py-2">
@@ -237,7 +247,6 @@ export const Cart: React.FC<CartProps> = ({
         onClose={() => onCheckoutOpenChange(false)}
         onSuccess={() => {
           onCheckoutSuccess();
-          setSelectedCustomer(null);
         }}
         customer={selectedCustomer}
         quickPayAmount={quickPayAmount}

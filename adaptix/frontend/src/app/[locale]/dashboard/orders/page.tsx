@@ -3,7 +3,16 @@
 import * as React from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { Eye, RefreshCcw, MoreHorizontal, ArrowUpDown } from "lucide-react";
+import {
+  Eye,
+  RefreshCcw,
+  MoreHorizontal,
+  ArrowUpDown,
+  History,
+  Factory,
+  CalendarIcon,
+  X,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useParams } from "next/navigation";
 import { useCompany } from "@/hooks/use-company";
@@ -20,7 +29,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RefundDialog } from "@/components/orders/refund-dialog";
+import { OrderJourney } from "@/components/pos/order-journey";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -34,7 +51,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +67,8 @@ export default function OrdersPage() {
     from: undefined,
     to: undefined,
   });
+  const [journeyOpen, setJourneyOpen] = React.useState(false);
+  const [journeyId, setJourneyId] = React.useState<string | null>(null);
 
   const { companyId } = useCompany();
 
@@ -101,8 +119,10 @@ export default function OrdersPage() {
     {
       accessorKey: "created_at",
       header: "Date",
-      cell: ({ row }) =>
-        format(new Date(row.getValue("created_at")), "MMM d, yyyy HH:mm"),
+      cell: ({ row }) => {
+        const dateStr = row.getValue("created_at") as string;
+        return dateStr ? format(new Date(dateStr), "MMM d, yyyy HH:mm") : "-";
+      },
     },
     {
       accessorKey: "customer_name",
@@ -199,14 +219,38 @@ export default function OrdersPage() {
               </DropdownMenuItem>
               {order.status !== "returned" && order.status !== "cancelled" && (
                 <DropdownMenuItem
+                  className="text-amber-600"
                   onClick={() => {
                     setSelectedOrder(order);
                     setRefundOpen(true);
                   }}
                 >
-                  <RefreshCcw className="mr-2 h-4 w-4" /> Refund / Return
+                  <RefreshCcw className="mr-2 h-4 w-4" /> Refund Order
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem
+                onClick={() => {
+                  setJourneyId(order.id);
+                  setJourneyOpen(true);
+                }}
+              >
+                <History className="mr-2 h-4 w-4" /> Track Journey
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-purple-600"
+                onClick={async () => {
+                  try {
+                    await api.post(
+                      `/pos/orders/${order.id}/request-production/`
+                    );
+                    toast.success("Production Request Sent to Factory");
+                  } catch (e) {
+                    toast.error("Failed to request production");
+                  }
+                }}
+              >
+                <Factory className="mr-2 h-4 w-4" /> Request Factory
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -316,6 +360,15 @@ export default function OrdersPage() {
         onOpenChange={setRefundOpen}
         onSuccess={() => refetch()}
       />
+
+      <Dialog open={journeyOpen} onOpenChange={setJourneyOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Order Lifecycle Tracking</DialogTitle>
+          </DialogHeader>
+          {journeyId && <OrderJourney orderId={journeyId} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

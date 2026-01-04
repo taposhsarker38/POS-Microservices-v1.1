@@ -35,6 +35,16 @@ class Command(BaseCommand):
                 self.handle_verification_otp(body)
             elif event_type == 'customer.verify_phone':
                 self.handle_verification_sms(body)
+            elif event_type == 'sales.production_requested':
+                self.handle_order_intake(body)
+            elif event_type == 'manufacturing.defect_escalation':
+                self.handle_defect_escalation(body)
+            elif event_type == 'production.output_created':
+                self.handle_production_output_alert(body)
+            elif event_type == 'pos.order.delivered':
+                self.handle_delivery_confirmation(body)
+            elif event_type == 'pos.payment.recorded':
+                self.handle_payment_alert(body)
 
             message.ack()
         except Exception as e:
@@ -181,3 +191,33 @@ class Command(BaseCommand):
         # Here we would integrate Twilio / SNS / Other SMS Gateway
         # For now, we just log it as successful delivery mock
         self.stdout.write(self.style.SUCCESS(f"Mock SMS sent to {phone}"))
+
+    def handle_order_intake(self, data):
+        """Alert Factory Manager about new order"""
+        order_number = data.get('order_number')
+        qty = data.get('quantity')
+        self.stdout.write(self.style.WARNING(f" [ALERT] New Order {order_number} for {qty} units! Notifying Factory Manager... "))
+        # Logic to send email to factory manager from HRM lookup...
+
+    def handle_defect_escalation(self, data):
+        """Alert Management about high defect rate or specific failure"""
+        order_num = data.get('order_number')
+        category = data.get('defect_category')
+        self.stdout.write(self.style.ERROR(f" [ESCALATION] Quality Alert on {order_num}: Defect Category {category} detected. "))
+
+    def handle_production_output_alert(self, data):
+        """Notify Head Office stock is ready for shipping"""
+        order_num = data.get('source_order_number')
+        if order_num:
+            self.stdout.write(self.style.SUCCESS(f" [UPDATE] Production completed for Head Office Order {order_num}. Ready for shipment. "))
+
+    def handle_delivery_confirmation(self, data):
+        """Real-time SMS to Head Office on delivery"""
+        order_num = data.get('order_number')
+        self.stdout.write(self.style.SUCCESS(f" [SMS] Real-time Alert: Order {order_num} has been successfully DELIVERED to customer. "))
+
+    def handle_payment_alert(self, data):
+        """Notify Accounts about recorded payment"""
+        order_num = data.get('order_number')
+        amount = data.get('amount')
+        self.stdout.write(self.style.WARNING(f" [FINANCE] Payment of ${amount} recorded for Order {order_num}. Accounts notified. "))

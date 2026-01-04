@@ -12,6 +12,16 @@ export const useStock = () => {
   });
 };
 
+export const useStockTransactions = () => {
+  return useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      const response = await api.get("/inventory/transactions/");
+      return (response.data.results || response.data) as StockTransaction[];
+    },
+  });
+};
+
 export const useTransactions = () => {
   const queryClient = useQueryClient();
 

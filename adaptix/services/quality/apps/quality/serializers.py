@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import QualityStandard, Inspection, TestResult
+from .models import QualityStandard, Inspection, TestResult, DefectCategory, InspectionPhoto
+
+class DefectCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DefectCategory
+        fields = '__all__'
+
+class InspectionPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InspectionPhoto
+        fields = '__all__'
 
 class QualityStandardSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +23,8 @@ class TestResultSerializer(serializers.ModelSerializer):
 
 class InspectionSerializer(serializers.ModelSerializer):
     results = TestResultSerializer(many=True, read_only=True)
+    photos = InspectionPhotoSerializer(many=True, read_only=True)
+    defect_category_name = serializers.ReadOnlyField(source='defect_category.name')
     
     class Meta:
         model = Inspection

@@ -132,6 +132,36 @@ class StockTransaction(SoftDeleteModel):
     
     created_by = models.CharField(max_length=100, blank=True, null=True)
 
+class StockTransfer(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('DRAFT', 'Draft'),
+        ('SHIPPED', 'Shipped'),
+        ('RECEIVED', 'Received'),
+        ('CANCELLED', 'Cancelled'),
+    )
+    
+    source_warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='transfers_sent')
+    destination_warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='transfers_received')
+    
+    reference_no = models.CharField(max_length=100, unique=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    
+    notes = models.TextField(blank=True, null=True)
+    
+    transfer_date = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f"Transfer {self.reference_no} ({self.source_warehouse} -> {self.destination_warehouse})"
+
+class StockTransferItem(SoftDeleteModel):
+    transfer = models.ForeignKey(StockTransfer, on_delete=models.CASCADE, related_name='items')
+    product_uuid = models.UUIDField(db_index=True)
+    quantity = models.DecimalField(max_digits=20, decimal_places=3)
+    
+    def __str__(self):
+        return f"{self.product_uuid} x {self.quantity}"
+
 # Signals
 from django.db.models.signals import post_save
 from django.dispatch import receiver

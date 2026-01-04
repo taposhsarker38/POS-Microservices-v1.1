@@ -8,6 +8,9 @@ class Vendor(SoftDeleteModel):
     address = models.TextField(blank=True, null=True)
     contact_person = models.CharField(max_length=255, blank=True, null=True)
 
+    # Portal Linkage
+    user_uuid = models.UUIDField(null=True, blank=True, db_index=True, help_text="Link to Auth Service User UUID")
+
     class Meta:
         unique_together = ('company_uuid', 'name')
 

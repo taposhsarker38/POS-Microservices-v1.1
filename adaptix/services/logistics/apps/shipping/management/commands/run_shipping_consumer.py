@@ -19,6 +19,7 @@ class Command(BaseCommand):
         queue_name = 'logistics_inbound'
         channel.queue_declare(queue=queue_name, durable=True)
         channel.queue_bind(exchange='events', queue=queue_name, routing_key='production.output_created')
+        channel.queue_bind(exchange='events', queue=queue_name, routing_key='pos.sale.closed')
 
         def callback(ch, method, properties, body):
             try:
@@ -28,6 +29,8 @@ class Command(BaseCommand):
 
                 if event_type == 'production.output_created':
                     self.handle_production_output(data)
+                elif event_type == 'pos.sale.closed':
+                    self.handle_pos_sale(data)
                 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
             except Exception as e:
@@ -46,34 +49,41 @@ class Command(BaseCommand):
             return
 
         print(f"Production finished for linked Sales Order {source_order_uuid}. Creating Shipment...")
+        self._create_or_update_shipment(source_order_uuid, data)
+
+    def handle_pos_sale(self, data):
+        order_uuid = data.get('order_id')
+        if not order_uuid:
+            return
         
-        # In a real microservice, we would fetch order details via API
-        # For this setup, we'll try to reach the POS service
-        try:
-            pos_url = os.environ.get('POS_SERVICE_URL', 'http://pos:8000')
-            response = requests.get(f"{pos_url}/api/sales/orders/{source_order_uuid}/")
-            if response.status_code == 200:
-                order_data = response.json()
-                
-                # Check if shipment already exists
-                if not Shipment.objects.filter(order_uuid=source_order_uuid).exists():
-                    Shipment.objects.create(
-                        order_uuid=source_order_uuid,
-                        customer_name=order_data.get('customer_name', 'Unknown'),
-                        customer_phone=order_data.get('customer_phone', ''),
-                        destination_address=order_data.get('customer_address', 'Order Address'),
-                        status='PENDING'
-                    )
-                    print(f"Shipment created for Order {order_data.get('order_number')}")
-                else:
-                    print(f"Shipment already exists for Order {source_order_uuid}")
-        except Exception as e:
-            print(f"Failed to fetch order details or create shipment: {e}")
-            # Fallback creation if API fails (just to show it works)
-            if not Shipment.objects.filter(order_uuid=source_order_uuid).exists():
-                 Shipment.objects.create(
-                    order_uuid=source_order_uuid,
-                    customer_name=f"Customer (Order {data.get('source_order_number')})",
-                    destination_address="Auto-detected from Sales",
-                    status='PENDING'
-                )
+        print(f"POS Sale Closed for Order {order_uuid}. Creating Shipment...")
+        self._create_or_update_shipment(order_uuid, data)
+
+    def _create_or_update_shipment(self, order_uuid, event_data):
+        # Check if shipment already exists
+        if Shipment.objects.filter(order_uuid=order_uuid).exists():
+            print(f"Shipment already exists for Order {order_uuid}")
+            return
+
+        company_uuid = event_data.get('company_uuid')
+        branch_id = event_data.get('wing_uuid')
+        
+        # Try to fetch additional details if available
+        customer_name = event_data.get('customer_name', 'Walk-in Customer')
+        customer_phone = event_data.get('customer_phone', '')
+        
+        # If it's a POS sale, it might have refined details
+        if event_data.get('event') == 'pos.sale.closed':
+            # POS event has specific structure
+            pass
+
+        Shipment.objects.create(
+            order_uuid=order_uuid,
+            company_uuid=company_uuid,
+            branch_id=branch_id,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            destination_address=event_data.get('destination_address', 'Check Order Details'),
+            status='PENDING'
+        )
+        print(f"Shipment created for Order {order_uuid}")

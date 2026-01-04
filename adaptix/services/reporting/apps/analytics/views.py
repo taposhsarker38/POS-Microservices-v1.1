@@ -1,6 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.http import HttpResponse
+from datetime import datetime
+from .pdf_service import PDFService
 from drf_spectacular.utils import extend_schema
 from django.db.models import Sum
 from .models import DailySales, TopProduct
@@ -36,6 +39,57 @@ class AnalyticsViewSet(viewsets.ViewSet):
             "total_transactions": total_transactions,
             "top_products": TopProductSerializer(top_products, many=True).data
         })
+
+    @action(detail=False, methods=['get'], url_path='export-daily-production')
+    def export_daily_production(self, request):
+        company_uuid = request.query_params.get("company_uuid")
+        # In a real scenario, we'd aggregate data from Manufacturing service or our local DailyProduction model
+        from .models import DailyProduction
+        
+        # Simulating aggregation for the PDF
+        data = {
+             "date": datetime.now().strftime("%Y-%m-%d"),
+             "total_produced": 120,
+             "total_passed": 115,
+             "total_failed": 5,
+             "defects": [
+                 {"category": "Cooling", "count": 3},
+                 {"category": "Body", "count": 2}
+             ]
+        }
+        
+        pdf_buffer = PDFService.generate_daily_production_report(data)
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="daily_production_{data["date"]}.pdf"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-client-progress')
+    def export_client_progress(self, request):
+        customer_name = request.query_params.get("customer_name", "SSL Enterprise")
+        # Specific data for the requested customer
+        data = {
+            "customer": customer_name,
+            "target": 500,
+            "ready": 320,
+            "in_production": 180,
+            "shipped": 85,
+            "due_amount": 12500.50
+        }
+    @action(detail=False, methods=['get'], url_path='export-qr-labels')
+    def export_qr_labels(self, request):
+        order_id = request.query_params.get("order_id")
+        
+        # In a real scenario, we'd fetch units for this order from Manufacturing
+        # For now, let's mock the unit list
+        units = [
+            {"serial_number": f"FRZ-202601-A{i}", "model_name": "Deep Freeze 200L"}
+            for i in range(1, 13)
+        ]
+        
+        pdf_buffer = PDFService.generate_qr_labels(units)
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="qr_labels.pdf"'
+        return response
 
 class DailySalesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DailySales.objects.all().order_by('-date')

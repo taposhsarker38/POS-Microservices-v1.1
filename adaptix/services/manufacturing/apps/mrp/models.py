@@ -144,3 +144,47 @@ class ProductionOrderOperation(models.Model):
 
     def __str__(self):
         return f"PO-{self.production_order_id} - {self.operation.name}"
+
+class ProductUnit(models.Model):
+    STATUS_CHOICES = (
+        ('PRODUCTION', 'In Production'),
+        ('QC', 'Quality Check'),
+        ('INVENTORY', 'In Inventory'),
+        ('RESERVED', 'Reserved'),
+        ('SHIPPED', 'Shipped'),
+        ('REWORK', 'Rework'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    serial_number = models.CharField(max_length=100, unique=True, db_index=True)
+    production_order = models.ForeignKey(ProductionOrder, on_delete=models.CASCADE, related_name='units')
+    product_uuid = models.UUIDField(db_index=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PRODUCTION')
+    
+    # Specs & Identification
+    color = models.CharField(max_length=50, blank=True, null=True)
+    size = models.CharField(max_length=50, blank=True, null=True) # e.g. 200L, 10ct
+    model_name = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Store JSON data or link for QR
+    qr_code_data = models.TextField(blank=True)
+    
+    # Warranty & Service
+    warranty_expiry = models.DateField(null=True, blank=True)
+    warranty_terms = models.TextField(blank=True)
+    specifications = models.JSONField(default=dict, blank=True)
+    
+    current_warehouse_uuid = models.UUIDField(null=True, blank=True, db_index=True)
+    
+    # Track which specific bulk order this belongs to (for SSL Enterprise)
+    reservation_uuid = models.UUIDField(null=True, blank=True, db_index=True)
+    
+    qc_history = models.JSONField(default=list, blank=True)
+    
+    company_uuid = models.UUIDField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.serial_number

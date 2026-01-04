@@ -51,7 +51,7 @@ interface SidebarRoute {
   children?: {
     label: string;
     href: string;
-    permission?: string;
+    permission?: string | null;
   }[];
 }
 
@@ -69,6 +69,11 @@ const routes: SidebarRoute[] = [
       {
         label: "customers",
         href: "/dashboard/customers",
+        permission: "view_customer",
+      },
+      {
+        label: "customerPortal",
+        href: "/dashboard/customer/portal",
         permission: "view_customer",
       },
       {
@@ -130,12 +135,12 @@ const routes: SidebarRoute[] = [
       {
         label: "logistics",
         href: "/dashboard/logistics",
-        permission: "view_logistics",
+        permission: null,
       },
       {
         label: "riderDashboard",
-        href: "/rider",
-        permission: "view_logistics",
+        href: "/dashboard/logistics/rider",
+        permission: null,
       },
       { label: "assets", href: "/dashboard/assets", permission: "view_asset" },
     ],
@@ -179,8 +184,18 @@ const routes: SidebarRoute[] = [
     icon: Brain,
     children: [
       {
+        label: "predictiveMaintenance",
+        href: "/dashboard/assets/maintenance",
+        permission: null,
+      },
+      {
         label: "businessAI",
         href: "/dashboard/intelligence",
+        permission: "view_forecast",
+      },
+      {
+        label: "financialIntelligence",
+        href: "/dashboard/intelligence/finance",
         permission: "view_forecast",
       },
       {

@@ -86,6 +86,9 @@ class Customer(SoftDeleteModel):
     # Price List Mapping
     price_list_uuid = models.UUIDField(null=True, blank=True, db_index=True)
 
+    # Portal Linkage
+    user_uuid = models.UUIDField(null=True, blank=True, db_index=True, help_text="Link to Auth Service User UUID")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

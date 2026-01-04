@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import PurchaseOrder, PurchaseOrderItem, RFQ, VendorQuote
+from .models import PurchaseOrder, PurchaseOrderItem, RFQ, VendorQuote, AIProcurementSuggestion
+
+class AIProcurementSuggestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIProcurementSuggestion
+        fields = '__all__'
+        read_only_fields = ('company_uuid',)
 
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):
     class Meta:

@@ -142,7 +142,19 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refresh_token");
-        if (!refreshToken) throw new Error("No refresh token");
+        if (!refreshToken) {
+          console.warn("No refresh token found. Redirecting to login...");
+          localStorage.removeItem("access_token");
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.includes("/login")
+          ) {
+            window.location.href = `/${
+              window.location.pathname.split("/")[1] || "en"
+            }/login`;
+          }
+          return Promise.reject(error);
+        }
 
         const { data } = await axios.post(`${API_URL}/auth/refresh/`, {
           refresh: refreshToken,

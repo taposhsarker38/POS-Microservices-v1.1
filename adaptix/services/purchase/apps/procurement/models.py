@@ -98,3 +98,28 @@ class PurchaseOrderItem(SoftDeleteModel):
 
     def __str__(self):
         return f"{self.product_uuid} x {self.quantity}"
+class AIProcurementSuggestion(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('ignored', 'Ignored'),
+    )
+
+    product_uuid = models.UUIDField(db_index=True)
+    suggested_quantity = models.DecimalField(max_digits=12, decimal_places=4)
+    estimated_out_of_stock_date = models.DateField()
+    confidence_score = models.DecimalField(max_digits=5, decimal_places=2, help_text="AI confidence (0.0 - 1.0)")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Insights
+    reasoning = models.TextField(blank=True, null=True, help_text="Why was this suggested? (e.g. Sales trend up 20%)")
+    
+    # Audit
+    processed_at = models.DateTimeField(null=True, blank=True)
+    linked_po = models.ForeignKey('PurchaseOrder', on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-confidence_score', 'estimated_out_of_stock_date']
+
+    def __str__(self):
+        return f"AI Suggestion: {self.product_uuid} -> {self.suggested_quantity}"

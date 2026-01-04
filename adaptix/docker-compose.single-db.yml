@@ -114,7 +114,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
     logging:
       driver: json-file
       options:
@@ -410,6 +410,38 @@ services:
         max-size: 10m
         max-file: '3'
     command: python manage.py runserver 0.0.0.0:8000
+  purchase-worker:
+    build:
+      context: .
+      dockerfile: services/purchase/Dockerfile
+    container_name: adaptix-purchase-worker
+    command: python manage.py run_purchase_consumer
+    environment:
+    - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+    - DB_SCHEMA=purchase
+    - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+    - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+    - SERVICE_NAME=purchase-worker
+    - PYTHONPATH=/app:/shared/adaptix_core
+    volumes:
+    - ./services/purchase:/app
+    - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - backend
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
   hrms-service:
     build:
       context: .
@@ -982,7 +1014,7 @@ services:
     - NEXT_PUBLIC_API_URL=http://localhost:8101/api
     - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
     - SERVICE_NAME=frontend-app
-    - NODE_OPTIONS=--max-old-space-size=1536
+    - NODE_OPTIONS=--max-old-space-size=2560
     ports:
     - 3000:3000
     restart: unless-stopped
@@ -994,7 +1026,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 3G
     logging:
       driver: json-file
       options:

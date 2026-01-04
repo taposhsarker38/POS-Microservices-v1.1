@@ -30,6 +30,7 @@ def publish_event(exchange, routing_key, payload):
             body=json.dumps(payload, cls=DjangoJSONEncoder),
             properties=pika.BasicProperties(
                 delivery_mode=2,  # make message persistent
+                content_type='application/json'
             )
         )
         connection.close()

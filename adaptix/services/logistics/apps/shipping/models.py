@@ -8,6 +8,9 @@ class Vehicle(models.Model):
         ('MAINTENANCE', 'Maintenance'),
     ]
     
+    company_uuid = models.UUIDField(db_index=True, null=True)
+    branch_id = models.UUIDField(db_index=True, null=True)
+    
     license_plate = models.CharField(max_length=20, unique=True)
     capacity = models.FloatField(help_text="Capacity in KG or Volume")
     model = models.CharField(max_length=100)
@@ -27,6 +30,9 @@ class DeliveryRoute(models.Model):
         ('COMPLETED', 'Completed'),
     ]
 
+    company_uuid = models.UUIDField(db_index=True, null=True)
+    branch_id = models.UUIDField(db_index=True, null=True)
+    
     vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True)
     driver_uuid = models.UUIDField(help_text="Assigned driver for this route", null=True)
     start_time = models.DateTimeField(null=True, blank=True)
@@ -43,10 +49,15 @@ class Shipment(models.Model):
         ('PENDING', 'Pending'),
         ('PACKED', 'Packed'),
         ('SHIPPED', 'Shipped'), # Assigned to a route
+        ('OUT_FOR_DELIVERY', 'Out for Delivery'),
         ('DELIVERED', 'Delivered'),
         ('RETURNED', 'Returned'),
+        ('FAILED', 'Delivery Failed'),
     ]
 
+    company_uuid = models.UUIDField(db_index=True, null=True)
+    branch_id = models.UUIDField(db_index=True, null=True)
+    
     tracking_number = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     # Link to POS Order
     order_uuid = models.UUIDField(db_index=True)

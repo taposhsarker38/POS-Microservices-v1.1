@@ -755,6 +755,34 @@ services:
         limits:
           memory: 384M
 
+  logistics-worker:
+    build:
+      context: .
+      dockerfile: services/logistics/Dockerfile
+    container_name: adaptix-logistics-worker
+    profiles: ["logistics", "sales"]
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=logistics
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - PYTHONPATH=/app:/shared/adaptix_core
+    command: python manage.py run_shipping_consumer
+    volumes:
+      - ./services/logistics:/app
+      - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   intelligence-service:
     build:
       context: .

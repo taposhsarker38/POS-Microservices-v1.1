@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import WorkCenter, BillOfMaterial, ProductionOrder, Operation, ProductionOrderOperation
-from .serializers import WorkCenterSerializer, BillOfMaterialSerializer, ProductionOrderSerializer, OperationSerializer, ProductionOrderOperationSerializer
+from .models import WorkCenter, BillOfMaterial, ProductionOrder, Operation, ProductionOrderOperation, ProductUnit
+from .serializers import WorkCenterSerializer, BillOfMaterialSerializer, ProductionOrderSerializer, OperationSerializer, ProductionOrderOperationSerializer, ProductUnitSerializer
+from .utils.serial_generator import generate_serial_number
 from adaptix_core.permissions import HasPermission
 import os
 import json
@@ -116,6 +117,30 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
                     operation=bom_op.operation,
                     sequence=bom_op.sequence
                 )
+        
+        # Auto-generate individual units if order is already confirmed or in progress
+        if order.status in ['CONFIRMED', 'IN_PROGRESS', 'QUALITY_CHECK']:
+            self.generate_order_units(order)
+
+    def generate_order_units(self, order):
+        """Helper to create individual unit records for an order."""
+        if order.units.exists():
+            return 
+
+        for _ in range(int(order.quantity_planned)):
+            serial = generate_serial_number()
+            ProductUnit.objects.create(
+                serial_number=serial,
+                production_order=order,
+                product_uuid=order.product_uuid,
+                company_uuid=order.company_uuid,
+                status='PRODUCTION',
+                qr_code_data=json.dumps({
+                    "serial": serial,
+                    "product": str(order.product_uuid),
+                    "order": f"PO-{order.id}"
+                })
+            )
 
     def perform_update(self, serializer):
         instance = serializer.instance
@@ -134,6 +159,10 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         # Trigger Stock Increase if moved to COMPLETED
         if old_status != 'COMPLETED' and new_status == 'COMPLETED':
             self.publish_completion_event(updated_instance)
+        
+        # Generate Units if status moved to CONFIRMED or IN_PROGRESS for the first time
+        if old_status == 'DRAFT' and new_status in ['CONFIRMED', 'IN_PROGRESS']:
+            self.generate_order_units(updated_instance)
 
     def publish_qc_event(self, order):
         try:
@@ -145,7 +174,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
             producer = Producer(connection)
             
             event_payload = {
-                "event": "production.qc_requested",
+                "type": "production.qc_requested",
                 "order_id": str(order.id),
                 "product_uuid": str(order.product_uuid),
                 "quantity": float(order.quantity_planned),
@@ -209,7 +238,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
             producer = Producer(connection)
             
             event_payload = {
-                "event": "production.materials_consumed",
+                "type": "production.materials_consumed",
                 "order_id": str(order.id),
                 "order_uuid": str(order.uuid),
                 "company_uuid": str(order.company_uuid),
@@ -239,7 +268,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
             producer = Producer(connection)
             
             event_payload = {
-                "event": "production.output_created",
+                "type": "production.output_created",
                 "order_id": str(order.id),
                 "product_uuid": str(order.product_uuid),
                 "quantity": float(order.quantity_planned),
@@ -366,3 +395,46 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
              return Response({"error": f"Inventory check failed: {e}"}, status=500)
+
+class ProductUnitViewSet(viewsets.ModelViewSet):
+    queryset = ProductUnit.objects.all()
+    serializer_class = ProductUnitSerializer
+    permission_classes = [HasPermission]
+    required_permission = "mrp.order"
+
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid).order_by('-created_at')
+        return self.queryset.none()
+
+    @action(detail=True, methods=['post'])
+    def move(self, request, pk=None):
+        unit = self.get_object()
+        warehouse_uuid = request.data.get('warehouse_uuid')
+        if not warehouse_uuid:
+            return Response({"error": "warehouse_uuid required"}, status=400)
+        
+        unit.current_warehouse_uuid = warehouse_uuid
+        unit.save()
+        
+        # Log movement logic could go here
+        return Response({"status": "unit moved", "current_warehouse": warehouse_uuid})
+
+    @action(detail=False, methods=['post'], url_path='bulk-reserve')
+    def bulk_reserve(self, request):
+        unit_ids = request.data.get('unit_ids', [])
+        reservation_uuid = request.data.get('reservation_uuid')
+        
+        if not unit_ids or not reservation_uuid:
+            return Response({"error": "unit_ids and reservation_uuid required"}, status=400)
+            
+        updated = ProductUnit.objects.filter(
+            id__in=unit_ids, 
+            company_uuid=self.request.company_uuid
+        ).update(
+            status='RESERVED', 
+            reservation_uuid=reservation_uuid
+        )
+        
+        return Response({"status": "units reserved", "count": updated})

@@ -5,6 +5,7 @@ from apps.inventory_opt.models import InventoryOptimization
 from apps.forecasts.models import Forecast
 from datetime import date, timedelta
 import logging
+from adaptix_core.messaging import publish_event
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,24 @@ def analyze_stockout_risk(company_uuid=None):
                 'estimated_stockout_date': stockout_date
             }
         )
+
+        # 3. Broadcast procurement suggestion if risk is critical
+        if risk_score >= 75:
+            suggested_qty = int(cumulative_demand / 30 * 30) if cumulative_demand > 0 else 50
+            event_payload = {
+                "event": "intelligence.inventory.low_stock_predicted",
+                "product_uuid": str(prod_id),
+                "suggested_qty": suggested_qty,
+                "company_uuid": str(comp_id),
+                "estimated_out_of_stock_date": str(stockout_date) if stockout_date else None,
+                "confidence_score": float(0.9 if risk_score == 100 else 0.75),
+                "reasoning": f"Estimated stockout on {stockout_date}. Current stock ({qty}) depleted by velocity."
+            }
+            try:
+                publish_event("events", "intelligence.inventory.low_stock_predicted", event_payload)
+            except Exception as e:
+                logger.error(f"Failed to publish procurement alert: {e}")
+
         processed_count += 1
         
     logger.info(f"Finished risk analysis. Processed {processed_count} products.")

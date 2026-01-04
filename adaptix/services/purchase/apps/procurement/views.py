@@ -1,8 +1,11 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import PurchaseOrder, RFQ, VendorQuote
-from .serializers import PurchaseOrderSerializer, RFQSerializer, VendorQuoteSerializer
+from .models import PurchaseOrder, RFQ, VendorQuote, AIProcurementSuggestion
+from .serializers import (
+    PurchaseOrderSerializer, RFQSerializer, VendorQuoteSerializer,
+    AIProcurementSuggestionSerializer
+)
 from adaptix_core.permissions import HasPermission
 from adaptix_core.messaging import publish_event
 import json
@@ -11,7 +14,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all()
     serializer_class = PurchaseOrderSerializer
     permission_classes = [HasPermission]
-    required_permission = "purchase.order"
+    
+    @property
+    def required_permission(self):
+        if self.action == 'my_vendor_orders':
+            return None
+        return "purchase.order"
 
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
@@ -22,6 +30,23 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         uuid = getattr(self.request, "company_uuid", None)
         serializer.save(company_uuid=uuid)
+
+    @action(detail=False, methods=['get'], url_path='my-vendor-orders')
+    def my_vendor_orders(self, request):
+        """Return POs for the logged-in vendor."""
+        claims = getattr(request, 'user_claims', {})
+        user_uuid = claims.get("sub")
+        
+        if not user_uuid:
+            return Response({"error": "User identity not found"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        try:
+            # We filter by vendor__user_uuid
+            qs = self.get_queryset().filter(vendor__user_uuid=user_uuid)
+            serializer = self.get_serializer(qs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='receive')
     def receive_order(self, request, pk=None):
@@ -174,7 +199,12 @@ class RFQViewSet(viewsets.ModelViewSet):
     queryset = RFQ.objects.all()
     serializer_class = RFQSerializer
     permission_classes = [HasPermission]
-    required_permission = "purchase.order"
+    
+    @property
+    def required_permission(self):
+        if self.action in ['list', 'retrieve', 'submit_quote']:
+            return None
+        return "purchase.order"
 
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
@@ -198,7 +228,12 @@ class VendorQuoteViewSet(viewsets.ModelViewSet):
     queryset = VendorQuote.objects.all()
     serializer_class = VendorQuoteSerializer
     permission_classes = [HasPermission]
-    required_permission = "purchase.order" # Vendors will need a specific permission later, using this for now
+    
+    @property
+    def required_permission(self):
+        if self.action == 'my_quotes':
+            return None
+        return "purchase.order"
 
     def get_queryset(self):
         uuid = getattr(self.request, "company_uuid", None)
@@ -209,3 +244,75 @@ class VendorQuoteViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         uuid = getattr(self.request, "company_uuid", None)
         serializer.save(company_uuid=uuid)
+
+    @action(detail=False, methods=['get'], url_path='my-quotes')
+    def my_quotes(self, request):
+        """Return quotes for the logged-in vendor."""
+        claims = getattr(request, 'user_claims', {})
+        user_uuid = claims.get("sub")
+        
+        if not user_uuid:
+            return Response({"error": "User identity not found"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        try:
+            qs = self.get_queryset().filter(vendor__user_uuid=user_uuid)
+            serializer = self.get_serializer(qs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AIProcurementSuggestionViewSet(viewsets.ModelViewSet):
+    queryset = AIProcurementSuggestion.objects.all()
+    serializer_class = AIProcurementSuggestionSerializer
+    permission_classes = [HasPermission]
+    required_permission = "purchase.order"
+
+    def get_queryset(self):
+        uuid = getattr(self.request, "company_uuid", None)
+        if uuid:
+            return self.queryset.filter(company_uuid=uuid)
+        return self.queryset.none()
+
+    @action(detail=True, methods=['post'], url_path='convert-to-po')
+    def convert_to_po(self, request, pk=None):
+        suggestion = self.get_object()
+        if suggestion.status != 'pending':
+            return Response({"detail": "Suggestion already processed"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        vendor_id = request.data.get('vendor_id')
+        if not vendor_id:
+             return Response({"detail": "Vendor ID is required to create PO"}, status=status.HTTP_400_BAD_REQUEST)
+
+        import uuid as uuid_lib
+        from .models import PurchaseOrder, PurchaseOrderItem
+        from django.utils import timezone
+        
+        # 1. Create the PO
+        po = PurchaseOrder.objects.create(
+            company_uuid=suggestion.company_uuid,
+            vendor_id=vendor_id,
+            reference_number=f"AI-{str(uuid_lib.uuid4())[:8].upper()}",
+            status='draft',
+            notes=f"Auto-generated from AI Suggestion. Reasoning: {suggestion.reasoning or 'Stockout risk detected.'}"
+        )
+        
+        # 2. Add the item
+        PurchaseOrderItem.objects.create(
+            order=po,
+            product_uuid=suggestion.product_uuid,
+            quantity=suggestion.suggested_quantity,
+            unit_cost=0, # Manager must update price in draft
+            company_uuid=suggestion.company_uuid
+        )
+        
+        # 3. Mark suggestion as approved
+        suggestion.status = 'approved'
+        suggestion.processed_at = timezone.now()
+        suggestion.linked_po = po
+        suggestion.save()
+        
+        return Response({
+            "status": "approved",
+            "po_id": str(po.id),
+            "detail": "AI suggestion converted to a Draft Purchase Order."
+        })

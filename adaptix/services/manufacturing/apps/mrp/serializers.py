@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WorkCenter, BillOfMaterial, BOMItem, ProductionOrder, Operation, BOMOperation, ProductionOrderOperation
+from .models import WorkCenter, BillOfMaterial, BOMItem, ProductionOrder, Operation, BOMOperation, ProductionOrderOperation, ProductUnit
 
 class WorkCenterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -73,11 +73,17 @@ class ProductionOrderOperationSerializer(serializers.ModelSerializer):
         model = ProductionOrderOperation
         fields = '__all__'
 
+class ProductUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductUnit
+        fields = '__all__'
+
 class ProductionOrderSerializer(serializers.ModelSerializer):
     bom_name = serializers.CharField(source='bom.name', read_only=True)
     work_center_name = serializers.CharField(source='work_center.name', read_only=True)
     work_center = serializers.PrimaryKeyRelatedField(queryset=WorkCenter.objects.all(), required=False, allow_null=True)
     operation_trackers = ProductionOrderOperationSerializer(many=True, read_only=True)
+    units = ProductUnitSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProductionOrder

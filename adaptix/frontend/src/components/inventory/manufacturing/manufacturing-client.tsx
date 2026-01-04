@@ -7,11 +7,14 @@ import { WorkCenterList } from "./work-center-list";
 import { OperationList } from "./operation-list";
 import { ShopFloorControl } from "./shop-floor-control";
 
+import { UnitTracking } from "./unit-tracking";
+
 export function ManufacturingClient() {
   return (
     <Tabs defaultValue="production-orders" className="space-y-4">
       <TabsList>
         <TabsTrigger value="production-orders">Production Orders</TabsTrigger>
+        <TabsTrigger value="unit-tracking">Unit Tracking & Reports</TabsTrigger>
         <TabsTrigger value="shop-floor">Shop Floor / Workers</TabsTrigger>
         <TabsTrigger value="operations">Operations</TabsTrigger>
         <TabsTrigger value="boms">Bills of Material (BOM)</TabsTrigger>
@@ -19,6 +22,9 @@ export function ManufacturingClient() {
       </TabsList>
       <TabsContent value="production-orders" className="space-y-4">
         <ProductionOrderList />
+      </TabsContent>
+      <TabsContent value="unit-tracking" className="space-y-4">
+        <UnitTracking />
       </TabsContent>
       <TabsContent value="shop-floor" className="space-y-4">
         <ShopFloorControl />

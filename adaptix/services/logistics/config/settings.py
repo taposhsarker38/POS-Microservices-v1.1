@@ -82,9 +82,11 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
-    'DEFAULT_AUTHENTICATION_CLASSES': [], 
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+         # Standard JWT Auth if needed, but HasPermission handles claims
+    ], 
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
 }
 

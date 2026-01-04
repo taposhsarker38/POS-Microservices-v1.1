@@ -71,3 +71,76 @@ class DepreciationSchedule(models.Model):
 
     def __str__(self):
         return f"{self.asset} - {self.date} (-{self.amount})"
+
+class AssetTelemetry(models.Model):
+    """
+    Stores raw sensor data from IoT devices.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name='telemetry')
+    
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+    
+    temperature = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Celsius")
+    vibration = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="G-force/mm/s")
+    power_usage = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Watts/kWh")
+    usage_hours = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Cumulative hours")
+    
+    # Raw JSON for any other non-standard sensors
+    metadata = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name_plural = "Asset Telemetry"
+
+    def __str__(self):
+        return f"Telemetry for {self.asset} at {self.timestamp}"
+
+class AssetMaintenanceTask(models.Model):
+    """
+    Tracks maintenance for assets. Can be scheduled or AI-triggered.
+    """
+    PRIORITY_CHOICES = (
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    )
+    
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    TYPE_CHOICES = (
+        ('routine', 'Routine'),
+        ('repair', 'Repair'),
+        ('preventive', 'Preventive (AI)'),
+        ('emergency', 'Emergency'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company_uuid = models.UUIDField(db_index=True)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name='maintenance_tasks')
+    
+    task_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='routine')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    
+    suggested_date = models.DateField(null=True, blank=True)
+    scheduled_date = models.DateField(null=True, blank=True)
+    completed_date = models.DateField(null=True, blank=True)
+    
+    cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    performed_by = models.CharField(max_length=255, blank=True) # Expert or Vendor name
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.task_type} - {self.title} ({self.status})"

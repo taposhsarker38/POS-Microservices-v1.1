@@ -45,6 +45,8 @@ class Command(BaseCommand):
                 self.handle_delivery_confirmation(body)
             elif event_type == 'pos.payment.recorded':
                 self.handle_payment_alert(body)
+            elif event_type == 'production.qc_requested':
+                self.handle_qc_requested(body)
 
             message.ack()
         except Exception as e:
@@ -221,3 +223,9 @@ class Command(BaseCommand):
         order_num = data.get('order_number')
         amount = data.get('amount')
         self.stdout.write(self.style.WARNING(f" [FINANCE] Payment of ${amount} recorded for Order {order_num}. Accounts notified. "))
+
+    def handle_qc_requested(self, data):
+        """Alert QC Team about units ready for inspection"""
+        order_id = data.get('order_id')
+        qty = data.get('quantity')
+        self.stdout.write(self.style.WARNING(f" [QC ALERT] production.qc_requested: Order {order_id} has {qty} units ready for inspection. "))

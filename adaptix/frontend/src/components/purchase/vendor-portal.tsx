@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Gavel, Send, Clock, AlertTriangle } from "lucide-react";
+import { Gavel, Send, Clock, AlertTriangle, ShoppingBag } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -32,6 +32,7 @@ export const VendorPortal: React.FC = () => {
   const [rfqs, setRfqs] = React.useState<any[]>([]);
   const [vendors, setVendors] = React.useState<any[]>([]);
   const [myQuotes, setMyQuotes] = React.useState<any[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = React.useState<any[]>([]);
   const [selectedVendor, setSelectedVendor] = React.useState<string>("");
   const [loading, setLoading] = React.useState(true);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = React.useState(false);
@@ -58,10 +59,12 @@ export const VendorPortal: React.FC = () => {
       setVendors(vendorRes.data || vendorRes.data.data);
 
       if (selectedVendor) {
-        const quotesRes = await api.get("/purchase/quotes/", {
-          params: { vendor: selectedVendor },
-        });
+        const [quotesRes, poRes] = await Promise.all([
+          api.get("/purchase/quotes/", { params: { vendor: selectedVendor } }),
+          api.get("/purchase/po/my-vendor-orders/"),
+        ]);
         setMyQuotes(quotesRes.data || quotesRes.data.data || []);
+        setPurchaseOrders(poRes.data || []);
       }
     } catch (error) {
       toast.error("Failed to load portal data");
@@ -126,9 +129,10 @@ export const VendorPortal: React.FC = () => {
       </div>
 
       <Tabs defaultValue="rfqs" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+        <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
           <TabsTrigger value="rfqs">Active RFQs</TabsTrigger>
           <TabsTrigger value="quotes">My Quotes</TabsTrigger>
+          <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="rfqs" className="mt-6">
@@ -233,6 +237,81 @@ export const VendorPortal: React.FC = () => {
                           <p className="text-slate-600 italic">
                             "{quote.notes || "N/A"}"
                           </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="orders" className="mt-6">
+          <div className="space-y-4">
+            {!selectedVendor ? (
+              <div className="text-center py-12 border rounded-lg bg-slate-50">
+                <p className="text-muted-foreground">
+                  Select a vendor to view your purchase orders.
+                </p>
+              </div>
+            ) : purchaseOrders.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg bg-slate-50">
+                <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-muted-foreground">
+                  No confirmed purchase orders yet.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {purchaseOrders.map((order) => (
+                  <Card
+                    key={order.id}
+                    className="hover:shadow-sm transition-shadow"
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-md">
+                            {order.reference_number}
+                          </CardTitle>
+                          <CardDescription>
+                            {format(new Date(order.date_issued), "PPP")}
+                          </CardDescription>
+                        </div>
+                        <Badge
+                          className={
+                            order.status === "received"
+                              ? "bg-green-100 text-green-700 hover:bg-green-100"
+                              : order.status === "cancelled"
+                              ? "bg-red-100 text-red-700 hover:bg-red-100"
+                              : "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                          }
+                        >
+                          {order.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">
+                            Total Amount:
+                          </span>
+                          <span className="ml-2 font-bold">
+                            ${order.total_amount}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">
+                            Payment:
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="ml-2 uppercase text-[10px]"
+                          >
+                            {order.payment_status}
+                          </Badge>
                         </div>
                       </div>
                     </CardContent>

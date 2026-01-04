@@ -1,8 +1,8 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import AssetCategory, Asset, DepreciationSchedule
-from .serializers import AssetCategorySerializer, AssetSerializer, DepreciationScheduleSerializer
+from .models import AssetCategory, Asset, DepreciationSchedule, AssetTelemetry, AssetMaintenanceTask
+from .serializers import (
+    AssetCategorySerializer, AssetSerializer, DepreciationScheduleSerializer,
+    AssetTelemetrySerializer, AssetMaintenanceTaskSerializer
+)
 
 class AssetCategoryViewSet(viewsets.ModelViewSet):
     queryset = AssetCategory.objects.all()
@@ -15,6 +15,21 @@ class AssetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Initial value is purchase cost
         serializer.save(current_value=serializer.validated_data['purchase_cost'])
+
+    @action(detail=True, methods=['get'], url_path='health-metrics')
+    def health_metrics(self, request, pk=None):
+        """Aggregate data for the Asset Health Dashboard."""
+        asset = self.get_object()
+        telemetry = asset.telemetry.all()[:50] # Last 50 readings
+        tasks = asset.maintenance_tasks.all()
+        
+        return Response({
+            "asset_id": asset.id,
+            "asset_name": asset.name,
+            "status": asset.status,
+            "telemetry_history": AssetTelemetrySerializer(telemetry, many=True).data,
+            "maintenance_history": AssetMaintenanceTaskSerializer(tasks, many=True).data,
+        })
 
     @action(detail=True, methods=['post'], url_path='calculate-depreciation')
     def calculate_depreciation(self, request, pk=None):
@@ -110,3 +125,18 @@ class AssetViewSet(viewsets.ModelViewSet):
 class DepreciationScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DepreciationSchedule.objects.all()
     serializer_class = DepreciationScheduleSerializer
+
+class AssetTelemetryViewSet(viewsets.ModelViewSet):
+    queryset = AssetTelemetry.objects.all()
+    serializer_class = AssetTelemetrySerializer
+    filterset_fields = ['asset']
+
+class AssetMaintenanceTaskViewSet(viewsets.ModelViewSet):
+    queryset = AssetMaintenanceTask.objects.all()
+    serializer_class = AssetMaintenanceTaskSerializer
+    filterset_fields = ['asset', 'status', 'company_uuid']
+
+    def perform_create(self, serializer):
+        # Support fallback if company_uuid not provided in body
+        company_uuid = self.request.data.get('company_uuid') or getattr(self.request, "company_uuid", None)
+        serializer.save(company_uuid=company_uuid)

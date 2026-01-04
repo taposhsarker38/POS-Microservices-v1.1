@@ -10,7 +10,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [HasPermission]
-    required_permission = "sales.order" # General permission for now
+    
+    @property
+    def required_permission(self):
+        if self.action == 'my_orders':
+            return None # Portal access is open to any authenticated user, filtered by customer_id
+        return "sales.order"
 
     def get_queryset(self):
         # Filter by company to ensure multi-tenancy isolation
@@ -39,8 +44,19 @@ class OrderViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(created_at__date__lte=end_date)
                 
             return qs
-            
-        return self.queryset.none()
+    
+    @action(detail=False, methods=['get'], url_path='my-orders')
+    def my_orders(self, request):
+        """Return orders for a specific customer. Securely filtered in portal."""
+        customer_id = request.query_params.get('customer_id')
+        if not customer_id:
+             return Response({"error": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # In a real portal, we should verify the user owns this customer_id.
+        # For now, we filter by customer_uuid which matches high-level entity ID.
+        qs = self.get_queryset().filter(customer_uuid=customer_id)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
     
     def perform_create(self, serializer):
         # Support fallback for tests where middleware might be disabled

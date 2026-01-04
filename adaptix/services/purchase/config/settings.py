@@ -67,6 +67,9 @@ DATABASES = {
     'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
 }
 
+# RabbitMQ / Celery
+CELERY_BROKER_URL = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {

@@ -202,6 +202,22 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         serializer.save(**save_kwargs)
 
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Return the profile of the logged-in customer."""
+        claims = getattr(request, 'user_claims', {})
+        user_uuid = claims.get("sub")
+        
+        if not user_uuid:
+            return Response({"error": "User identity not found in token"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        try:
+            customer = Customer.objects.get(user_uuid=user_uuid, is_deleted=False)
+            serializer = self.get_serializer(customer)
+            return Response(serializer.data)
+        except Customer.DoesNotExist:
+            return Response({"error": "Customer profile not found for this user"}, status=status.HTTP_404_NOT_FOUND)
+
 class AttributeSetViewSet(viewsets.ModelViewSet):
     queryset = AttributeSet.objects.all()
     serializer_class = AttributeSetSerializer

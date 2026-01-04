@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.assistant',
     'apps.forecasts',
     'apps.inventory_opt',
+    'apps.maintenance_opt',
     'apps.crm_opt',
     'apps.hr_opt',
     'apps.automation',

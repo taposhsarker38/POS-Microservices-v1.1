@@ -9,6 +9,7 @@ import {
   DollarSign,
   Wallet,
   Users,
+  Brain,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AIProcurementAdvisor } from "@/components/purchase/ai-advisor";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-order-form";
 import { ReceiveOrderDialog } from "@/components/purchase/receive-order-dialog";
 import { VendorPaymentDialog } from "@/components/purchase/vendor-payment-dialog";
@@ -254,11 +257,13 @@ export const PurchaseOrderClient: React.FC = () => {
   }
 
   return (
-    <>
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Purchase Orders</h2>
-          <p className="text-muted-foreground">Manage inventory procurement.</p>
+          <h2 className="text-3xl font-bold tracking-tight">Procurement</h2>
+          <p className="text-muted-foreground">
+            Manage your supply chain and AI suggestions.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setOpenVendor(true)}>
@@ -269,9 +274,30 @@ export const PurchaseOrderClient: React.FC = () => {
           </Button>
         </div>
       </div>
-      <div className="mt-8">
-        <DataTable searchKey="reference_number" columns={columns} data={data} />
-      </div>
+
+      <Tabs defaultValue="orders" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
+          <TabsTrigger value="ai" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" /> AI Advisor
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="orders" className="space-y-4">
+          <div className="rounded-md border bg-card">
+            <DataTable
+              searchKey="reference_number"
+              columns={columns}
+              data={data}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-4">
+          <AIProcurementAdvisor />
+        </TabsContent>
+      </Tabs>
+
       <PurchaseOrderForm
         vendors={vendors}
         products={products}
@@ -297,6 +323,6 @@ export const PurchaseOrderClient: React.FC = () => {
         onClose={() => setOpenVendor(false)}
         onSuccess={fetchData}
       />
-    </>
+    </div>
   );
 };

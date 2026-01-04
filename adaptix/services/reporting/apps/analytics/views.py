@@ -75,6 +75,11 @@ class AnalyticsViewSet(viewsets.ViewSet):
             "shipped": 85,
             "due_amount": 12500.50
         }
+        
+        pdf_buffer = PDFService.generate_customer_order_report(data)
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="client_progress_{data["customer"]}.pdf"'
+        return response
     @action(detail=False, methods=['get'], url_path='export-qr-labels')
     def export_qr_labels(self, request):
         order_id = request.query_params.get("order_id")

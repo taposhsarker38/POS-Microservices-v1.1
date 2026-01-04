@@ -5,7 +5,7 @@ from .views import AnalyticsViewSet, DailySalesViewSet, TopProductViewSet, Manuf
 router = DefaultRouter()
 router.register(r'daily-sales', DailySalesViewSet)
 router.register(r'top-products', TopProductViewSet)
-router.register(r'dashboard', AnalyticsViewSet, basename='dashboard')
+router.register(r'analytics', AnalyticsViewSet, basename='analytics')
 router.register(r'manufacturing', ManufacturingAnalyticsViewSet, basename='manufacturing')
 
 urlpatterns = [

@@ -163,8 +163,7 @@ export function OperationList() {
                   <Input
                     name="code"
                     defaultValue={editingItem?.code}
-                    required
-                    placeholder="OP-001"
+                    placeholder="Leave empty to auto-generate"
                   />
                 </div>
                 <div className="grid gap-2">

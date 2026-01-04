@@ -139,10 +139,19 @@ class Product(SoftDeleteModel):
     is_emi_eligible = models.BooleanField(default=True)
     emi_plan_ids = models.JSONField(default=list, blank=True, help_text="List of supported EMI Plan UUIDs")
     
+    barcode = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.barcode:
+            # Generate a barcode if not provided
+            # Format: BC-[3 letters of name]-[8 chars of UUID]
+            name_prefix = "".join(filter(str.isalnum, self.name))[:3].upper() or "PRD"
+            self.barcode = f"BC-{name_prefix}-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
 class ApprovalRequest(SoftDeleteModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='approval_requests')

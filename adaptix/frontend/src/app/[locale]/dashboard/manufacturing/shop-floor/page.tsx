@@ -205,7 +205,8 @@ function OrderCard({
       <CardContent>
         <div className="text-2xl font-bold">{order.quantity_planned} Units</div>
         <p className="text-xs text-muted-foreground">
-          Product: {order.product_uuid.substring(0, 8)}...
+          Product:{" "}
+          {order.product_name || order.product_uuid.substring(0, 8) + "..."}
         </p>
         <div className="mt-4 flex items-center space-x-2 text-sm text-muted-foreground">
           <div className="flex-1">

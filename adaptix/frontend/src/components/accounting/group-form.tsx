@@ -6,7 +6,7 @@ import * as z from "zod";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { handleApiError, handleApiSuccess } from "@/lib/api-handler";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,22 @@ export function AccountGroupForm({
       group_type: initialData?.group_type || "",
     },
   });
+
+  // Auto-generate code from name
+  const nameValue = form.watch("name");
+  useEffect(() => {
+    if (!initialData && nameValue) {
+      const currentCode = form.getValues("code");
+      if (!currentCode) {
+        const generatedCode = nameValue
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .substring(0, 50);
+        form.setValue("code", generatedCode);
+      }
+    }
+  }, [nameValue, form, initialData]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {

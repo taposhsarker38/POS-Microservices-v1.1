@@ -219,7 +219,23 @@ class PriceListItemViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['price_list', 'variant_uuid']
 
-    def perform_create(self, serializer):
-        # Validation: Ensure price list belongs to the company
-        # (Skipped for brevity but recommended for production)
-        serializer.save()
+    def create(self, request, *args, **kwargs):
+        """
+        Custom create to support update_or_create logic.
+        Prevents 400 errors when saving an item that already exists in the list.
+        """
+        price_list_id = request.data.get('price_list')
+        variant_uuid = request.data.get('variant_uuid')
+        price = request.data.get('price')
+
+        if not all([price_list_id, variant_uuid, price]):
+            return Response({"detail": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+        item, created = PriceListItem.objects.update_or_create(
+            price_list_id=price_list_id,
+            variant_uuid=variant_uuid,
+            defaults={'price': price}
+        )
+        serializer = self.get_serializer(item)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(serializer.data, status=status_code)

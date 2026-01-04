@@ -121,13 +121,14 @@ services:
     profiles: ["quality", "pos", "sales"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
-      - DB_SCHEMA=quality_schema
+      - DB_SCHEMA=quality
       - PUBLIC_KEY_PATH=/keys/public.pem
       - JWT_ALGORITHM=RS256
       - JWT_AUDIENCE=pos-system
       - JWT_ISSUER=auth-service
       - ENABLE_TRACING=False
       - PYTHONPATH=/app:/shared/adaptix_core
+    command: bash -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 1"
     volumes:
       - ./services/quality:/app
       - ./keys:/keys:ro
@@ -378,6 +379,34 @@ services:
       resources:
         limits:
           memory: 384M
+
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    container_name: adaptix-inventory-worker
+    profiles: ["inventory", "pos", "sales"]
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
+      - DB_SCHEMA=inventory
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - RABBITMQ_URL=amqp://${MQ_USER:-adaptix}:${MQ_PASSWORD:-adaptix123}@rabbitmq:5672/
+      - PYTHONPATH=/app:/shared/adaptix_core
+    command: python manage.py run_inventory_consumer
+    volumes:
+      - ./services/inventory:/app
+      - ./shared:/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   purchase:
     build:
@@ -670,7 +699,7 @@ services:
       context: .
       dockerfile: services/reporting/Dockerfile
     container_name: adaptix-reporting
-    profiles: ["reporting"]
+    profiles: ["reporting", "mrp", "inventory", "core"]
     environment:
       - DATABASE_URL=postgres://${DB_USER:-adaptix}:${DB_PASSWORD:-adaptix123}@postgres:5432/adaptix
       - DB_SCHEMA=reporting

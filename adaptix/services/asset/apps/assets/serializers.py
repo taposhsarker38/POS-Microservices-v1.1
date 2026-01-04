@@ -1,3 +1,4 @@
+from rest_framework import serializers
 from .models import AssetCategory, Asset, DepreciationSchedule, AssetTelemetry, AssetMaintenanceTask
 
 class AssetTelemetrySerializer(serializers.ModelSerializer):

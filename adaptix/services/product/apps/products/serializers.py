@@ -33,6 +33,7 @@ class UnitSerializer(serializers.ModelSerializer):
         read_only_fields = ('company_uuid',)
 
 class ProductVariantSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
     class Meta:
         model = ProductVariant
         fields = '__all__'

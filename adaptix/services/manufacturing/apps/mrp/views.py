@@ -107,7 +107,15 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         uuid = getattr(self.request, "company_uuid", None)
         claims = getattr(self.request, "user_claims", {})
         user_id = claims.get("sub")
-        order = serializer.save(company_uuid=uuid, created_by=user_id)
+        
+        # Try to fetch product name if missing
+        product_uuid = serializer.validated_data.get('product_uuid')
+        product_name = serializer.validated_data.get('product_name')
+        
+        if product_uuid and not product_name:
+            product_name = self.fetch_product_name(product_uuid, self.request.headers.get("Authorization"))
+            
+        order = serializer.save(company_uuid=uuid, created_by=user_id, product_name=product_name)
         
         # Create Operation Trackers from BOM
         if order.bom:
@@ -121,6 +129,23 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         # Auto-generate individual units if order is already confirmed or in progress
         if order.status in ['CONFIRMED', 'IN_PROGRESS', 'QUALITY_CHECK']:
             self.generate_order_units(order)
+
+    def fetch_product_name(self, product_uuid, auth_token):
+        """Internal helper to fetch product name from Product Service."""
+        import requests
+        try:
+            # Internal URL for Product Service
+            url = f"http://adaptix-product:8000/api/product/products/{product_uuid}/"
+            resp = requests.get(
+                url, 
+                headers={"Authorization": auth_token},
+                timeout=3
+            )
+            if resp.status_code == 200:
+                return resp.json().get('name')
+        except Exception as e:
+            print(f"Failed to fetch product name: {e}")
+        return None
 
     def generate_order_units(self, order):
         """Helper to create individual unit records for an order."""
@@ -145,6 +170,15 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         instance = serializer.instance
         old_status = instance.status
+        
+        # If product_uuid changed and product_name not provided, re-fetch
+        product_uuid = serializer.validated_data.get('product_uuid')
+        product_name = serializer.validated_data.get('product_name')
+        
+        if product_uuid and product_uuid != instance.product_uuid and not product_name:
+             product_name = self.fetch_product_name(product_uuid, self.request.headers.get("Authorization"))
+             serializer.validated_data['product_name'] = product_name
+
         updated_instance = serializer.save()
         new_status = updated_instance.status
         
@@ -303,6 +337,23 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         
         self.publish_completion_event(order)
         return Response({"status": "production completed"})
+
+    @action(detail=False, methods=['post'], url_path='sync-units')
+    def sync_units(self, request):
+        """Retroactively generate units for confirmed orders missing them."""
+        orders = ProductionOrder.objects.filter(
+            status__in=['CONFIRMED', 'IN_PROGRESS', 'QUALITY_CHECK', 'COMPLETED']
+        )
+        total_created = 0
+        for order in orders:
+            if not order.units.exists():
+                self.generate_order_units(order)
+                total_created += order.quantity_planned
+        
+        return Response({
+            "status": "sync completed",
+            "units_generated": int(total_created)
+        })
 
     @action(detail=False, methods=['post'], url_path='check-availability')
     def check_availability(self, request):

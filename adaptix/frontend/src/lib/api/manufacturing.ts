@@ -28,6 +28,7 @@ export interface ProductionOrder {
   work_center: number | null;
   work_center_name?: string;
   product_uuid: string;
+  product_name?: string;
   bom: number | null;
   bom_name?: string;
   quantity_planned: string;

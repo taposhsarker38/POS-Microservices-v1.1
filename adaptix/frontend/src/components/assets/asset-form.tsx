@@ -66,6 +66,22 @@ export function AssetForm({
     },
   });
 
+  // Auto-generate code from name if code is empty
+  const nameValue = form.watch("name");
+  useEffect(() => {
+    if (!initialData && nameValue) {
+      const currentCode = form.getValues("code");
+      if (!currentCode) {
+        const generatedCode = nameValue
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .substring(0, 50);
+        form.setValue("code", generatedCode);
+      }
+    }
+  }, [nameValue, form, initialData]);
+
   useEffect(() => {
     // Fetch Categories
     api.get("/asset/categories/").then((res) => {

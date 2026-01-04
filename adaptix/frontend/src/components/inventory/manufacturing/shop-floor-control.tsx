@@ -56,6 +56,33 @@ export function ShopFloorControl() {
       }),
   });
 
+  // Fetch Products for mapping
+  const { data: products = [] } = useQuery({
+    queryKey: ["product", "list"],
+    queryFn: () =>
+      api.get("/product/products/").then((res) => {
+        const data = res.data.results || res.data;
+        return Array.isArray(data) ? data : [];
+      }),
+  });
+
+  // Helper to get product name
+  const getProductName = (order: any) => {
+    if (order.product_name) return order.product_name;
+
+    // Safety check for products list (could be paginated or raw array)
+    const productList = Array.isArray(products)
+      ? products
+      : (products as any)?.results || [];
+    const prod = productList.find((p: any) => p.id === order.product_uuid);
+
+    return prod
+      ? prod.name
+      : order.product_uuid
+      ? order.product_uuid.slice(0, 8) + "..."
+      : "Unknown";
+  };
+
   const updateOpMutation = useMutation({
     mutationFn: ({ orderId, opId, data }: any) =>
       api.patch(`/manufacturing/orders/${orderId}/operations/${opId}/`, data),
@@ -127,7 +154,10 @@ export function ShopFloorControl() {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  Product: {order.product_uuid.slice(0, 8)}...
+                  Product:{" "}
+                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                    {getProductName(order)}
+                  </span>
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <Users className="h-3 w-3 text-slate-400" />

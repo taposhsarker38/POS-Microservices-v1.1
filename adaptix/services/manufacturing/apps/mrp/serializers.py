@@ -82,6 +82,7 @@ class ProductionOrderSerializer(serializers.ModelSerializer):
     bom_name = serializers.CharField(source='bom.name', read_only=True)
     work_center_name = serializers.CharField(source='work_center.name', read_only=True)
     work_center = serializers.PrimaryKeyRelatedField(queryset=WorkCenter.objects.all(), required=False, allow_null=True)
+    product_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     operation_trackers = ProductionOrderOperationSerializer(many=True, read_only=True)
     units = ProductUnitSerializer(many=True, read_only=True)
 

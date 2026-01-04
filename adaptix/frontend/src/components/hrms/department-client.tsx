@@ -56,6 +56,20 @@ export function DepartmentClient() {
     fetchDepartments();
   }, []);
 
+  // Auto-generate code from name if code is empty and we are creating (not editing)
+  useEffect(() => {
+    if (!editingDept && formData.name) {
+      if (!formData.code) {
+        const generatedCode = formData.name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .substring(0, 50);
+        setFormData((prev) => ({ ...prev, code: generatedCode }));
+      }
+    }
+  }, [formData.name, editingDept]); // Removed formData.code to avoid infinite loop if we were checking it differently, but checking !formData.code inside is safe. However, to be safe against deps, we only trigger on name change.
+
   const handleSubmit = async () => {
     try {
       if (editingDept) {

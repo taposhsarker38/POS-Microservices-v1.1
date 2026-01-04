@@ -9,6 +9,7 @@ DEBUG = os.getenv("DEBUG", "True").lower() in ("1","true","yes")
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -16,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    "channels",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",

@@ -222,8 +222,7 @@ function WorkCenterForm({
           <Label htmlFor="code">Code</Label>
           <Input
             id="code"
-            required
-            placeholder="e.g. WC-001"
+            placeholder="Leave empty to auto-generate"
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
           />

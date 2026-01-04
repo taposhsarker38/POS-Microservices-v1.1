@@ -246,10 +246,7 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex-1">
                     <FormLabel className="text-xs">Component</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select Component" />
@@ -337,10 +334,7 @@ export function BOMForm({ initialData, onSuccess, onCancel }: BOMFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex-1">
                     <FormLabel className="text-xs">Operation</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select Operation" />

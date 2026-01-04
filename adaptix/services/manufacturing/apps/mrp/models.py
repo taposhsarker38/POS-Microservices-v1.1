@@ -4,7 +4,7 @@ import uuid
 
 class WorkCenter(models.Model):
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=50, unique=True)
+    code = models.CharField(max_length=50, unique=True, blank=True)
     description = models.TextField(blank=True)
     capacity_per_day = models.DecimalField(max_digits=10, decimal_places=2, help_text="Units per day capacity")
     
@@ -12,18 +12,32 @@ class WorkCenter(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        if not self.code:
+            # Generate a code if not provided
+            # Format: WC-[8 chars of UUID]
+            self.code = f"WC-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.name} ({self.code})"
 
 class Operation(models.Model):
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=50, unique=True)
+    code = models.CharField(max_length=50, unique=True, blank=True)
     description = models.TextField(blank=True)
     work_center = models.ForeignKey(WorkCenter, on_delete=models.SET_NULL, null=True, blank=True)
     
     company_uuid = models.UUIDField(db_index=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            # Generate a code if not provided
+            # Format: OP-[8 chars of UUID]
+            self.code = f"OP-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.code})"
@@ -84,6 +98,7 @@ class ProductionOrder(models.Model):
 
     work_center = models.ForeignKey(WorkCenter, on_delete=models.SET_NULL, null=True, blank=True)
     product_uuid = models.UUIDField(db_index=True)
+    product_name = models.CharField(max_length=255, blank=True, null=True)
     
     # Unique identifier for the order, used by other services (Quality, etc)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
